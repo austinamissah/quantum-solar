@@ -3,6 +3,7 @@ name: tests
 on:
   push:
   pull_request:
+  workflow_dispatch:
   schedule:
     # Mondays 06:00 UTC — full suite including the slow quantum (QAOA) tests.
     - cron: "0 6 * * 1"
@@ -10,7 +11,7 @@ on:
 jobs:
   fast:
     # Push / PR: fast unit tests only (skip the Aer-backed QAOA runs).
-    if: github.event_name != 'schedule'
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,8 +25,9 @@ jobs:
       - run: pytest -m "not slow"
 
   full:
-    # Weekly schedule: the complete suite, including slow quantum end-to-end tests.
-    if: github.event_name == 'schedule'
+    # Weekly schedule or manual dispatch: the complete suite, including the slow
+    # quantum end-to-end tests.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
