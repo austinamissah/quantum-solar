@@ -22,8 +22,10 @@ def test_dp_matches_brute_force(small_problem, small_weights):
     brute = brute_force_solve(small_problem, qubo)
     dp = dp_solve(small_problem)
 
-    # Same decisions and same cost as exhaustive enumeration of the QUBO.
-    assert np.array_equal(dp.x, brute.x[: small_problem.num_decision_vars])
+    # Two exact solvers may return different but equally-optimal schedules (e.g.
+    # under flat price blocks), so compare optimal cost and feasibility rather
+    # than identical decision vectors.
+    assert brute.feasible and dp.feasible
     assert np.isclose(dp.true_energy, brute.true_energy)
 
 

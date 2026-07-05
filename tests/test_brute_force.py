@@ -24,8 +24,9 @@ def test_qubo_optimum_matches_dp(small_problem, small_weights):
     brute = brute_force_solve(small_problem, qubo)
     dp = dp_solve(small_problem)
 
-    assert brute.feasible
-    # The QUBO global optimum recovers the exact (DP) minimum-cost schedule.
+    # The QUBO global optimum recovers the exact (DP) minimum cost. Equally-
+    # optimal schedules may differ, so compare cost and feasibility, not bits.
+    assert brute.feasible and dp.feasible
     assert np.isclose(brute.true_energy, dp.true_energy)
 
 
