@@ -1,47 +1,66 @@
-"""QUBO construction and energy correctness."""
+"""Battery QUBO construction and energy correctness."""
 
 import numpy as np
 
 from quantum_solar import build_qubo
+from quantum_solar.qubo import bounded_int_weights, slack_bits_per_slot
 
 
-def test_energy_matches_hand_computation(tiny_problem, tiny_weights):
+def test_bounded_int_weights_cover_range():
+    for n_max in range(0, 17):
+        weights = bounded_int_weights(n_max)
+        reachable = {
+            int(np.dot(bits, weights))
+            for bits in np.ndindex(*([2] * len(weights)))
+        }
+        assert set(range(n_max + 1)) <= reachable
+        assert max(reachable, default=0) == n_max
+
+
+def test_feasible_energy_equals_grid_cost(tiny_problem, tiny_weights):
     qubo = build_qubo(tiny_problem, tiny_weights)
+    t = tiny_problem.num_slots
+    b = slack_bits_per_slot(tiny_problem)
 
-    # Diagonal: -yield + wc*(1 - 2N) = -yield - 10 (N=1, wc=10).
-    assert np.allclose(np.diag(qubo.Q), [-11.0, -12.0, -13.0])
-    # Off-diagonal: 2*wc = 20 for every pair (no shading, no forbidden pairs).
-    assert qubo.Q[0, 1] == 20.0 and qubo.Q[0, 2] == 20.0 and qubo.Q[1, 2] == 20.0
-    # Offset: wc * N^2 = 10.
-    assert qubo.offset == 10.0
+    # Optimal schedule: charge slot 0, discharge slot 1. Slack for S_1 = 2 -> both
+    # slack bits set (weights [1, 1] sum to 2).
+    decision = [1, 0, 0, 1]  # c0 c1 d0 d1
+    slack = [1] * ((t - 1) * b)
+    x = np.array(decision + slack)
 
-    # Feasible single-panel picks: energy == -yield.
-    assert qubo.energy([0, 0, 1]) == -3.0
-    assert qubo.energy([1, 0, 0]) == -1.0
-    # Empty selection pays the full cardinality penalty.
-    assert qubo.energy([0, 0, 0]) == 10.0
+    # Penalties vanish for a feasible schedule -> QUBO energy == true grid cost.
+    assert tiny_problem.is_feasible(x)
+    assert np.isclose(qubo.energy(x), tiny_problem.energy(x))
+    assert np.isclose(qubo.energy(x), -2.0)
+
+
+def test_mutual_exclusion_term_present(tiny_problem):
+    from quantum_solar import PenaltyWeights
+
+    # Isolate the c_t·d_t coupling by zeroing the SoC/terminal squares (which also
+    # contribute cross-terms to Q[j, t+j]).
+    weights = PenaltyWeights(mutual_exclusion=100.0, soc_bounds=0.0, terminal=0.0)
+    qubo = build_qubo(tiny_problem, weights)
+    t = tiny_problem.num_slots
+    for j in range(t):
+        assert np.isclose(qubo.Q[j, t + j], 100.0)
 
 
 def test_infeasible_costs_more_than_optimum(tiny_problem, tiny_weights):
+    from quantum_solar import brute_force_solve
+
     qubo = build_qubo(tiny_problem, tiny_weights)
-    optimum = qubo.energy([0, 0, 1])  # exactly one panel
-    # Every wrong-cardinality selection must be strictly worse.
-    for x in ([1, 1, 0], [1, 1, 1], [0, 0, 0], [1, 0, 1]):
-        assert qubo.energy(x) > optimum
+    optimum = brute_force_solve(tiny_problem, qubo).qubo_energy
 
+    b = slack_bits_per_slot(tiny_problem)
+    slack = [0] * b
 
-def test_spacing_penalty_applies_to_close_pairs(tiny_weights):
-    from quantum_solar import SolarProblem
+    # Simultaneous charge & discharge (violates mutual exclusion).
+    both = np.array([1, 0, 1, 0] + slack)
+    # Never returns to S_0 (charge both slots -> S_2 = 3 > Q and != S_0).
+    drift = np.array([1, 1, 0, 0] + slack)
 
-    # Sites 0 and 1 are closer than min_spacing -> forbidden pair.
-    problem = SolarProblem(
-        sites=np.array([[0.0, 0.0], [0.5, 0.0], [10.0, 0.0]]),
-        yields=np.array([1.0, 1.0, 1.0]),
-        n_panels=2,
-        min_spacing=1.0,
-        shading=np.zeros((3, 3)),
-    )
-    qubo = build_qubo(problem, tiny_weights)
-    # The forbidden pair carries the extra spacing penalty; a far pair does not.
-    assert qubo.Q[0, 1] == 20.0 + 10.0  # 2*wc + ws
-    assert qubo.Q[0, 2] == 20.0
+    assert not tiny_problem.is_feasible(both)
+    assert not tiny_problem.is_feasible(drift)
+    assert qubo.energy(both) > optimum
+    assert qubo.energy(drift) > optimum

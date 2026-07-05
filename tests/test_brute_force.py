@@ -1,33 +1,32 @@
-"""Exact enumeration correctness."""
+"""Exact QUBO enumeration, cross-checked against the DP baseline."""
 
 import numpy as np
 import pytest
 
-from quantum_solar import build_qubo, brute_force_solve
-from quantum_solar.brute_force import MAX_ENUMERATION_SITES, enumerate_bitstrings
+from quantum_solar import build_qubo, brute_force_solve, dp_solve
+from quantum_solar.brute_force import MAX_ENUMERATION_SITES
 
 
 def test_finds_known_optimum(tiny_problem, tiny_weights):
     qubo = build_qubo(tiny_problem, tiny_weights)
     solution = brute_force_solve(tiny_problem, qubo)
 
-    assert np.array_equal(solution.x, [0, 0, 1])  # highest-yield single site
+    c, d = tiny_problem.decode(solution.x)
+    assert np.array_equal(c, [1, 0])  # charge when cheap
+    assert np.array_equal(d, [0, 1])  # discharge when expensive
     assert solution.feasible
-    assert solution.qubo_energy == -3.0
-    assert solution.true_energy == 3.0
+    assert np.isclose(solution.qubo_energy, -2.0)
+    assert np.isclose(solution.true_energy, -2.0)
 
 
-def test_optimum_is_feasible_and_maximizes_true_yield(small_problem, small_weights):
+def test_qubo_optimum_matches_dp(small_problem, small_weights):
     qubo = build_qubo(small_problem, small_weights)
-    solution = brute_force_solve(small_problem, qubo)
+    brute = brute_force_solve(small_problem, qubo)
+    dp = dp_solve(small_problem)
 
-    assert solution.feasible
-    # With adequate penalties the QUBO optimum is the best *feasible* placement.
-    X = enumerate_bitstrings(small_problem.num_sites)
-    feasible_true = [
-        small_problem.energy(x) for x in X if small_problem.is_feasible(x)
-    ]
-    assert np.isclose(solution.true_energy, max(feasible_true))
+    assert brute.feasible
+    # The QUBO global optimum recovers the exact (DP) minimum-cost schedule.
+    assert np.isclose(brute.true_energy, dp.true_energy)
 
 
 def test_refuses_oversized_instances():

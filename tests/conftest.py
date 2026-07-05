@@ -1,37 +1,44 @@
-"""Shared fixtures: small, deterministic problem instances."""
+"""Shared fixtures: small, deterministic battery instances."""
 
 import numpy as np
 import pytest
 
-from quantum_solar import PenaltyWeights, SolarProblem, random_instance
+from quantum_solar import BatteryProblem, PenaltyWeights, synthetic_instance
 
 
 @pytest.fixture
-def tiny_problem() -> SolarProblem:
-    """Three collinear sites, no shading, all spacings allowed.
+def tiny_problem() -> BatteryProblem:
+    """Two slots, e=1, Q=2, S_0=1, prices [1, 3], no load or solar.
 
-    Yields are [1, 2, 3]; with n_panels=1 the unique optimum is site 2 (yield 3).
+    The unique optimum returning to S_0 is charge-when-cheap (slot 0) then
+    discharge-when-expensive (slot 1): cost = 1·1 − 3·1 = -2.
     """
-    return SolarProblem(
-        sites=np.array([[0.0, 0.0], [5.0, 0.0], [10.0, 0.0]]),
-        yields=np.array([1.0, 2.0, 3.0]),
-        n_panels=1,
-        min_spacing=1.0,
-        shading=np.zeros((3, 3)),
+    return BatteryProblem(
+        generation=np.zeros(2),
+        load=np.zeros(2),
+        price=np.array([1.0, 3.0]),
+        capacity=2.0,
+        charge_energy=1.0,
+        discharge_energy=1.0,
+        initial_soc=1.0,
     )
 
 
 @pytest.fixture
 def tiny_weights() -> PenaltyWeights:
-    return PenaltyWeights(cardinality=10.0, spacing=10.0)
+    return PenaltyWeights(mutual_exclusion=100.0, soc_bounds=100.0, terminal=100.0)
 
 
 @pytest.fixture
-def small_problem() -> SolarProblem:
-    """A 5-site instance with real shading/spacing structure for solver tests."""
-    return random_instance(num_sites=5, n_panels=2, seed=7)
+def small_problem() -> BatteryProblem:
+    """A 3-slot instance (K=4 SoC levels) small enough to brute-force."""
+    return synthetic_instance(
+        num_slots=3, seed=7, capacity=3.0, charge_energy=1.0, initial_soc=1.0
+    )
 
 
 @pytest.fixture
-def small_weights() -> PenaltyWeights:
-    return PenaltyWeights(cardinality=20.0, spacing=20.0)
+def small_weights(small_problem) -> PenaltyWeights:
+    from quantum_solar import default_weights
+
+    return default_weights(small_problem)

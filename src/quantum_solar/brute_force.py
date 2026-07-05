@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .problem import SolarProblem
+from .problem import BatteryProblem
 from .qubo import QUBO
 from .solution import Solution
 
@@ -23,7 +23,7 @@ def enumerate_bitstrings(m: int) -> np.ndarray:
     return ((idx >> bit) & 1).astype(np.int8)
 
 
-def brute_force_solve(problem: SolarProblem, qubo: QUBO) -> Solution:
+def brute_force_solve(problem: BatteryProblem, qubo: QUBO) -> Solution:
     """Return the exact QUBO global minimizer as a scored :class:`Solution`."""
     m = qubo.num_vars
     if m > MAX_ENUMERATION_SITES:

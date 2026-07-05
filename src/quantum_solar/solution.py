@@ -9,14 +9,15 @@ import numpy as np
 
 @dataclass(frozen=True)
 class Solution:
-    """A candidate placement and its scores.
+    """A candidate solution and its scores.
 
     Attributes:
-        x: length-M binary vector; ``x[i] == 1`` means a panel is placed at site i.
+        x: length-M binary decision vector for the QUBO.
         qubo_energy: value of the QUBO objective ``xᵀQx + offset`` (the quantity
             both solvers minimize).
-        true_energy: physical energy yield from ``SolarProblem.energy`` (higher is
-            better) — independent of any penalty weights.
+        true_energy: the domain objective from ``problem.energy`` — independent of
+            any penalty weights. Direction depends on the domain (e.g. battery
+            grid cost: lower is better).
         feasible: whether ``x`` satisfies the problem's hard constraints.
     """
 

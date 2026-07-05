@@ -19,7 +19,7 @@ from qiskit_aer.primitives import EstimatorV2, SamplerV2
 from scipy.optimize import minimize
 
 from .ising import qubo_to_ising
-from .problem import SolarProblem
+from .problem import BatteryProblem
 from .qubo import QUBO
 from .solution import Solution
 
@@ -59,7 +59,7 @@ class QAOASolver:
         self.seed = seed
         self.maxiter = maxiter
 
-    def solve(self, problem: SolarProblem, qubo: QUBO) -> QAOAResult:
+    def solve(self, problem: BatteryProblem, qubo: QUBO) -> QAOAResult:
         hamiltonian, constant = qubo_to_ising(qubo)
 
         ansatz = QAOAAnsatz(cost_operator=hamiltonian, reps=self.reps)
@@ -101,7 +101,7 @@ class QAOASolver:
 
     def _best_solution(
         self,
-        problem: SolarProblem,
+        problem: BatteryProblem,
         qubo: QUBO,
         counts: dict[str, int],
         params: np.ndarray,
