@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quantum-solar"
+version = "0.1.0"
+description = "Quantum computing approach to solar panel placement optimization"
+requires-python = ">=3.12"
+
+# Runtime dependencies are pinned in requirements.txt and installed into .venv.
+# Install this package itself with:  pip install -e . --no-deps
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: end-to-end quantum runs (deselect with '-m \"not slow\"')",
+]
