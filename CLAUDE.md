@@ -66,6 +66,18 @@ Gotchas:
 - `QAOAAnsatz` emits an `NLocal`/`BlueprintCircuit` `DeprecationWarning`
   (Qiskit 2.1, removal in 3.0). Functional; revisit before a Qiskit 3 upgrade.
 
+## Data & secrets
+
+- Instances are currently synthetic (`synthetic_instance`); real NREL/EIA data
+  loaders are a roadmap item.
+- **NREL API key** lives in `NREL_API_KEY`. The repo-root `.env` holds it and is
+  gitignored — never commit it. The future loader should read `os.environ` first
+  and fall back to parsing the repo-root `.env`.
+- **NREL developer domain moved to `developer.nlr.gov`** (NREL → "National
+  Laboratory of the Rockies"). The old `developer.nrel.gov` was retired
+  2026-05-29 and no longer resolves — use `nlr.gov` in all API URLs and docs.
+  Existing API keys still work; only the domain changed.
+
 ## Environment & Commands
 
 A virtualenv already exists at `.venv` (Python 3.12).
