@@ -1,7 +1,9 @@
 """NREL loader: offline parsing/resampling/config tests + a gated live test."""
 
+import io
 import json
 import os
+import urllib.request
 
 import numpy as np
 import pytest
@@ -64,6 +66,27 @@ def test_get_json_uses_cache_without_network(tmp_path):
     assert result == {"cached": True}
 
 
+def test_error_response_not_cached_then_success_cached(monkeypatch, tmp_path):
+    payloads = [
+        {"errors": ["bad key"], "outputs": {}},              # first call fails
+        {"errors": [], "outputs": {"ac": [1000.0] * 8760}},  # second call succeeds
+    ]
+
+    def fake_urlopen(request, timeout=None):
+        return io.BytesIO(json.dumps(payloads.pop(0)).encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    params = {"api_key": "secret", "lat": 1, "lon": 2, "timeframe": "hourly"}
+
+    first = nrel._get_json(nrel.PVWATTS_ENDPOINT, params, cache_dir=tmp_path)
+    assert first.get("errors")                        # error is surfaced...
+    assert list(tmp_path.glob("*.json")) == []        # ...but never cached
+
+    second = nrel._get_json(nrel.PVWATTS_ENDPOINT, params, cache_dir=tmp_path)
+    assert not second.get("errors")                   # a later success...
+    assert len(list(tmp_path.glob("*.json"))) == 1    # ...is cached
+
+
 # --- load_nrel_instance (no network) -----------------------------------------
 
 def test_load_nrel_instance_uses_real_generation(monkeypatch):
@@ -75,6 +98,12 @@ def test_load_nrel_instance_uses_real_generation(monkeypatch):
     assert problem.capacity == 8.0
     assert np.allclose(problem.generation, nrel.to_slots(hourly, 10, 24))
     assert problem.price.shape == (24,) and problem.load.shape == (24,)
+
+
+def test_load_nrel_instance_rejects_non_hourly(monkeypatch):
+    monkeypatch.setattr(nrel, "fetch_pvwatts", lambda *a, **k: np.zeros(8760))
+    with pytest.raises(ValueError, match="only num_slots=24"):
+        nrel.load_nrel_instance(39.7, -105.2, num_slots=12)
 
 
 # --- API key resolution ------------------------------------------------------
@@ -117,6 +146,11 @@ def test_pvwatts_live():
     if os.environ.get("QS_SKIP_NETWORK"):
         pytest.skip("network disabled")
 
-    ac = nrel.fetch_pvwatts(39.74, -105.18, 4.0, cache_dir=None, api_key=key)
+    system_kw = 4.0
+    ac = nrel.fetch_pvwatts(39.74, -105.18, system_kw, cache_dir=None, api_key=key)
     assert ac.shape == (8760,)
     assert ac.min() >= 0.0 and ac.max() > 0.0
+    # Physical plausibility: annual yield per installed kW. A unit error (e.g.
+    # W vs kW, or summing vs averaging) would blow through this band.
+    annual_per_kw = float(ac.sum()) / system_kw
+    assert 700.0 <= annual_per_kw <= 2200.0

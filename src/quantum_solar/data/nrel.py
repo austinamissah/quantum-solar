@@ -44,7 +44,9 @@ def _get_json(url: str, params: dict, cache_dir: Path | None) -> dict:
     with urllib.request.urlopen(request, timeout=30) as response:
         data = json.load(response)
 
-    if cache_file is not None:
+    # Only cache successful responses — caching an error payload would serve a
+    # transient failure from disk forever.
+    if cache_file is not None and not data.get("errors"):
         cache_file.write_text(json.dumps(data))
     return data
 
@@ -79,12 +81,18 @@ def fetch_pvwatts(
     errors = data.get("errors") or []
     if errors:
         raise RuntimeError(f"PVWatts API error: {errors}")
-    ac_watts = np.asarray(data["outputs"]["ac"], dtype=float)  # hourly average W
-    return ac_watts / 1000.0  # -> kWh per hour
+    ac_wh = np.asarray(data["outputs"]["ac"], dtype=float)  # hourly AC energy (Wh)
+    return ac_wh / 1000.0  # -> kWh per hour
 
 
 def to_slots(hourly: np.ndarray, day: int, num_slots: int) -> np.ndarray:
-    """Aggregate one day's 24 hourly energy values into ``num_slots`` slots (kWh)."""
+    """Aggregate one day's 24 hourly energy values into ``num_slots`` slots (kWh).
+
+    Energy quantities ONLY: values are *summed* within each slot, so a wider slot
+    holds proportionally more energy. Intensive per-unit series — a future price
+    or rate curve ($/kWh) — must be *averaged* per slot, not summed; do not reuse
+    this helper for them.
+    """
     if 24 % num_slots != 0:
         raise ValueError(f"num_slots must divide 24, got {num_slots}")
     hourly = np.asarray(hourly, dtype=float)
@@ -114,6 +122,19 @@ def load_nrel_instance(
     Price and load are synthetic for now (v1). ``day`` is a 0-based day-of-year
     index (default ~summer solstice).
     """
+    # v1 restriction: PVWatts generation is aggregated as ENERGY per slot (scales
+    # with slot width via to_slots), while the synthetic price/load are
+    # duration-independent per-slot values. Combining them at any resolution other
+    # than hourly would mix inconsistent units, so only 24 one-hour slots are
+    # allowed until the synthetic series are made duration-aware.
+    if num_slots != 24:
+        raise ValueError(
+            "load_nrel_instance supports only num_slots=24 in v1 (hourly): real "
+            "PVWatts generation is summed as energy per slot while synthetic "
+            "load/price are duration-independent, so other resolutions would be "
+            "energy-inconsistent."
+        )
+
     discharge_energy = charge_energy if discharge_energy is None else discharge_energy
     initial_soc = capacity / 2.0 if initial_soc is None else initial_soc
 
