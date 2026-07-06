@@ -81,16 +81,33 @@ pytest                 # full suite, including the slow Aer-backed QAOA runs
 CI runs the fast suite on every push and pull request; a weekly scheduled job
 runs the full suite including the slow quantum tests.
 
+## Real data
+
+Solar generation can be pulled from the NREL PVWatts API instead of the synthetic
+generator:
+
+```python
+from quantum_solar.data import load_nrel_instance
+
+problem = load_nrel_instance(lat=39.74, lon=-105.18, day=172)  # 24 hourly slots
+```
+
+Set `NREL_API_KEY` in your environment or a repo-root `.env` (a free key comes
+from developer.nlr.gov). Responses are cached under `data/cache/`. Price and load
+are still synthetic in v1 — time-of-use pricing (NREL URDB) and household load
+(EIA) loaders are on the roadmap.
+
 ## Status
 
 Working end-to-end in simulation: problem model, exact QUBO encoding, Ising
-mapping, QAOA on Aer, and both classical baselines, all covered by tests. Data is
-currently synthetic.
+mapping, QAOA on Aer, and both classical baselines, all covered by tests. Solar
+generation can use real NREL data; price and load remain synthetic.
 
 ## Roadmap
 
 - **Real hardware run on IBM Quantum** — execute the QAOA circuits on a physical
   backend and compare against the simulator.
-- Real tariff/generation data via NREL and EIA loaders.
+- Real time-of-use pricing (NREL URDB) and household load (EIA) loaders — solar
+  generation (NREL PVWatts) is already wired up.
 - Relax v1 assumptions: asymmetric buy/sell prices and round-trip efficiency.
 - Scaling study: slack-free approximate encodings vs. the exact one.
