@@ -68,11 +68,18 @@ Gotchas:
 
 ## Data & secrets
 
-- Instances are currently synthetic (`synthetic_instance`); real NREL/EIA data
-  loaders are a roadmap item.
+- `synthetic_instance` is the built-in data source. `quantum_solar.data`
+  (`load_nrel_instance`) fetches **real solar generation** from the NREL PVWatts
+  v8 API; price and load are still synthetic in v1 (URDB time-of-use pricing and
+  an EIA load loader are roadmap items).
+- API responses are cached under `data/cache/` (gitignored). Loader parsing,
+  resampling, and key-resolution are unit-tested offline (HTTP monkeypatched); a
+  `slow` live test (`test_pvwatts_live`) hits the real API and self-skips when no
+  key is configured.
 - **NREL API key** lives in `NREL_API_KEY`. The repo-root `.env` holds it and is
-  gitignored — never commit it. The future loader should read `os.environ` first
-  and fall back to parsing the repo-root `.env`.
+  gitignored — never commit it. `config.nrel_api_key()` reads `os.environ` first,
+  then falls back to parsing the repo-root `.env` (ignoring the `REPLACE_ME`
+  placeholder).
 - **NREL developer domain moved to `developer.nlr.gov`** (NREL → "National
   Laboratory of the Rockies"). The old `developer.nrel.gov` was retired
   2026-05-29 and no longer resolves — use `nlr.gov` in all API URLs and docs.
