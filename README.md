@@ -20,7 +20,8 @@ the state of charge within capacity and returning it to its starting level:
 
 ![Optimal battery schedule](docs/schedule.png)
 
-*(Regenerate with `python scripts/make_preview.py`.)*
+*(Illustrative synthetic day; regenerate with `python scripts/make_preview.py`. See
+[Real data](#real-data) for using real NREL solar generation.)*
 
 ## Pipeline
 
