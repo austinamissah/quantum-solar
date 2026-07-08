@@ -233,12 +233,20 @@ def _schedule_costs(problem, X):
 def uniform_baseline(problem, qubo, shots):
     """Exact uniform-sampling baseline from full enumeration.
 
-    Returns (uniform_opt_mass, expected_best_of_shots_cost):
-      * uniform_opt_mass = (# optimal bitstrings) / 2^m — the exact probability one
-        uniform draw is optimal.
-      * expected best-of-`shots` cost, computed exactly via order statistics:
-        sorting bitstrings by energy, P(best rank >= k) = ((N-k)/N)^shots, and
-        E[cost] telescopes over energy levels (no Monte Carlo).
+    Returns (uniform_opt_mass, expected_best_cost):
+      * uniform_opt_mass = (# optimal bitstrings) / 2^m — the exact probability a
+        single uniform draw is optimal.
+      * expected_best_cost — the expected TRUE COST of the min-energy sample among
+        `shots` uniform draws, mirroring the sweep's ``qaoa_cost`` (cost of the
+        min-QUBO-energy sampled bitstring). Using the same selection rule is what
+        makes the QAOA-vs-uniform comparison fair. Computed exactly by order
+        statistics: grouping bitstrings by energy, best-of-shots lands on a level
+        with probability P(min>=level) - P(min>=next level), and that level's
+        cost weight is its mean cost. No Monte Carlo. (Validated against an
+        independent MC in tests.)
+
+    Future work: a "best *feasible* schedule cost" baseline is also defensible,
+    but only if reported symmetrically for QAOA as well; not computed here.
     """
     from quantum_solar.brute_force import enumerate_bitstrings
 

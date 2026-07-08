@@ -60,6 +60,34 @@ def test_uniform_baseline_exact():
     assert ucost >= opt - 1e-9 and np.isclose(ucost, opt, atol=1e-3)
 
 
+def test_uniform_best_cost_matches_monte_carlo():
+    from quantum_solar import build_qubo, default_weights, synthetic_instance
+    from quantum_solar.brute_force import enumerate_bitstrings
+
+    problem = synthetic_instance(3, seed=1, capacity=3.0, charge_energy=1.0,
+                                 initial_soc=1.0)
+    qubo = build_qubo(problem, default_weights(problem))
+    shots = 256
+    _, closed_form = exp.uniform_baseline(problem, qubo, shots)
+
+    # Independent MC of the SAME quantity: draw `shots` uniform bitstrings, take
+    # the min-energy one, record its true cost; average over trials.
+    m = qubo.num_vars
+    n_states = 2 ** m
+    X = enumerate_bitstrings(m).astype(float)
+    energies = np.einsum("bi,ij,bj->b", X, qubo.Q, X) + qubo.offset
+    costs = exp._schedule_costs(problem, X)
+    rng = np.random.default_rng(0)
+    trials = 4000
+    idx = rng.integers(0, n_states, size=(trials, shots))
+    best = energies[idx].argmin(axis=1)
+    sampled_cost = costs[idx[np.arange(trials), best]]
+    mc_mean = sampled_cost.mean()
+    mc_se = sampled_cost.std() / np.sqrt(trials)
+
+    assert abs(closed_form - mc_mean) <= 3 * mc_se
+
+
 def test_add_uniform_baseline_flags_below_floor():
     rows = [
         {"T": 2, "m": 6, "seed": 0, "reps": 1, "opt_prob_mass": 0.0},
