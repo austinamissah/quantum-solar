@@ -34,6 +34,11 @@ URDB_ENDPOINT = "https://api.openei.org/utility_rates"
 # Golden, CO PVWatts location. Summer weekday: off-peak ~$0.139/kWh, on-peak
 # ~$0.381/kWh (17:00-21:00). URDB rate:
 #   https://apps.openei.org/USURDB/rate/view/69bd927af5cd25efec0e9aad
+#
+# The entry keeps the legacy "RE-TOU" name but reflects the post-Nov-2025
+# two-period (on/off-peak) TOU structure. Tariff data is a snapshot — Xcel has a
+# ~9.9% increase filed for Aug 2026 — so this label (and the committed test
+# fixture) pin the specific version we test against.
 XCEL_CO_RETOU_LABEL = "69bd927af5cd25efec0e9aad"
 
 DEFAULT_CACHE = Path(__file__).resolve().parents[3] / "data" / "cache"
@@ -130,6 +135,13 @@ def fetch_urdb_tou(
     summer) and maps each hour's period to its first-tier energy rate. Prices are
     intensive per-kWh values — resample with :func:`price_to_slots`, never
     :func:`to_slots`.
+
+    URDB rates are *all-in* per-kWh prices (energy plus delivery, riders, and
+    adjustments), so they exceed a utility's published energy-only charge — e.g.
+    the Xcel RE-TOU rate returns ~$0.381/kWh on-peak summer 2026 vs Xcel's
+    published ~$0.21 energy-only, while matching the PUC-approved structure
+    exactly (5-9pm weekday peak, ~2.7x on/off-peak ratio). All-in is the correct
+    price for battery arbitrage, which pays or avoids the full retail rate.
     """
     params = {
         "version": "latest",
