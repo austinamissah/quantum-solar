@@ -68,14 +68,20 @@ Gotchas:
 
 ## Data & secrets
 
-- `synthetic_instance` is the built-in data source. `quantum_solar.data`
-  (`load_nrel_instance`) fetches **real solar generation** from the NREL PVWatts
-  v8 API; price and load are still synthetic in v1 (URDB time-of-use pricing and
-  an EIA load loader are roadmap items).
-- API responses are cached under `data/cache/` (gitignored). Loader parsing,
-  resampling, and key-resolution are unit-tested offline (HTTP monkeypatched); a
-  `slow` live test (`test_pvwatts_live`) hits the real API and self-skips when no
-  key is configured.
+- `synthetic_instance` is the built-in data source. `quantum_solar.data.load_nrel_instance`
+  fetches **real solar generation** (NREL PVWatts v8) and **real time-of-use
+  prices** (Xcel Energy CO Residential RE-TOU via the OpenEI/URDB API at
+  `api.openei.org`, keyed by the same NREL key); household load is still synthetic
+  in v1 (an EIA load loader is a roadmap item). `load_nrel_instance` is
+  `num_slots=24` only.
+- Prices are **intensive**: resample with `price_to_slots` (averages), never
+  `to_slots` (which sums energy). Generation and price are aligned on the local
+  clock hour 0–23 (DST ignored).
+- API responses are cached under `data/cache/` (gitignored), and never when the
+  response carries an error (`errors` for PVWatts, `error` for URDB). Loader
+  parsing, resampling, and key-resolution are unit-tested offline (HTTP
+  monkeypatched); `slow` live tests (`test_pvwatts_live`, `test_urdb_live`) hit
+  the real APIs and self-skip when no key is configured.
 - **NREL API key** lives in `NREL_API_KEY`. The repo-root `.env` holds it and is
   gitignored — never commit it. `config.nrel_api_key()` reads `os.environ` first,
   then falls back to parsing the repo-root `.env` (ignoring the `REPLACE_ME`

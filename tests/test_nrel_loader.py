@@ -4,11 +4,14 @@ import io
 import json
 import os
 import urllib.request
+from pathlib import Path
 
 import numpy as np
 import pytest
 
 from quantum_solar.data import config, nrel
+
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 # --- to_slots resampling -----------------------------------------------------
@@ -89,15 +92,19 @@ def test_error_response_not_cached_then_success_cached(monkeypatch, tmp_path):
 
 # --- load_nrel_instance (no network) -----------------------------------------
 
-def test_load_nrel_instance_uses_real_generation(monkeypatch):
+def test_load_nrel_instance_real_generation_and_price(monkeypatch):
     hourly = np.tile(np.linspace(0.0, 3.0, 24), 366)  # deterministic daily curve
+    price24 = np.full(24, 0.2)
+    price24[17:21] = 0.4  # on-peak block
     monkeypatch.setattr(nrel, "fetch_pvwatts", lambda *a, **k: hourly)
+    monkeypatch.setattr(nrel, "fetch_urdb_tou", lambda *a, **k: price24)
 
     problem = nrel.load_nrel_instance(39.7, -105.2, day=10, num_slots=24, capacity=8.0)
     assert problem.num_slots == 24
     assert problem.capacity == 8.0
-    assert np.allclose(problem.generation, nrel.to_slots(hourly, 10, 24))
-    assert problem.price.shape == (24,) and problem.load.shape == (24,)
+    assert np.allclose(problem.generation, nrel.to_slots(hourly, 10, 24))  # real solar
+    assert np.allclose(problem.price, price24)                              # real price (identity @24)
+    assert problem.load.shape == (24,)                                      # synthetic load
 
 
 def test_load_nrel_instance_rejects_non_hourly(monkeypatch):
@@ -135,6 +142,55 @@ def test_api_key_ignores_placeholder(monkeypatch, tmp_path):
         config.nrel_api_key()
 
 
+# --- price_to_slots (intensive resampling: average, never sum) ---------------
+
+def test_price_to_slots_constant_survives():
+    prices = np.full(24, 0.15)
+    for num_slots in (1, 2, 3, 4, 6, 8, 12, 24):
+        assert np.allclose(nrel.price_to_slots(prices, num_slots), 0.15)
+
+
+def test_price_to_slots_preserves_average():
+    prices = np.arange(24, dtype=float)
+    for num_slots in (1, 2, 3, 4, 6, 8, 12, 24):
+        resampled = nrel.price_to_slots(prices, num_slots)
+        assert resampled.shape == (num_slots,)
+        assert np.isclose(resampled.mean(), prices.mean())
+
+
+def test_price_to_slots_validation():
+    with pytest.raises(ValueError, match="divide 24"):
+        nrel.price_to_slots(np.ones(24), 5)
+    with pytest.raises(ValueError, match="24 hourly prices"):
+        nrel.price_to_slots(np.ones(12), 6)
+
+
+# --- URDB TOU parsing against a committed real fixture (no network) -----------
+
+def _load_urdb_fixture():
+    return json.loads((FIXTURES / "urdb_xcel_co_retou.json").read_text())
+
+
+def test_fetch_urdb_tou_parses_summer_weekday(monkeypatch):
+    monkeypatch.setattr(nrel, "_get_json", lambda *a, **k: _load_urdb_fixture())
+    prices = nrel.fetch_urdb_tou("label", month=6, cache_dir=None, api_key="x")
+
+    assert prices.shape == (24,)
+    # Xcel RE-TOU summer weekday: on-peak block at hours 17-20, off-peak elsewhere.
+    assert np.allclose(prices[17:21], prices[17])
+    assert np.isclose(prices[0], 0.13926)   # off-peak
+    assert np.isclose(prices[18], 0.38109)  # on-peak
+
+
+def test_urdb_tariff_is_valid_tou(monkeypatch):
+    monkeypatch.setattr(nrel, "_get_json", lambda *a, **k: _load_urdb_fixture())
+    prices = nrel.fetch_urdb_tou("label", month=6, cache_dir=None, api_key="x")
+
+    assert (prices > 0).all()                 # all prices positive
+    assert prices.max() > prices.min()        # peak strictly above off-peak
+    assert len(np.unique(prices)) >= 2        # flat vector => TOU extraction failed
+
+
 # --- live integration (network + real key; skipped otherwise) ----------------
 
 @pytest.mark.slow
@@ -154,3 +210,19 @@ def test_pvwatts_live():
     # W vs kW, or summing vs averaging) would blow through this band.
     annual_per_kw = float(ac.sum()) / system_kw
     assert 700.0 <= annual_per_kw <= 2200.0
+
+
+@pytest.mark.slow
+def test_urdb_live():
+    try:
+        key = config.nrel_api_key()
+    except RuntimeError:
+        pytest.skip("no NREL_API_KEY configured")
+    if os.environ.get("QS_SKIP_NETWORK"):
+        pytest.skip("network disabled")
+
+    prices = nrel.fetch_urdb_tou(nrel.XCEL_CO_RETOU_LABEL, month=6, cache_dir=None, api_key=key)
+    assert prices.shape == (24,)
+    assert (prices > 0).all()
+    assert prices.max() > prices.min()      # real TOU spread
+    assert len(np.unique(prices)) >= 2

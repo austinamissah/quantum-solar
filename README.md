@@ -94,21 +94,23 @@ problem = load_nrel_instance(lat=39.74, lon=-105.18, day=172)  # 24 hourly slots
 ```
 
 Set `NREL_API_KEY` in your environment or a repo-root `.env` (a free key comes
-from developer.nlr.gov). Responses are cached under `data/cache/`. Price and load
-are still synthetic in v1 — time-of-use pricing (NREL URDB) and household load
-(EIA) loaders are on the roadmap.
+from developer.nlr.gov). Responses are cached under `data/cache/`. Generation
+(PVWatts) and the time-of-use price (Xcel Energy CO *Residential Energy TOU*,
+Schedule RE-TOU, via URDB) are real; household load is still synthetic in v1 — an
+EIA load loader is on the roadmap.
 
 ## Status
 
 Working end-to-end in simulation: problem model, exact QUBO encoding, Ising
 mapping, QAOA on Aer, and both classical baselines, all covered by tests. Solar
-generation can use real NREL data; price and load remain synthetic.
+generation and time-of-use prices can use real NREL data (PVWatts + URDB);
+household load remains synthetic.
 
 ## Roadmap
 
 - **Real hardware run on IBM Quantum** — execute the QAOA circuits on a physical
   backend and compare against the simulator.
-- Real time-of-use pricing (NREL URDB) and household load (EIA) loaders — solar
-  generation (NREL PVWatts) is already wired up.
+- Real household load loader (EIA) — solar generation (PVWatts) and time-of-use
+  prices (URDB) are already wired up.
 - Relax v1 assumptions: asymmetric buy/sell prices and round-trip efficiency.
 - Scaling study: slack-free approximate encodings vs. the exact one.

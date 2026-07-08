@@ -22,6 +22,20 @@ from ..problem import BatteryProblem, synthetic_instance
 from .config import NLR_BASE, nrel_api_key
 
 PVWATTS_ENDPOINT = f"{NLR_BASE}/pvwatts/v8.json"
+
+# Detailed URDB time-of-use rate structures come from the OpenEI Utility Rates
+# API (host api.openei.org) — documented on the NLR developer network and keyed
+# by the same NREL API key. developer.nlr.gov's own utility_rates endpoint
+# returns only average rates (no TOU schedule).
+URDB_ENDPOINT = "https://api.openei.org/utility_rates"
+
+# Public Service Co of Colorado (Xcel Energy) — "Residential Energy Time Of Use
+# (Schedule RE-TOU)", the active 2026 residential TOU tariff, aligned with the
+# Golden, CO PVWatts location. Summer weekday: off-peak ~$0.139/kWh, on-peak
+# ~$0.381/kWh (17:00-21:00). URDB rate:
+#   https://apps.openei.org/USURDB/rate/view/69bd927af5cd25efec0e9aad
+XCEL_CO_RETOU_LABEL = "69bd927af5cd25efec0e9aad"
+
 DEFAULT_CACHE = Path(__file__).resolve().parents[3] / "data" / "cache"
 
 
@@ -45,8 +59,9 @@ def _get_json(url: str, params: dict, cache_dir: Path | None) -> dict:
         data = json.load(response)
 
     # Only cache successful responses — caching an error payload would serve a
-    # transient failure from disk forever.
-    if cache_file is not None and not data.get("errors"):
+    # transient failure from disk forever. PVWatts reports errors under "errors",
+    # the OpenEI/URDB API under "error"; treat either as a failure.
+    if cache_file is not None and not (data.get("errors") or data.get("error")):
         cache_file.write_text(json.dumps(data))
     return data
 
@@ -102,6 +117,59 @@ def to_slots(hourly: np.ndarray, day: int, num_slots: int) -> np.ndarray:
     return day_hours.reshape(num_slots, 24 // num_slots).sum(axis=1)
 
 
+def fetch_urdb_tou(
+    label: str,
+    *,
+    month: int = 6,
+    cache_dir: Path | None = DEFAULT_CACHE,
+    api_key: str | None = None,
+) -> np.ndarray:
+    """Return the 24-hour weekday $/kWh price vector for a URDB rate.
+
+    Extracts the ``energyweekdayschedule`` for ``month`` (0-based; default July =
+    summer) and maps each hour's period to its first-tier energy rate. Prices are
+    intensive per-kWh values — resample with :func:`price_to_slots`, never
+    :func:`to_slots`.
+    """
+    params = {
+        "version": "latest",
+        "format": "json",
+        "detail": "full",
+        "api_key": api_key or nrel_api_key(),
+        "getpage": label,
+    }
+    data = _get_json(URDB_ENDPOINT, params, cache_dir)
+    if data.get("errors") or data.get("error"):
+        raise RuntimeError(f"URDB API error: {data.get('errors') or data.get('error')}")
+    items = data.get("items") or []
+    if not items:
+        raise RuntimeError(f"URDB returned no rate for label {label!r}")
+
+    rate = items[0]
+    structure = rate["energyratestructure"]
+    schedule = rate["energyweekdayschedule"][month]  # 24 period indices, local hour
+    tier0 = lambda period: structure[period][0]
+    return np.array(
+        [tier0(p)["rate"] + (tier0(p).get("adj") or 0.0) for p in schedule],
+        dtype=float,
+    )
+
+
+def price_to_slots(hourly_price: np.ndarray, num_slots: int) -> np.ndarray:
+    """Resample a 24-hour price vector to ``num_slots`` by AVERAGING (kWh price).
+
+    Prices are intensive (per-kWh): a wider slot's price is the mean of its hours,
+    not their sum. This is deliberately distinct from :func:`to_slots`, which sums
+    energy — do not swap them.
+    """
+    if 24 % num_slots != 0:
+        raise ValueError(f"num_slots must divide 24, got {num_slots}")
+    hourly = np.asarray(hourly_price, dtype=float)
+    if hourly.shape[0] != 24:
+        raise ValueError(f"expected 24 hourly prices, got {hourly.shape[0]}")
+    return hourly.reshape(num_slots, 24 // num_slots).mean(axis=1)
+
+
 def load_nrel_instance(
     lat: float,
     lon: float,
@@ -113,14 +181,21 @@ def load_nrel_instance(
     discharge_energy: float | None = None,
     initial_soc: float | None = None,
     system_kw: float = 5.0,
-    price_seed: int = 0,
+    rate_label: str = XCEL_CO_RETOU_LABEL,
+    price_month: int = 6,
+    load_seed: int = 0,
     cache_dir: Path | None = DEFAULT_CACHE,
     api_key: str | None = None,
 ) -> BatteryProblem:
-    """Build a :class:`BatteryProblem` with real PVWatts solar generation.
+    """Build a :class:`BatteryProblem` from real NREL data (``num_slots=24`` only).
 
-    Price and load are synthetic for now (v1). ``day`` is a 0-based day-of-year
-    index (default ~summer solstice).
+    Which inputs are real vs synthetic:
+      * ``generation`` — REAL: NREL PVWatts for ``lat``/``lon`` (``day`` is a
+        0-based day-of-year index, default ~summer solstice).
+      * ``price`` — REAL: the Xcel Energy CO "Residential Energy TOU (RE-TOU)"
+        weekday schedule for ``price_month`` from URDB (``rate_label``).
+      * ``load`` — SYNTHETIC (``synthetic_instance``); a real load loader (EIA) is
+        on the roadmap.
     """
     # v1 restriction: PVWatts generation is aggregated as ENERGY per slot (scales
     # with slot width via to_slots), while the synthetic price/load are
@@ -141,11 +216,18 @@ def load_nrel_instance(
     hourly = fetch_pvwatts(lat, lon, system_kw, cache_dir=cache_dir, api_key=api_key)
     generation = to_slots(hourly, day, num_slots)
 
-    synthetic = synthetic_instance(num_slots, seed=price_seed)  # price + load shapes
+    hourly_price = fetch_urdb_tou(rate_label, month=price_month, cache_dir=cache_dir, api_key=api_key)
+    price = price_to_slots(hourly_price, num_slots)
+
+    # TIME ALIGNMENT: PVWatts hourly output and the URDB weekday schedule are both
+    # indexed by local clock hour 0..23 (local standard time; DST ignored), so
+    # generation[i] and price[i] refer to the same hour. At num_slots=24 both
+    # resamples are the identity.
+    load = synthetic_instance(num_slots, seed=load_seed).load
     return BatteryProblem(
         generation=generation,
-        load=synthetic.load,
-        price=synthetic.price,
+        load=load,
+        price=price,
         capacity=capacity,
         charge_energy=charge_energy,
         discharge_energy=discharge_energy,
