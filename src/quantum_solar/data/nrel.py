@@ -137,6 +137,10 @@ def fetch_urdb_tou(
     intensive per-kWh values — resample with :func:`price_to_slots`, never
     :func:`to_slots`.
 
+    Weekday only. In this tariff the ``energyweekendschedule`` (already present in
+    the response) is flat off-peak all day, so weekends offer no arbitrage. A
+    future ``weekend=True`` parameter could expose that schedule; not built here.
+
     URDB rates are *all-in* per-kWh prices (energy plus delivery, riders, and
     adjustments), so they exceed a utility's published energy-only charge — e.g.
     the Xcel RE-TOU rate returns ~$0.381/kWh on-peak summer 2026 vs Xcel's
