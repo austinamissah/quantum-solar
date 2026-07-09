@@ -3,6 +3,7 @@
 import time
 
 import numpy as np
+import pytest
 
 from quantum_solar import build_qubo, brute_force_solve, dp_solve, synthetic_instance
 
@@ -37,6 +38,19 @@ def test_dp_scales_to_full_day():
 
     assert solution.feasible
     assert elapsed < 1.0  # polynomial: a full day solves near-instantly
+
+
+def test_dp_rejects_off_grid_initial_soc():
+    from quantum_solar import BatteryProblem
+
+    # initial_soc=5 is not a multiple of charge_energy=2: the DP grid would round
+    # it and return an infeasible (capacity-exceeding) schedule. Fail loud instead.
+    problem = BatteryProblem(
+        generation=np.zeros(3), load=np.zeros(3), price=np.array([1.0, 3.0, 1.0]),
+        capacity=10.0, charge_energy=2.0, discharge_energy=2.0, initial_soc=5.0,
+    )
+    with pytest.raises(ValueError, match="not a multiple of charge_energy"):
+        dp_solve(problem)
 
 
 def test_all_idle_is_feasible_baseline(small_problem):

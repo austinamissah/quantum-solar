@@ -108,6 +108,12 @@ def test_load_nrel_instance_real_generation_and_price(monkeypatch):
     from quantum_solar.data import co_summer_weekday_load
     assert np.allclose(problem.load, co_summer_weekday_load())
 
+    # default initial SoC must sit on the charge-energy grid, so the DP-optimal
+    # schedule is feasible (regression: an off-grid default let SoC exceed capacity).
+    from quantum_solar import dp_solve
+    assert np.isclose(problem.initial_soc % problem.charge_energy, 0.0)
+    assert dp_solve(problem).feasible
+
 
 def test_co_load_profile_physical_sanity():
     from quantum_solar.data import co_summer_weekday_load

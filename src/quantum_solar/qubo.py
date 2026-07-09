@@ -27,7 +27,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .problem import BatteryProblem
+from .problem import BatteryProblem, require_soc_on_grid
 
 
 @dataclass(frozen=True)
@@ -100,6 +100,7 @@ def _add_squared(Q: np.ndarray, terms: list[tuple[int, float]], const: float, we
 
 def build_qubo(problem: BatteryProblem, weights: PenaltyWeights) -> QUBO:
     """Construct the QUBO surrogate for ``problem`` under the given penalties."""
+    require_soc_on_grid(problem)
     t = problem.num_slots
     e_c = problem.charge_energy
     e_d = problem.discharge_energy

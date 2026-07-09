@@ -228,7 +228,11 @@ def load_nrel_instance(
         )
 
     discharge_energy = charge_energy if discharge_energy is None else discharge_energy
-    initial_soc = capacity / 2.0 if initial_soc is None else initial_soc
+    # Default to ~half full, snapped onto the charge-energy SoC grid so the DP's
+    # grid does not round it off (an off-grid initial SoC yields infeasible,
+    # capacity-exceeding schedules; see require_soc_on_grid).
+    if initial_soc is None:
+        initial_soc = round((capacity / 2.0) / charge_energy) * charge_energy
 
     hourly = fetch_pvwatts(lat, lon, system_kw, cache_dir=cache_dir, api_key=api_key)
     generation = to_slots(hourly, day, num_slots)

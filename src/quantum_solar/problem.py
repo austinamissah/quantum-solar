@@ -90,6 +90,24 @@ class BatteryProblem:
         return bool(abs(soc[-1] - self.initial_soc) <= _TOL)  # return to S_0
 
 
+def require_soc_on_grid(problem: "BatteryProblem") -> None:
+    """Raise unless ``initial_soc`` lies on the charge-energy SoC grid.
+
+    The DP and QUBO models both reason about SoC on a grid of step
+    ``charge_energy``. An ``initial_soc`` off that grid makes the DP round it
+    internally, so the reported schedule can drift off-grid and exceed capacity
+    (an infeasible result reported as optimal). Fail loud instead.
+    """
+    e = problem.charge_energy
+    ratio = problem.initial_soc / e
+    if abs(ratio - round(ratio)) > 1e-9:
+        raise ValueError(
+            f"initial_soc={problem.initial_soc} is not a multiple of "
+            f"charge_energy={e}; the SoC grid would be misaligned and the "
+            f"schedule can exceed capacity. Use an on-grid initial state of charge."
+        )
+
+
 def synthetic_instance(
     num_slots: int,
     *,

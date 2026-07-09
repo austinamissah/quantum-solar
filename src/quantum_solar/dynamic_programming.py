@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .problem import BatteryProblem
+from .problem import BatteryProblem, require_soc_on_grid
 from .solution import Solution
 
 _IDLE, _CHARGE, _DISCHARGE = 0, 1, 2
@@ -27,6 +27,7 @@ def dp_solve(problem: BatteryProblem) -> Solution:
     e = problem.charge_energy
     if not np.isclose(problem.charge_energy, problem.discharge_energy):
         raise ValueError("DP grid requires charge_energy == discharge_energy (v1)")
+    require_soc_on_grid(problem)
 
     t = problem.num_slots
     n_max = int(round(problem.capacity / e))
