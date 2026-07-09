@@ -81,5 +81,5 @@
  "capacity": 10.0,
  "charge_energy": 2.0,
  "discharge_energy": 2.0,
- "initial_soc": 5.0
+ "initial_soc": 4.0
 }
