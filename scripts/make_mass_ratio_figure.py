@@ -1,9 +1,14 @@
-"""Regenerate docs/results/mass_ratio.png as a presentation figure for the web.
+"""Regenerate the web-facing mass-ratio figure (docs/figures/web/mass_ratio.png).
 
 Reads the committed results CSV only (docs/results/qaoa_scaling.csv) via
 experiment_scaling.load_results and re-renders the mass-ratio chart with
 non-technical framing and blog-readable fonts. The underlying numbers are
 identical to the experiment; no experiments are re-run.
+
+This deliberately writes to docs/figures/web/ (curated figures), NOT to
+docs/results/ (which experiment_scaling.make_all_plots regenerates on a full
+sweep). Separate paths guarantee a future sweep can never overwrite this polished,
+honesty-annotated figure with the plain experiment version.
 
     python scripts/make_mass_ratio_figure.py
 
@@ -34,7 +39,9 @@ import numpy as np  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import experiment_scaling as exp  # noqa: E402
 
-OUT = Path(__file__).resolve().parent.parent / "docs" / "results" / "mass_ratio.png"
+# Curated web figure path — separate from docs/results/ so the experiment sweep
+# can never overwrite it (see module docstring).
+OUT = Path(__file__).resolve().parent.parent / "docs" / "figures" / "web" / "mass_ratio.png"
 
 
 def main():
@@ -100,6 +107,7 @@ def main():
     ax.legend(handles=handles, fontsize=11, loc="upper left", framealpha=0.9)
 
     fig.tight_layout()
+    OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT, dpi=150, bbox_inches="tight")
     print(f"wrote {OUT}")
 

@@ -413,6 +413,11 @@ def plot_mass_ratio(rows):
 
 
 def make_all_plots(rows, outdir=RESULTS_DIR):
+    # NOTE: this writes the PLAIN experiment figures to docs/results/, including a
+    # plain mass_ratio.png. The polished, web-facing mass-ratio figure is a
+    # SEPARATE artifact at docs/figures/web/mass_ratio.png
+    # (scripts/make_mass_ratio_figure.py) — different path, so a full sweep here
+    # can never overwrite it.
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     figs = {
