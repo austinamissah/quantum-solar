@@ -192,6 +192,27 @@ def _coarse_qpu_seconds(n_circuits, shots, depths):
     return n_circuits * per_circuit
 
 
+def _select_backend(service, min_num_qubits):
+    """Least-busy operational Heron device with enough qubits; fall back to any.
+
+    Prefers IBM Heron-family processors; if none is available, falls back to the
+    least-busy operational (non-simulator) backend with enough qubits so backend
+    selection never hard-fails.
+    """
+    def is_heron(b):
+        try:
+            return b.configuration().processor_type.get("family") == "Heron"
+        except Exception:
+            return False
+
+    try:
+        return service.least_busy(operational=True, simulator=False,
+                                  min_num_qubits=min_num_qubits, filters=is_heron)
+    except Exception:
+        return service.least_busy(operational=True, simulator=False,
+                                  min_num_qubits=min_num_qubits)
+
+
 def run_submit(*, backend_name=None, include_stretch=False, yes_spend_qpu=False,
                shots=SHOTS):
     from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
@@ -200,15 +221,16 @@ def run_submit(*, backend_name=None, include_stretch=False, yes_spend_qpu=False,
     records = json.loads(PARAMS_PATH.read_text())
     if not include_stretch:
         records = [r for r in records if not r.get("stretch")]
+    elif not any(r.get("stretch") for r in records):
+        print("WARNING: --include-stretch requested but the params file has no "
+              "stretch record; run `optimize --include-stretch` first.", flush=True)
     if not records:
         raise SystemExit("no targets to submit (run `optimize` first)")
 
     # Bare service: saved default account in ~/.qiskit. No legacy channel.
     service = QiskitRuntimeService()
     max_m = max(r["m"] for r in records)
-    backend = (service.backend(backend_name) if backend_name
-               else service.least_busy(operational=True, simulator=False,
-                                        min_num_qubits=max_m))
+    backend = service.backend(backend_name) if backend_name else _select_backend(service, max_m)
     pass_manager = generate_preset_pass_manager(optimization_level=1, backend=backend)
 
     circuits, labels = [], []
@@ -220,12 +242,14 @@ def run_submit(*, backend_name=None, include_stretch=False, yes_spend_qpu=False,
         labels.append(f"T{r['T']}_reps{r['reps']}")
 
     depths = [c.depth() for c in circuits]
+    two_qubit_gates = [c.num_nonlocal_gates() for c in circuits]
     print("=== pre-submission summary ===")
     print(f"backend         : {backend.name}")
     print(f"jobs            : 1")
     print(f"circuits        : {len(circuits)}  ({', '.join(labels)})")
     print(f"shots/circuit   : {shots}")
     print(f"transpiled depth: {depths}")
+    print(f"2-qubit gates   : {two_qubit_gates}")
     print(f"est. QPU seconds: ~{_coarse_qpu_seconds(len(circuits), shots, depths):.1f}  (COARSE)")
 
     if not yes_spend_qpu:
