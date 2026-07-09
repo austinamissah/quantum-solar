@@ -1,0 +1,12 @@
+# Extra dependencies for the IBM Quantum hardware run (scripts/experiment_hardware.py).
+# Kept separate from requirements.txt so simulator/test users don't pull the
+# ~15 transitive packages (pydantic, cryptography, ibm-cloud-sdk-core, ...) that
+# only the hardware submit stage needs.
+#
+#   pip install -r requirements-hardware.txt
+#
+# Auth is NOT handled here: save your IBM Quantum account once with
+# QiskitRuntimeService.save_account(...) (stored in ~/.qiskit); the script uses a
+# bare QiskitRuntimeService() with the saved default account. Do NOT use the
+# legacy channel="ibm_quantum" (sunset in the 2025 platform migration).
+qiskit-ibm-runtime~=0.47

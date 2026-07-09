@@ -72,6 +72,31 @@ jupyter lab notebooks/demo.ipynb
 The notebook builds a small instance, solves it with brute force, DP, and QAOA
 (showing they agree), then plots the optimal schedule for a full day.
 
+## Hardware (IBM Quantum)
+
+Running the tuned QAOA circuits on real hardware uses an extra dependency, kept
+out of the main requirements:
+
+```bash
+pip install -r requirements-hardware.txt   # qiskit-ibm-runtime (hardware only)
+```
+
+`scripts/experiment_hardware.py` has three separated stages:
+
+```bash
+python scripts/experiment_hardware.py optimize   # (a) simulator: tune angles -> hardware_params.json
+python scripts/experiment_hardware.py submit     # (b) DRY RUN: prints backend/circuits/shots/est. QPU s
+python scripts/experiment_hardware.py submit --yes-spend-qpu   # actually samples (SamplerV2, 4096 shots)
+```
+
+Stage (b) only ever runs sampling (never optimization) on hardware, is a dry run
+unless `--yes-spend-qpu` is given, and records the actual QPU seconds from job
+metadata. Auth uses a saved account: run `QiskitRuntimeService.save_account(...)`
+once (stored in `~/.qiskit`); the script uses a bare `QiskitRuntimeService()` —
+**not** the legacy `channel="ibm_quantum"` (sunset in the 2025 migration).
+`notebooks/experiment_hardware.ipynb` compares exact vs ideal-simulated vs
+hardware distributions (TVD, optimal mass, feasibility).
+
 ## Tests
 
 ```bash
@@ -108,8 +133,10 @@ household load remains synthetic.
 
 ## Roadmap
 
-- **Real hardware run on IBM Quantum** — execute the QAOA circuits on a physical
-  backend and compare against the simulator.
+- **Real hardware run on IBM Quantum** — scaffolded in
+  `scripts/experiment_hardware.py` (simulator tuning + analysis done; the
+  QPU-gated submit stage is ready to run). The remaining step is spending QPU on a
+  backend and filling in the hardware distribution columns.
 - Real household load loader (EIA) — solar generation (PVWatts) and time-of-use
   prices (URDB) are already wired up.
 - Relax v1 assumptions: asymmetric buy/sell prices and round-trip efficiency.

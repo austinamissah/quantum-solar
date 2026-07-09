@@ -140,5 +140,11 @@ No linter is configured. The slow marker gates the Aer-backed QAOA tests
 
 - `requirements.txt` lists only direct dependencies with `~=` major.minor bounds.
   Keep it that way; add a line when introducing a new direct dependency.
+- `requirements-hardware.txt` holds hardware-only deps (`qiskit-ibm-runtime`),
+  kept separate so simulator/test users (and CI) don't pull them. Code that needs
+  it (`scripts/experiment_hardware.py` submit stage) imports `qiskit_ibm_runtime`
+  **lazily** so stages (a)/(c) and the tests run without it installed. Hardware
+  auth is a saved account (`~/.qiskit`) via a bare `QiskitRuntimeService()` — no
+  legacy `channel="ibm_quantum"` (sunset in the 2025 migration).
 - Commit attribution is intentionally disabled in `.claude/settings.json`
   (empty `commit`/`pr` trailers) — do not add co-author/attribution trailers.
