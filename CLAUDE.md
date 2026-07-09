@@ -68,15 +68,16 @@ Gotchas:
 
 ## Data & secrets
 
-- `synthetic_instance` is the built-in data source. `quantum_solar.data.load_nrel_instance`
-  fetches **real solar generation** (NREL PVWatts v8) and **real time-of-use
-  prices** (Xcel Energy CO Residential RE-TOU via the OpenEI/URDB API at
-  `api.openei.org`, keyed by the same NREL key); household load is still synthetic
-  in v1 (an EIA load loader is a roadmap item). `load_nrel_instance` is
-  `num_slots=24` only.
-- Prices are **intensive**: resample with `price_to_slots` (averages), never
-  `to_slots` (which sums energy). Generation and price are aligned on the local
-  clock hour 0–23 (DST ignored).
+- `synthetic_instance` is the built-in synthetic source. `quantum_solar.data.load_nrel_instance`
+  builds a **fully real** instance (`num_slots=24` only): **generation** (NREL
+  PVWatts v8), **price** (Xcel CO Residential RE-TOU via the OpenEI/URDB API at
+  `api.openei.org`, keyed by the same NREL key), and **load** (NREL ResStock
+  representative CO single-family-detached summer-weekday profile — a packaged CSV
+  read with no network via `co_summer_weekday_load`; provenance in
+  `src/quantum_solar/data/profiles/SOURCE.md`).
+- **Energy vs intensive resampling:** generation and load are energy (kWh) →
+  `to_slots` (SUM); price is intensive ($/kWh) → `price_to_slots` (AVERAGE). Never
+  swap them. All three align on local clock hour 0-23 (DST ignored).
 - API responses are cached under `data/cache/` (gitignored), and never when the
   response carries an error (`errors` for PVWatts, `error` for URDB). Loader
   parsing, resampling, and key-resolution are unit-tested offline (HTTP

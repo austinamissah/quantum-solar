@@ -119,17 +119,21 @@ problem = load_nrel_instance(lat=39.74, lon=-105.18, day=172)  # 24 hourly slots
 ```
 
 Set `NREL_API_KEY` in your environment or a repo-root `.env` (a free key comes
-from developer.nlr.gov). Responses are cached under `data/cache/`. Generation
-(PVWatts) and the time-of-use price (Xcel Energy CO *Residential Energy TOU*,
-Schedule RE-TOU, via URDB) are real; household load is still synthetic in v1 — an
-EIA load loader is on the roadmap.
+from developer.nlr.gov). Responses are cached under `data/cache/`. **All three
+inputs are real and Colorado-coherent:** solar generation (NREL PVWatts),
+time-of-use price (Xcel Energy CO *Residential Energy TOU*, Schedule RE-TOU, via
+URDB), and household load (NREL ResStock representative Colorado
+single-family-detached summer-weekday profile, a packaged reference file; see
+`src/quantum_solar/data/profiles/SOURCE.md`). The demo notebook reports a
+three-way dollar-savings comparison (no system / solar-only / solar + optimal
+battery) for a typical summer weekday.
 
 ## Status
 
 Working end-to-end in simulation: problem model, exact QUBO encoding, Ising
-mapping, QAOA on Aer, and both classical baselines, all covered by tests. Solar
-generation and time-of-use prices can use real NREL data (PVWatts + URDB);
-household load remains synthetic.
+mapping, QAOA on Aer, and both classical baselines, all covered by tests. The
+real-data path is fully real: NREL PVWatts generation, Xcel URDB price, and NREL
+ResStock load, all Colorado-coherent.
 
 ## Roadmap
 
@@ -137,7 +141,8 @@ household load remains synthetic.
   `scripts/experiment_hardware.py` (simulator tuning + analysis done; the
   QPU-gated submit stage is ready to run). The remaining step is spending QPU on a
   backend and filling in the hardware distribution columns.
-- Real household load loader (EIA) — solar generation (PVWatts) and time-of-use
-  prices (URDB) are already wired up.
+- Data layer is complete: generation (PVWatts), price (URDB), and load (NREL
+  ResStock) are all real. A natural extension is representative days across
+  seasons for annualized (not single-day) savings.
 - Relax v1 assumptions: asymmetric buy/sell prices and round-trip efficiency.
 - Scaling study: slack-free approximate encodings vs. the exact one.

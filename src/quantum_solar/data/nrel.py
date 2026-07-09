@@ -18,8 +18,9 @@ from pathlib import Path
 
 import numpy as np
 
-from ..problem import BatteryProblem, synthetic_instance
+from ..problem import BatteryProblem
 from .config import NLR_BASE, nrel_api_key
+from .load_profile import co_summer_weekday_load
 
 PVWATTS_ENDPOINT = f"{NLR_BASE}/pvwatts/v8.json"
 
@@ -195,30 +196,30 @@ def load_nrel_instance(
     system_kw: float = 5.0,
     rate_label: str = XCEL_CO_RETOU_LABEL,
     price_month: int = 6,
-    load_seed: int = 0,
     cache_dir: Path | None = DEFAULT_CACHE,
     api_key: str | None = None,
 ) -> BatteryProblem:
-    """Build a :class:`BatteryProblem` from real NREL data (``num_slots=24`` only).
+    """Build a :class:`BatteryProblem` from real data (``num_slots=24`` only).
 
-    Which inputs are real vs synthetic:
-      * ``generation`` — REAL: NREL PVWatts for ``lat``/``lon`` (``day`` is a
-        0-based day-of-year index, default ~summer solstice).
-      * ``price`` — REAL: the Xcel Energy CO "Residential Energy TOU (RE-TOU)"
-        weekday schedule for ``price_month`` from URDB (``rate_label``).
-      * ``load`` — SYNTHETIC (``synthetic_instance``); a real load loader (EIA) is
-        on the roadmap.
+    All three inputs are real:
+      * ``generation`` — NREL PVWatts for ``lat``/``lon`` (``day`` is a 0-based
+        day-of-year index, default ~summer solstice). Energy: summed via to_slots.
+      * ``price`` — Xcel Energy CO "Residential Energy TOU (RE-TOU)" weekday
+        schedule for ``price_month`` from URDB (``rate_label``). Intensive
+        $/kWh: averaged via price_to_slots.
+      * ``load`` — NREL ResStock representative Colorado single-family-detached
+        summer-weekday profile (``co_summer_weekday_load``). Energy: summed via
+        to_slots.
     """
-    # v1 restriction: PVWatts generation is aggregated as ENERGY per slot (scales
-    # with slot width via to_slots), while the synthetic price/load are
-    # duration-independent per-slot values. Combining them at any resolution other
-    # than hourly would mix inconsistent units, so only 24 one-hour slots are
-    # allowed until the synthetic series are made duration-aware.
+    # v1 restriction: generation and load are aggregated as ENERGY per slot (they
+    # scale with slot width via to_slots), while price is a duration-independent
+    # per-slot value. Combining them at any resolution other than hourly would mix
+    # inconsistent units, so only 24 one-hour slots are allowed.
     if num_slots != 24:
         raise ValueError(
             "load_nrel_instance supports only num_slots=24 in v1 (hourly): real "
-            "PVWatts generation is summed as energy per slot while synthetic "
-            "load/price are duration-independent, so other resolutions would be "
+            "PVWatts generation and load are summed as energy per slot while price "
+            "is duration-independent, so other resolutions would be "
             "energy-inconsistent."
         )
 
@@ -231,11 +232,11 @@ def load_nrel_instance(
     hourly_price = fetch_urdb_tou(rate_label, month=price_month, cache_dir=cache_dir, api_key=api_key)
     price = price_to_slots(hourly_price, num_slots)
 
-    # TIME ALIGNMENT: PVWatts hourly output and the URDB weekday schedule are both
-    # indexed by local clock hour 0..23 (local standard time; DST ignored), so
-    # generation[i] and price[i] refer to the same hour. At num_slots=24 both
-    # resamples are the identity.
-    load = synthetic_instance(num_slots, seed=load_seed).load
+    # TIME ALIGNMENT: PVWatts output, the URDB weekday schedule, and the load
+    # profile are all indexed by local clock hour 0..23 (local standard time; DST
+    # ignored), so generation[i], price[i], load[i] refer to the same hour. At
+    # num_slots=24 every resample is the identity.
+    load = to_slots(co_summer_weekday_load(), day=0, num_slots=num_slots)
     return BatteryProblem(
         generation=generation,
         load=load,

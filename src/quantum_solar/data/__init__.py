@@ -1,6 +1,7 @@
 """Data loaders for real solar/pricing inputs (NREL; EIA planned)."""
 
 from .config import NLR_BASE, nrel_api_key
+from .load_profile import co_summer_weekday_load
 from .nrel import (
     XCEL_CO_RETOU_LABEL,
     fetch_pvwatts,
@@ -17,6 +18,7 @@ __all__ = [
     "fetch_urdb_tou",
     "to_slots",
     "price_to_slots",
+    "co_summer_weekday_load",
     "load_nrel_instance",
     "XCEL_CO_RETOU_LABEL",
 ]

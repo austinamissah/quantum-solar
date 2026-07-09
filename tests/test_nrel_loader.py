@@ -103,8 +103,20 @@ def test_load_nrel_instance_real_generation_and_price(monkeypatch):
     assert problem.num_slots == 24
     assert problem.capacity == 8.0
     assert np.allclose(problem.generation, nrel.to_slots(hourly, 10, 24))  # real solar
-    assert np.allclose(problem.price, price24)                              # real price (identity @24)
-    assert problem.load.shape == (24,)                                      # synthetic load
+    assert np.allclose(problem.price, price24)                             # real price
+    # real load: packaged CO ResStock profile (identity resample at 24 slots)
+    from quantum_solar.data import co_summer_weekday_load
+    assert np.allclose(problem.load, co_summer_weekday_load())
+
+
+def test_co_load_profile_physical_sanity():
+    from quantum_solar.data import co_summer_weekday_load
+
+    load = co_summer_weekday_load()
+    assert load.shape == (24,)
+    assert (load >= 0).all()                       # nonnegative
+    assert 10.0 <= load.sum() <= 40.0              # plausible residential kWh/day
+    assert load[18:22].mean() > load[3]            # evening > 3am (diurnal shape)
 
 
 def test_load_nrel_instance_rejects_non_hourly(monkeypatch):
