@@ -31,7 +31,9 @@ def plot_schedule(problem: BatteryProblem, solution: Solution):
     ax_energy.plot(hours, problem.load, color="C0", label="load")
     ax_energy.plot(hours, problem.generation, color="C1", label="solar")
     ax_energy.set_ylabel("energy (kWh)")
-    ax_energy.legend(loc="upper left", fontsize=8)
+    handles_p, labels_p = ax_top.get_legend_handles_labels()
+    handles_e, labels_e = ax_energy.get_legend_handles_labels()
+    ax_energy.legend(handles_p + handles_e, labels_p + labels_e, loc="upper left", fontsize=8)
     ax_top.set_title("Time-of-use price, household load, and solar generation")
 
     # Bottom: battery action bars (charge +, discharge −) with SoC overlaid.
@@ -46,7 +48,7 @@ def plot_schedule(problem: BatteryProblem, solution: Solution):
     ax_soc.set_ylim(-0.05 * problem.capacity, 1.15 * problem.capacity)
     ax_soc.set_ylabel("state of charge (kWh)")
     ax_bot.set_xlabel("hour of day")
-    ax_bot.set_title(f"Optimal battery schedule — daily cost ${solution.true_energy:.2f}")
+    ax_bot.set_title(f"Optimal battery schedule (daily cost ${solution.true_energy:.2f})")
 
     fig.tight_layout()
     return fig
