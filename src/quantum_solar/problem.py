@@ -121,7 +121,8 @@ def synthetic_instance(
     """Build a reproducible instance with a plausible day cycle.
 
     Prices peak in the evening, solar generation peaks at midday, and load has
-    morning and evening bumps. NREL/EIA-backed loaders are a future addition.
+    morning and evening bumps. For real inputs, see
+    ``quantum_solar.data.load_nrel_instance``.
     """
     rng = np.random.default_rng(seed)
     hour = (np.arange(num_slots) + 0.5) * 24.0 / num_slots

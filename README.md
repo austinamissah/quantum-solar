@@ -130,19 +130,30 @@ battery) for a typical summer weekday.
 
 ## Status
 
-Working end-to-end in simulation: problem model, exact QUBO encoding, Ising
-mapping, QAOA on Aer, and both classical baselines, all covered by tests. The
-real-data path is fully real: NREL PVWatts generation, Xcel URDB price, and NREL
-ResStock load, all Colorado-coherent.
+The pipeline runs end to end: problem model, exact QUBO encoding, Ising mapping,
+QAOA on the Aer simulator, and both classical baselines, all covered by tests. It
+is no longer simulation-only. The real-data path uses real inputs throughout (NREL
+PVWatts generation, Xcel URDB price, NREL ResStock load, all Colorado-coherent),
+and the tuned QAOA circuits have run on real IBM Quantum hardware.
+
+### Results on hardware
+
+On July 11, 2026 the four smallest tuned circuits (2 and 3 time slots, 1 and 2
+QAOA layers) ran on `ibm_fez`, a 156-qubit processor, using 7 seconds of QPU time
+with 4096 shots per circuit via SamplerV2. Noise grew steadily with circuit size:
+the total-variation distance from the ideal simulation rose from 0.12 to 0.46 as
+the transpiled two-qubit gate count grew from 37 to 290. Only the smallest circuit
+kept a signal clearly above random guessing; the other three fell to the
+measurement floor, where noise dominates. The pre-registered prediction that
+shallower circuits would survive noise better did not cleanly hold: it flipped with
+size, because near the floor the ordering reflected how well each circuit was tuned
+rather than its depth. The full analysis is in
+`notebooks/experiment_hardware.ipynb`, and the run was pre-registered in
+`docs/plans/hardware-run.md`.
 
 ## Roadmap
 
-- **Real hardware run on IBM Quantum** — scaffolded in
-  `scripts/experiment_hardware.py` (simulator tuning + analysis done; the
-  QPU-gated submit stage is ready to run). The remaining step is spending QPU on a
-  backend and filling in the hardware distribution columns.
-- Data layer is complete: generation (PVWatts), price (URDB), and load (NREL
-  ResStock) are all real. A natural extension is representative days across
-  seasons for annualized (not single-day) savings.
-- Relax v1 assumptions: asymmetric buy/sell prices and round-trip efficiency.
+- Representative days across seasons, for annualized rather than single-day savings.
+- Relax the v1 modeling assumptions: asymmetric buy/sell prices and round-trip
+  efficiency.
 - Scaling study: slack-free approximate encodings vs. the exact one.

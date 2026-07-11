@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "quantum-solar"
 version = "0.1.0"
-description = "Quantum computing approach to solar panel placement optimization"
+description = "Optimizing a home solar battery's daily charge/discharge schedule under time-of-use pricing - exact classical solvers plus QAOA, run on real IBM quantum hardware."
 requires-python = ">=3.12"
 
 # Runtime dependencies are pinned in requirements.txt and installed into .venv.

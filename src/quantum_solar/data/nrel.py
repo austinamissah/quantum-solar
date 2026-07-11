@@ -1,8 +1,9 @@
-"""NREL data loader (solar generation via PVWatts).
+"""NREL data loaders: solar generation via PVWatts, time-of-use price via URDB.
 
-v1 scope: real solar generation from the PVWatts v8 API, mapped onto ``T`` slots.
-Price and household load remain synthetic (see ``synthetic_instance``); a URDB
-time-of-use price loader and an EIA load loader are on the roadmap.
+Solar generation comes from the PVWatts v8 API and time-of-use prices from the
+OpenEI/URDB API, both mapped onto ``T`` slots. Household load comes from a packaged
+NREL ResStock profile (see ``load_profile``). ``load_nrel_instance`` combines all
+three into a real instance.
 
 API responses are cached to disk (keyed on the request minus the api_key) so runs
 are reproducible and offline-friendly.

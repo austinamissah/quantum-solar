@@ -29,7 +29,7 @@ domain-agnostic over "a QUBO + a problem exposing `energy(x)`/`is_feasible(x)`".
 - `problem.py` — `BatteryProblem` owns the physics: `energy(x)` (net-metered grid
   cost, **lower is better**) and `is_feasible(x)` (mutual exclusion, SoC bounds
   `0 ≤ S_t ≤ Q`, and return-to-initial `S_T = S_0`). `synthetic_instance(...)`
-  builds reproducible day cycles (NREL/EIA loaders are a future addition).
+  builds reproducible day cycles (for real inputs, see `quantum_solar.data.load_nrel_instance`).
 - `qubo.py` — `build_qubo` folds the linear cost objective and the constraint
   penalties into an upper-triangular `QUBO`. `default_weights` sizes the
   penalties to dominate the objective.
