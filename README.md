@@ -53,6 +53,26 @@ v1 modeling assumptions: net metering (a single buy=sell price) and a lossless
 battery with equal charge/discharge energy per slot. Asymmetric pricing and
 round-trip losses are on the roadmap.
 
+## How the simulator works
+
+QAOA runs on Aer, which imitates a quantum computer by tracking the circuit's full
+statevector: the n-qubit state is an array of 2^n complex amplitudes, each gate is
+a matrix operation on that array, interference is those complex amplitudes
+canceling or reinforcing, and a measurement draws an outcome with probability equal
+to its amplitude squared. Every added qubit doubles the array, so exact statevector
+simulation runs out of memory around 30 qubits on ordinary hardware. This project's
+largest simulated instance is 22 qubits, about four million amplitudes (2^22), and
+that exponential cost is why the largest (6-slot) QAOA runs take minutes while the
+exact classical DP finishes in microseconds. The simulated qubits are ideal and
+noise-free, which is why the ideal-simulator and real-hardware (`ibm_fez`) results
+in the hardware comparison differ; the qubit counts here are physical circuit
+qubits, with no error correction.
+
+Qiskit and Aer are IBM's open-source quantum framework, a C++ simulation core with
+a Python interface under active development, which is also why the hardware script
+uses a saved account rather than the legacy `channel="ibm_quantum"` retired in the
+2025 platform migration (see the Hardware section).
+
 ## Installation
 
 ```bash
