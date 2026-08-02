@@ -219,3 +219,7 @@ __marimo__/
 
 # NREL API response cache
 data/cache/
+
+# Claude Code machine-local settings (settings.json is shared/committed).
+.claude/settings.local.json
+.claude/settings.local.json.tmp.*

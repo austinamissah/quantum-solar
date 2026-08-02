@@ -197,3 +197,6 @@ do:
   legacy `channel="ibm_quantum"` (sunset in the 2025 migration).
 - Commit attribution is intentionally disabled in `.claude/settings.json`
   (empty `commit`/`pr` trailers) — do not add co-author/attribution trailers.
+  `.claude/settings.json` is **shared and committed**; `.claude/settings.local.json`
+  (and its `*.tmp.*` temp files) is **machine-local and gitignored** — never commit
+  it.
