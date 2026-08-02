@@ -44,6 +44,14 @@ domain-agnostic over "a QUBO + a problem exposing `energy(x)`/`is_feasible(x)`".
   *encoding* on tiny instances. Refuses `> MAX_ENUMERATION_SITES` (20) vars.
 - All solvers return the shared `Solution` type (`x`, `qubo_energy`,
   `true_energy`, `feasible`).
+- `annual.py` — `annual_savings` sweeps **all 365 days exactly** (PVWatts fetched
+  once, URDB memoized per `(month, weekend)`; ~0.1 s, no extra API calls). Days are
+  independent by the `S_T = S_0` constraint, so the annual optimum is the sum of
+  per-day `dp_solve` optima. Reports the **three-way** counterfactual split (no
+  system / solar only / solar + optimal battery) as `AnnualResult`/`DayResult`;
+  `battery_savings` holds solar fixed, so it is the battery alone. `annual_from_inputs`
+  is the I/O-free core shared by the live path and `scripts/annual_savings.py`, so
+  the attribution is computed in exactly one place.
 
 **Variable layout (important):** `x = [c_0..c_{T-1} | d_0..d_{T-1} | slack]`. The
 first `2T` bits are the charge/discharge decisions; `BatteryProblem` reads only
@@ -72,9 +80,29 @@ Gotchas:
   builds a **fully real** instance (`num_slots=24` only): **generation** (NREL
   PVWatts v8), **price** (Xcel CO Residential RE-TOU via the OpenEI/URDB API at
   `api.openei.org`, keyed by the same NREL key), and **load** (NREL ResStock
-  representative CO single-family-detached summer-weekday profile — a packaged CSV
-  read with no network via `co_summer_weekday_load`; provenance in
-  `src/quantum_solar/data/profiles/SOURCE.md`).
+  representative CO single-family-detached profile — packaged CSVs read with no
+  network; provenance in `src/quantum_solar/data/profiles/SOURCE.md`).
+- **Season/day-type coherence (do not regress).** `load_nrel_instance` derives the
+  price month, the URDB weekday-vs-weekend schedule, **and** the load bucket all
+  from `day` (the 0-based day-of-year), so the three inputs can never disagree on
+  season or day type — the bug fixed here was `day` selecting the solar day while
+  load/price silently stayed on July. The day→season/day-type map lives in
+  `data/calendar.py`, pinned to **AMY 2018**: it is the year the ResStock CSVs were
+  averaged under, and it is non-leap so `range(365)` aligns 1:1 with the 8760-hour
+  PVWatts array — **do not make the year dynamic.** Helpers: `day_to_month`,
+  `is_weekend`, `day_type`.
+- **Load profiles are 4 committed buckets** (summer/winter × weekday/weekend),
+  read via `load_profile(month, day_type)`. An internal month→season table folds
+  the 12 months onto the 2 buckets (summer = Jun–Sep, pinned to the RE-TOU tariff
+  season), so growing to 12 monthly buckets later is a data + table change with **no
+  call-site churn**. Regenerate with `scripts/make_resstock_profiles.py` (downloads
+  the ~45 MB ResStock aggregate to gitignored `data/cache/`). `co_summer_weekday_load()`
+  is a back-compat alias for `load_profile(6, "weekday")`.
+- **URDB weekend path.** `fetch_urdb_tou(..., weekend=True)` reads
+  `energyweekendschedule` (flat off-peak in this tariff → $0 weekend arbitrage);
+  `weekend=False` (default) reads the weekday schedule, on the same cached payload.
+  US federal holidays have no URDB schedule and bill as weekdays on both the price
+  and load sides — a known v1 limitation.
 - **Energy vs intensive resampling:** generation and load are energy (kWh) →
   `to_slots` (SUM); price is intensive ($/kWh) → `price_to_slots` (AVERAGE). Never
   swap them. All three align on local clock hour 0-23 (DST ignored).
@@ -111,6 +139,26 @@ jupyter lab                       # interactive/quantum work in notebooks/
 
 No linter is configured. The slow marker gates the Aer-backed QAOA tests
 (defined in `pyproject.toml`).
+
+### GitHub CLI (`gh`)
+
+`git push` over the SSH remote authenticates fine, but the GitHub **REST API does
+not accept SSH keys** — so anything that *writes* to GitHub needs an API token or
+the `gh` CLI. `gh` is not installed by default:
+
+```bash
+sudo apt install gh      # install
+gh auth login            # authenticate (interactive; do this yourself)
+```
+
+This unblocks the GitHub write/query operations this environment otherwise can't
+do:
+
+- `gh workflow run tests.yml --ref main` — dispatch the full CI suite (the `full`
+  job runs the slow QAOA tests via `workflow_dispatch`) instead of waiting for the
+  Monday 06:00 UTC cron.
+- `gh run list` / `gh run view` — check Actions status.
+- `gh pr create` — open pull requests.
 
 ## Stack
 
