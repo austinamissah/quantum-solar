@@ -1,5 +1,6 @@
 """Quantum computing approach to residential battery scheduling optimization."""
 
+from .annual import AnnualResult, DayResult, annual_savings
 from .brute_force import brute_force_solve
 from .dynamic_programming import dp_solve
 from .ising import qubo_to_ising
@@ -21,4 +22,7 @@ __all__ = [
     "QAOASolver",
     "QAOAResult",
     "Solution",
+    "annual_savings",
+    "AnnualResult",
+    "DayResult",
 ]

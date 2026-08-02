@@ -140,13 +140,51 @@ problem = load_nrel_instance(lat=39.74, lon=-105.18, day=172)  # 24 hourly slots
 
 Set `NREL_API_KEY` in your environment or a repo-root `.env` (a free key comes
 from developer.nlr.gov). Responses are cached under `data/cache/`. **All three
-inputs are real and Colorado-coherent:** solar generation (NREL PVWatts),
-time-of-use price (Xcel Energy CO *Residential Energy TOU*, Schedule RE-TOU, via
-URDB), and household load (NREL ResStock representative Colorado
-single-family-detached summer-weekday profile, a packaged reference file; see
-`src/quantum_solar/data/profiles/SOURCE.md`). The demo notebook reports a
-three-way dollar-savings comparison (no system / solar-only / solar + optimal
-battery) for a typical summer weekday.
+inputs are real and season-coherent:** the day-of-year `day` drives every axis —
+solar generation (NREL PVWatts), time-of-use price (Xcel Energy CO *Residential
+Energy TOU*, Schedule RE-TOU, via URDB) for that day's month and weekday/weekend
+schedule, and household load (NREL ResStock representative Colorado
+single-family-detached profile) for that day's season × weekday/weekend bucket
+(see `src/quantum_solar/data/profiles/SOURCE.md`). Season and day type can no
+longer silently disagree — a winter day pulls a winter price and a winter load,
+not a summer one. The demo notebook reports a three-way dollar-savings comparison
+(no system / solar-only / solar + optimal battery) for a single day.
+
+### Annualized savings
+
+`annual_savings` runs the exact DP over a full calendar year and reports the
+**three-way counterfactual split**, so each contribution is attributable on its
+own — the battery number is never conflated with the solar number:
+
+```python
+from quantum_solar import annual_savings
+
+result = annual_savings(lat=39.74, lon=-105.18)   # 365 exact DP solves, ~0.1 s
+result.battery_savings                            # $/yr from the battery alone
+```
+
+For a **5 kW PV + 10 kWh battery in Golden, CO**, priced against the **Xcel
+RE-TOU** tariff (URDB label `69bd927af5cd25efec0e9aad`, snapshot as of **August
+2026**):
+
+| Counterfactual | Annual bill |
+| --- | --- |
+| No system (`price × load`) | **$1747.83** |
+| Solar only (battery idle, `price × (load − generation)`) | **$777.22** |
+| Solar + optimal battery | **$321.50** |
+
+- **Solar savings ≈ $970.61/yr.** *Net-metering caveat (v1):* under a single
+  buy = sell price, every exported kWh credits at **full retail** — which is what
+  makes this figure achievable. Real Colorado export credits sit **below** retail,
+  so this leg would shrink under asymmetric pricing.
+- **Battery savings ≈ $455.72/yr — the battery alone** (solar held fixed across
+  the comparison). This figure is comparatively **robust** to the net-metering
+  assumption: arbitrage depends on the on/off-peak *spread*, not the export price.
+
+The dollar amounts are a tariff snapshot — a **~9.9% Xcel increase filed for
+August 2026** will move the absolute bills (the URDB label pins the version we
+test against). Weekends contribute **$0** battery savings: the RE-TOU weekend
+schedule is flat off-peak, so there is no spread to arbitrage.
 
 ## Status
 
@@ -173,7 +211,13 @@ rather than its depth. The full analysis is in
 
 ## Roadmap
 
-- Representative days across seasons, for annualized rather than single-day savings.
+- **Done — annualized savings.** `annual_savings` sweeps all **365 days exactly**
+  (not representative-day sampling): PVWatts generation is fetched once and cached
+  and the DP is microseconds per day, so an exact full-year total is cheaper to
+  compute than a weighted representative-day estimate and needs no weighting
+  scheme. Reports the three-way split above.
 - Relax the v1 modeling assumptions: asymmetric buy/sell prices and round-trip
-  efficiency.
+  efficiency. (This shrinks the solar-export leg; the battery-arbitrage leg is
+  largely unaffected — see the caveat above.)
+- Scaling study: slack-free approximate encodings vs. the exact one.
 - Scaling study: slack-free approximate encodings vs. the exact one.

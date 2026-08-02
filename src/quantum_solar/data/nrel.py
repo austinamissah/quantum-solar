@@ -20,8 +20,9 @@ from pathlib import Path
 import numpy as np
 
 from ..problem import BatteryProblem
+from .calendar import day_to_month, day_type, is_weekend
 from .config import NLR_BASE, nrel_api_key
-from .load_profile import co_summer_weekday_load
+from .load_profile import load_profile
 
 PVWATTS_ENDPOINT = f"{NLR_BASE}/pvwatts/v8.json"
 
@@ -128,19 +129,28 @@ def fetch_urdb_tou(
     label: str,
     *,
     month: int = 6,
+    weekend: bool = False,
     cache_dir: Path | None = DEFAULT_CACHE,
     api_key: str | None = None,
 ) -> np.ndarray:
-    """Return the 24-hour weekday $/kWh price vector for a URDB rate.
+    """Return the 24-hour $/kWh price vector for a URDB rate.
 
-    Extracts the ``energyweekdayschedule`` for ``month`` (0-based; default July =
-    summer) and maps each hour's period to its first-tier energy rate. Prices are
-    intensive per-kWh values — resample with :func:`price_to_slots`, never
-    :func:`to_slots`.
+    Extracts the ``month``'s day schedule (0-based; default July = summer) and
+    maps each hour's period to its first-tier energy rate. Prices are intensive
+    per-kWh values — resample with :func:`price_to_slots`, never :func:`to_slots`.
 
-    Weekday only. In this tariff the ``energyweekendschedule`` (already present in
-    the response) is flat off-peak all day, so weekends offer no arbitrage. A
-    future ``weekend=True`` parameter could expose that schedule; not built here.
+    ``weekend`` selects which URDB schedule to read: ``False`` (default) reads
+    ``energyweekdayschedule``; ``True`` reads ``energyweekendschedule``. Both are
+    12x24 (month x local hour) and present in the same response. In this tariff
+    the weekend schedule is flat off-peak all day, so weekends offer no battery
+    arbitrage — the annual loop reads it explicitly rather than assuming weekdays
+    year-round (see ``annual``).
+
+    Holidays: URDB encodes only weekday/weekend schedules — there is no holiday
+    schedule field, so US federal holidays are billed here as ordinary weekdays.
+    Under this tariff most holidays actually bill off-peak like weekends, and
+    ResStock's weekday load aggregate likewise folds holidays into weekdays; both
+    are a known v1 limitation, not modeled separately.
 
     URDB rates are *all-in* per-kWh prices (energy plus delivery, riders, and
     adjustments), so they exceed a utility's published energy-only charge — e.g.
@@ -165,7 +175,8 @@ def fetch_urdb_tou(
 
     rate = items[0]
     structure = rate["energyratestructure"]
-    schedule = rate["energyweekdayschedule"][month]  # 24 period indices, local hour
+    schedule_key = "energyweekendschedule" if weekend else "energyweekdayschedule"
+    schedule = rate[schedule_key][month]  # 24 period indices, local hour
     tier0 = lambda period: structure[period][0]
     return np.array(
         [tier0(p)["rate"] + (tier0(p).get("adj") or 0.0) for p in schedule],
@@ -188,6 +199,39 @@ def price_to_slots(hourly_price: np.ndarray, num_slots: int) -> np.ndarray:
     return hourly.reshape(num_slots, 24 // num_slots).mean(axis=1)
 
 
+def build_instance(
+    generation: np.ndarray,
+    load: np.ndarray,
+    price: np.ndarray,
+    *,
+    capacity: float = 10.0,
+    charge_energy: float = 2.0,
+    discharge_energy: float | None = None,
+    initial_soc: float | None = None,
+) -> BatteryProblem:
+    """Assemble a :class:`BatteryProblem` from per-slot arrays, applying v1 defaults.
+
+    Single source of the battery-parameter defaults shared by
+    :func:`load_nrel_instance` and the annual loop, so every real-data instance is
+    built identically. ``discharge_energy`` defaults to ``charge_energy`` (lossless
+    v1); ``initial_soc`` defaults to ~half capacity snapped onto the charge-energy
+    SoC grid (an off-grid start yields infeasible, capacity-exceeding schedules;
+    see :func:`~quantum_solar.problem.require_soc_on_grid`).
+    """
+    discharge_energy = charge_energy if discharge_energy is None else discharge_energy
+    if initial_soc is None:
+        initial_soc = round((capacity / 2.0) / charge_energy) * charge_energy
+    return BatteryProblem(
+        generation=generation,
+        load=load,
+        price=price,
+        capacity=capacity,
+        charge_energy=charge_energy,
+        discharge_energy=discharge_energy,
+        initial_soc=initial_soc,
+    )
+
+
 def load_nrel_instance(
     lat: float,
     lon: float,
@@ -200,21 +244,29 @@ def load_nrel_instance(
     initial_soc: float | None = None,
     system_kw: float = 5.0,
     rate_label: str = XCEL_CO_RETOU_LABEL,
-    price_month: int = 6,
+    price_month: int | None = None,
     cache_dir: Path | None = DEFAULT_CACHE,
     api_key: str | None = None,
 ) -> BatteryProblem:
     """Build a :class:`BatteryProblem` from real data (``num_slots=24`` only).
 
-    All three inputs are real:
+    All three inputs are real and **season-coherent**: price month, price
+    weekday/weekend schedule, and the load bucket are all derived from ``day``
+    (via :mod:`quantum_solar.data.calendar`, pinned to AMY 2018), so a winter
+    ``day`` can't silently pull a summer price or a weekday load onto a weekend.
+
       * ``generation`` — NREL PVWatts for ``lat``/``lon`` (``day`` is a 0-based
-        day-of-year index, default ~summer solstice). Energy: summed via to_slots.
-      * ``price`` — Xcel Energy CO "Residential Energy TOU (RE-TOU)" weekday
-        schedule for ``price_month`` from URDB (``rate_label``). Intensive
-        $/kWh: averaged via price_to_slots.
-      * ``load`` — NREL ResStock representative Colorado single-family-detached
-        summer-weekday profile (``co_summer_weekday_load``). Energy: summed via
+        day-of-year index in 0..364, default ~summer solstice). Energy: summed via
         to_slots.
+      * ``price`` — Xcel Energy CO "Residential Energy TOU (RE-TOU)" from URDB
+        (``rate_label``), for ``day``'s month and weekday/weekend schedule.
+        Intensive $/kWh: averaged via price_to_slots.
+      * ``load`` — NREL ResStock representative Colorado single-family-detached
+        profile for ``day``'s (season, day type) bucket (:func:`load_profile`).
+        Energy: summed via to_slots.
+
+    ``price_month`` overrides only the price month (0-based; escape hatch for
+    tests); the load season and the weekday/weekend axis always follow ``day``.
     """
     # v1 restriction: generation and load are aggregated as ENERGY per slot (they
     # scale with slot width via to_slots), while price is a duration-independent
@@ -228,28 +280,28 @@ def load_nrel_instance(
             "energy-inconsistent."
         )
 
-    discharge_energy = charge_energy if discharge_energy is None else discharge_energy
-    # Default to ~half full, snapped onto the charge-energy SoC grid so the DP's
-    # grid does not round it off (an off-grid initial SoC yields infeasible,
-    # capacity-exceeding schedules; see require_soc_on_grid).
-    if initial_soc is None:
-        initial_soc = round((capacity / 2.0) / charge_energy) * charge_energy
+    # Season coherence: month, price weekday/weekend schedule, and load bucket all
+    # derive from the same `day` (AMY-2018 calendar), so the three inputs can never
+    # disagree on season or day type. price_month is an escape hatch for the price
+    # month only.
+    month = day_to_month(day) if price_month is None else price_month
+    weekend = is_weekend(day)
 
     hourly = fetch_pvwatts(lat, lon, system_kw, cache_dir=cache_dir, api_key=api_key)
     generation = to_slots(hourly, day, num_slots)
 
-    hourly_price = fetch_urdb_tou(rate_label, month=price_month, cache_dir=cache_dir, api_key=api_key)
+    hourly_price = fetch_urdb_tou(
+        rate_label, month=month, weekend=weekend, cache_dir=cache_dir, api_key=api_key
+    )
     price = price_to_slots(hourly_price, num_slots)
 
-    # TIME ALIGNMENT: PVWatts output, the URDB weekday schedule, and the load
-    # profile are all indexed by local clock hour 0..23 (local standard time; DST
-    # ignored), so generation[i], price[i], load[i] refer to the same hour. At
-    # num_slots=24 every resample is the identity.
-    load = to_slots(co_summer_weekday_load(), day=0, num_slots=num_slots)
-    return BatteryProblem(
-        generation=generation,
-        load=load,
-        price=price,
+    # TIME ALIGNMENT: PVWatts output, the URDB schedule, and the load profile are
+    # all indexed by local clock hour 0..23 (local standard time; DST ignored), so
+    # generation[i], price[i], load[i] refer to the same hour. At num_slots=24
+    # every resample is the identity.
+    load = to_slots(load_profile(day_to_month(day), day_type(day)), day=0, num_slots=num_slots)
+    return build_instance(
+        generation, load, price,
         capacity=capacity,
         charge_energy=charge_energy,
         discharge_energy=discharge_energy,

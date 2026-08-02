@@ -92,27 +92,59 @@ def test_error_response_not_cached_then_success_cached(monkeypatch, tmp_path):
 
 # --- load_nrel_instance (no network) -----------------------------------------
 
+def _capturing_urdb(price24, calls):
+    def stub(label, *, month, weekend, cache_dir=None, api_key=None):
+        calls.append({"month": month, "weekend": weekend})
+        return price24
+    return stub
+
+
 def test_load_nrel_instance_real_generation_and_price(monkeypatch):
     hourly = np.tile(np.linspace(0.0, 3.0, 24), 366)  # deterministic daily curve
     price24 = np.full(24, 0.2)
     price24[17:21] = 0.4  # on-peak block
+    calls = []
     monkeypatch.setattr(nrel, "fetch_pvwatts", lambda *a, **k: hourly)
-    monkeypatch.setattr(nrel, "fetch_urdb_tou", lambda *a, **k: price24)
+    monkeypatch.setattr(nrel, "fetch_urdb_tou", _capturing_urdb(price24, calls))
 
+    # day=10 -> Jan (winter), Thursday (weekday).
     problem = nrel.load_nrel_instance(39.7, -105.2, day=10, num_slots=24, capacity=8.0)
     assert problem.num_slots == 24
     assert problem.capacity == 8.0
     assert np.allclose(problem.generation, nrel.to_slots(hourly, 10, 24))  # real solar
     assert np.allclose(problem.price, price24)                             # real price
-    # real load: packaged CO ResStock profile (identity resample at 24 slots)
-    from quantum_solar.data import co_summer_weekday_load
-    assert np.allclose(problem.load, co_summer_weekday_load())
+    # Season coherence: price fetched for day 10's month/schedule, load is the
+    # matching winter-weekday bucket (not the old always-summer-weekday profile).
+    from quantum_solar.data import load_profile
+    assert calls == [{"month": 0, "weekend": False}]
+    assert np.allclose(problem.load, load_profile(0, "weekday"))
 
     # default initial SoC must sit on the charge-energy grid, so the DP-optimal
     # schedule is feasible (regression: an off-grid default let SoC exceed capacity).
     from quantum_solar import dp_solve
     assert np.isclose(problem.initial_soc % problem.charge_energy, 0.0)
     assert dp_solve(problem).feasible
+
+
+def test_load_nrel_instance_season_daytype_coherence(monkeypatch):
+    from quantum_solar.data import load_profile
+
+    hourly = np.tile(np.linspace(0.0, 3.0, 24), 366)
+    monkeypatch.setattr(nrel, "fetch_pvwatts", lambda *a, **k: hourly)
+
+    # (day, expected month, expected weekend, expected load bucket)
+    cases = [
+        (172, 5, False, load_profile(5, "weekday")),   # Jun, Fri  -> summer weekday
+        (5, 0, True, load_profile(0, "weekend")),       # Jan, Sat  -> winter weekend
+        (10, 0, False, load_profile(0, "weekday")),     # Jan, Thu  -> winter weekday
+    ]
+    for day, exp_month, exp_weekend, exp_load in cases:
+        calls = []
+        monkeypatch.setattr(nrel, "fetch_urdb_tou", _capturing_urdb(np.full(24, 0.2), calls))
+        problem = nrel.load_nrel_instance(39.7, -105.2, day=day)
+        # price schedule and load bucket agree on season AND day type
+        assert calls == [{"month": exp_month, "weekend": exp_weekend}]
+        assert np.allclose(problem.load, exp_load)
 
 
 def test_co_load_profile_physical_sanity():
@@ -123,6 +155,47 @@ def test_co_load_profile_physical_sanity():
     assert (load >= 0).all()                       # nonnegative
     assert 10.0 <= load.sum() <= 40.0              # plausible residential kWh/day
     assert load[18:22].mean() > load[3]            # evening > 3am (diurnal shape)
+
+
+def test_load_profile_all_four_buckets_physical():
+    from quantum_solar.data import load_profile
+
+    for month, season in [(6, "summer"), (0, "winter")]:
+        for day_type in ("weekday", "weekend"):
+            load = load_profile(month, day_type)
+            assert load.shape == (24,)
+            assert (load >= 0).all()
+            assert 10.0 <= load.sum() <= 40.0          # plausible residential kWh/day
+            assert load[18:22].mean() > load[3]        # evening > 3am diurnal shape
+
+
+def test_load_profile_month_folds_to_two_seasons():
+    from quantum_solar.data import load_profile
+
+    # Jun-Sep collapse onto the one summer bucket; the rest onto winter.
+    summer = load_profile(6, "weekday")
+    for m in (5, 6, 7, 8):
+        assert np.allclose(load_profile(m, "weekday"), summer)
+    winter = load_profile(0, "weekday")
+    for m in (0, 1, 2, 3, 4, 9, 10, 11):
+        assert np.allclose(load_profile(m, "weekday"), winter)
+    # summer and winter are genuinely different buckets, not the same file twice.
+    assert not np.allclose(summer, winter)
+
+
+def test_co_summer_weekday_alias_matches_summer_weekday_bucket():
+    from quantum_solar.data import co_summer_weekday_load, load_profile
+
+    assert np.allclose(co_summer_weekday_load(), load_profile(6, "weekday"))
+
+
+def test_load_profile_rejects_bad_keys():
+    from quantum_solar.data import load_profile
+
+    with pytest.raises(ValueError, match="month must be"):
+        load_profile(12, "weekday")
+    with pytest.raises(ValueError, match="day_type must be"):
+        load_profile(6, "holiday")
 
 
 def test_load_nrel_instance_rejects_non_hourly(monkeypatch):
@@ -207,6 +280,21 @@ def test_urdb_tariff_is_valid_tou(monkeypatch):
     assert (prices > 0).all()                 # all prices positive
     assert prices.max() > prices.min()        # peak strictly above off-peak
     assert len(np.unique(prices)) >= 2        # flat vector => TOU extraction failed
+
+
+def test_fetch_urdb_tou_weekend_is_flat_off_peak(monkeypatch):
+    # weekend=True must read energyweekendschedule; for this tariff that schedule
+    # is flat off-peak all day, so weekend battery arbitrage is exactly $0. This
+    # enforces the "$0 weekend savings" property the annual loop relies on rather
+    # than leaving it as a comment.
+    monkeypatch.setattr(nrel, "_get_json", lambda *a, **k: _load_urdb_fixture())
+    weekend = nrel.fetch_urdb_tou("label", month=6, weekend=True, cache_dir=None, api_key="x")
+    weekday = nrel.fetch_urdb_tou("label", month=6, weekend=False, cache_dir=None, api_key="x")
+
+    assert weekend.shape == (24,)
+    assert len(np.unique(weekend)) == 1                # perfectly flat -> no arbitrage
+    assert np.isclose(weekend[0], 0.13926)             # off-peak rate, all hours
+    assert weekday.max() > weekend.max()               # weekday has an on-peak block
 
 
 # --- live integration (network + real key; skipped otherwise) ----------------
