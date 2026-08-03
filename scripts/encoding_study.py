@@ -181,12 +181,55 @@ def measure_hardware(problem, encoding, backend, reps: int) -> Hardware:
     return Hardware(qubo.num_vars, couplings, *out[1], *out[3])
 
 
+def sweep_soft(slots, seeds) -> None:
+    """Weight/window sweep for the two *soft* encodings.
+
+    ``CenterAnchor`` and ``WindowDrift`` were read at one arbitrary weight in the
+    main table, where both looked catastrophic. Neither is judged by that: their
+    penalty scale is a free parameter, unlike ``Checkpoint``'s, which is fixed by
+    the same equality-penalty argument as the terminal constraint. This sweeps it
+    so they are ruled out (or in) on their best setting rather than an arbitrary
+    one.
+    """
+    print("\n=== soft-encoding weight sweep (quality only; no transpilation) ===")
+    header = (f"{'T':>3} {'encoding':<16} {'scale':>7} {'infeas%':>8} {'exact%':>7} "
+              f"{'regret':>26}")
+    for t in slots:
+        print(f"\n{header}")
+        print("-" * len(header))
+        best = None
+        for scale in (0.001, 0.01, 0.1, 1.0, 10.0):
+            variants = [("center", Encoding.center_anchor(weight_scale=scale))]
+            for window in (2, 3, 4, 6):
+                if window <= t:
+                    variants.append((f"wd{window}",
+                                     Encoding.window_drift(window, weight_scale=scale)))
+            for name, encoding in variants:
+                q = measure_quality(t, encoding, seeds)
+                if q.regret is not None and q.n_infeasible == 0:
+                    if best is None or q.regret < best[0]:
+                        best = (q.regret, name, scale)
+                print(f"{t:>3} {name:<16} {scale:>7g} {q.infeasible_pct:>8.1f} "
+                      f"{q.exact_pct:>7.1f} {q.regret_str():>26}")
+        if best is None:
+            print(f"  -> T={t}: no soft setting is feasible on every instance")
+        else:
+            print(f"  -> T={t}: best sound setting {best[1]} @ scale={best[2]:g}, "
+                  f"regret {best[0]:.2f}%")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seeds", type=int, default=40)
     parser.add_argument("--slots", default="4,6,8,12,24")
     parser.add_argument("--reps", type=int, default=1)
+    parser.add_argument("--sweep-soft", action="store_true",
+                        help="sweep CenterAnchor/WindowDrift weights instead of the main table")
     args = parser.parse_args()
+
+    if args.sweep_soft:
+        sweep_soft([int(s) for s in args.slots.split(",")], range(args.seeds))
+        return
 
     from qiskit_ibm_runtime.fake_provider import FakeFez
 
