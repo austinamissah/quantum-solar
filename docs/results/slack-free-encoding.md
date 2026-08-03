@@ -151,27 +151,56 @@ pre-registration designating its instance in advance — picking instance 3 now,
 having seen that it clears, is precisely the error this discipline exists to
 prevent.
 
-### Landscape: `<H>` and mass are aligned in direction, but their optima are not
+### Landscape: `<H>` tracks mass through the bulk, and decouples near the minimum
 
-| α | pearson (best 5%) | mass at refined `<H>` min | achievable mass max |
-|---:|---:|---:|---:|
-| 0.021 | −0.574 | 0.06570 (below bar) | 0.24565 (3.1× bar) |
-| 0.030 | −0.614 | 0.05398 (below bar) | 0.10858 (clears) |
+Correlation at tightening low-`<H>` bands (n = 500,000 random parameter vectors
+per α; the QAOA statevector is evaluated directly in numpy, verified against
+qiskit to 4e-15):
 
-The correlation is **negative** — lower `<H>` goes with *higher* mass — so by the
-stated test `<H>` is **not** misaligned with the metric, and an earlier
-"misaligned objective" framing of ours fails it. What is true is narrower: the
-two argmins are far apart. On the primary instance the refined `<H>` optimum
-captures only **26.7%** (α=0.021) and **49.7%** (α=0.030) of achievable mass, and
-sits below the bar — so on *that instance* no `<H>`-minimizing procedure clears
-it, while mass over 3× the bar exists at a worse `<H>`. Expressivity is ample;
-the objective does not reach it. **This analysis is instance-1 only** and does not
-generalize — the robustness results above show other instances clearing.
+| band | n | `<H>` range (α=0.021) | pearson | mean mass | max mass |
+|---|---:|---|---:|---:|---:|
+| global | 500,000 | [0.2636, 2.5630] | −0.396 | 0.01057 | 0.10696 |
+| best 5% | 25,000 | [0.2636, 0.6548] | **−0.576** | 0.02894 | 0.10696 |
+| best 1% | 5,000 | [0.2636, 0.4961] | −0.448 | 0.04374 | 0.08318 |
+| best 0.1% | 500 | [0.2636, 0.3741] | −0.488 | 0.05722 | 0.08252 |
+| best 0.01% | 50 | [0.2636, 0.3047] | **−0.328** | 0.06680 | 0.07880 |
+| refined argmin | 1 | 0.2672 | — | **0.06570** | — |
+
+α=0.030 behaves the same way: −0.617 (5%) → −0.544 (1%) → −0.650 (0.1%) →
+**−0.371** (0.01%), mean mass 0.02334 → 0.03840 → 0.05272 → **0.06561**, refined
+argmin **0.06361**.
+
+The precise statement is neither "misaligned" nor "aligned":
+
+> **`<H>` tracks mass through the bulk of the low-energy region and decouples in
+> the final approach to the minimum.**
+
+Three pieces of evidence, consistent across both α:
+
+1. **Correlation weakens toward the minimum** — |r| falls ~40% from the best-5%
+   band to the best-0.01% band (0.576 → 0.328, and 0.617 → 0.371). The decline is
+   not gradual: it is concentrated in the last band, with 0.1% still strong.
+2. **Mean mass rises monotonically as `<H>` tightens, then reverses at the
+   argmin.** In both α the refined argmin carries *less* mass (0.06570, 0.06361)
+   than the mean of the best-0.01% band (0.06680, 0.06561). Mass improves with
+   `<H>` right up to the vicinity of the minimum, then falls in the final approach.
+3. **The ceiling collapses** — max mass in band drops 0.10696 → 0.07880 as the
+   band tightens, so the high-mass points live at moderately good `<H>`, not the
+   best.
+
+This explains why stopping short scored better: `cobyla-50` reached 0.0749, **14%
+more mass than the refined argmin's 0.06570**, because incomplete convergence
+leaves it in the region where the two objectives still agree.
+
+It also corrects an over-strong claim of ours. "No `<H>`-minimizing procedure can
+clear the bar" is not right even on this instance: max mass within the best-0.01%
+band is 0.07880 (α=0.021) and 0.07947 (α=0.030), both marginally *above* the
+0.078125 bar. What holds is that the argmin does not clear it and the typical
+near-minimum point does not either — the band only grazes the bar at its top.
 
 Asymmetry, deliberately handled: a sampled mass *maximum* is a valid lower bound
 on what is achievable, but a sampled `<H>` *minimum* bounds nothing, so the `<H>`
-side is refined by L-BFGS seeded from the 25 best sampled points plus 25 random
-restarts.
+side is refined by L-BFGS restarts rather than read off the sample.
 
 ### Soft encodings: `center` was mis-weighted, `wd` is genuinely bad
 
