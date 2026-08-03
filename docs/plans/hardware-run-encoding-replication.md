@@ -31,9 +31,9 @@ here would set a replication bar roughly 8x looser than the actual result. On th
 pre-registered *sampled*-reference form the corrected interval is
 **[0.0220, 0.0942]**, and that is the one comparable to the July-calibrated bands.
 
-## Circuits — one job, three circuits
+## Circuits — one job, five circuits
 
-One job so all three share a single calibration snapshot; per-PUB shots carry the
+One job so all five share a single calibration snapshot; per-PUB shots carry the
 floor equalization.
 
 | # | circuit | α | m | 2Q | depth | shots | floor | TVD-uniform | PR/D | peak/unif | role |
@@ -112,8 +112,10 @@ rules do not apply.
 
 ### A. Gap reproduces within the prior CI — `[0.0291, 0.1013]`
 
-The encoding result is **replicated**. Headline stands as written. Report the
-pooled estimate across both runs and note that n = 2 on one device and one
+The encoding result is **replicated**. Headline stands as written. Report a
+pooled estimate across the two *runs* — which is a legitimate meta-analysis of
+independent measurements, and is not the same thing as pooling the duplicate arms
+within a run, which stays prohibited — and note that n = 2 on one device and one
 instance still does not establish generality.
 
 ### B. Gap positive, CI excludes zero, but below the prior interval
