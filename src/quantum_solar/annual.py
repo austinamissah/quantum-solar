@@ -23,6 +23,7 @@ QAOA stays out of the annual path — it is validated against the DP separately.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -41,6 +42,8 @@ from .data.nrel import (
     to_slots,
 )
 from .dynamic_programming import dp_solve
+from .problem import BatteryProblem
+from .solution import Solution
 
 _NUM_SLOTS = 24  # v1: hourly only (see load_nrel_instance)
 
@@ -76,6 +79,7 @@ class DayResult:
     optimized_cost: float
     solar_savings: float
     battery_savings: float
+    feasible: bool = True  # False only for approximate solvers (see `solver` below)
 
 
 @dataclass(frozen=True)
@@ -143,6 +147,7 @@ def annual_from_inputs(
     charge_energy: float = 2.0,
     discharge_energy: float | None = None,
     initial_soc: float | None = None,
+    solver: Callable[[BatteryProblem], Solution] = dp_solve,
 ) -> AnnualResult:
     """I/O-free core of the annual loop, from already-resolved inputs.
 
@@ -156,6 +161,12 @@ def annual_from_inputs(
         price_for: ``(month, weekend) -> (24,)`` per-slot price ($/kWh).
         load_for: ``(month, day_type) -> (24,)`` hourly load (kWh).
         days: which 0-based days-of-year to solve (default the full year).
+        solver: per-day scheduler, defaulting to the exact DP. Swapping in an
+            approximate solver (e.g. a QUBO encoding via ``qubo_min_exact``)
+            prices that approximation in annual dollars against the same
+            three-way split, rather than scaling a synthetic per-day figure.
+            An infeasible day is flagged on its :class:`DayResult` and its
+            reported cost is the schedule's cost, which is not a legitimate bill.
     """
     days = range(365) if days is None else list(days)
 
@@ -179,7 +190,8 @@ def annual_from_inputs(
         zero = np.zeros(_NUM_SLOTS, dtype=np.int8)
         no_system = float(problem.price @ problem.load)   # no solar, no battery
         solar_only = problem.grid_cost(zero, zero)        # solar, battery idle: price @ (load - gen)
-        optimized = dp_solve(problem).true_energy         # solar + DP-optimal battery
+        solution = solver(problem)                        # solar + scheduled battery
+        optimized = solution.true_energy
         results.append(DayResult(
             day=day,
             month=month,
@@ -189,6 +201,7 @@ def annual_from_inputs(
             optimized_cost=optimized,
             solar_savings=no_system - solar_only,
             battery_savings=solar_only - optimized,
+            feasible=bool(solution.feasible),
         ))
 
     no_system_total = float(sum(r.no_system_cost for r in results))
