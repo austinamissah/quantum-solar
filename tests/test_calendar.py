@@ -43,3 +43,49 @@ def test_2018_has_104_weekend_days():
     # 2018 starts and ends on Monday: 52 Saturdays + 52 Sundays = 104 weekend days.
     weekend_days = sum(cal.is_weekend(d) for d in range(365))
     assert weekend_days == 104
+
+
+def test_federal_holidays_are_rule_derived_not_hardcoded():
+    """The 2018 federal set, including weekend-observed dates.
+
+    Representative-day selection excludes these, so a wrong set silently puts an
+    atypical day on a published figure.
+    """
+    import datetime
+
+    from quantum_solar.data.calendar import AMY_YEAR, is_federal_holiday
+
+    def doy(month, day):
+        return (datetime.date(AMY_YEAR, month, day) - datetime.date(AMY_YEAR, 1, 1)).days
+
+    expected = {
+        (1, 1),    # New Year's Day
+        (1, 15),   # MLK Day, 3rd Monday
+        (2, 19),   # Washington's Birthday, 3rd Monday
+        (5, 28),   # Memorial Day, last Monday
+        (6, 19),   # Juneteenth (federal from 2021; included deliberately)
+        (7, 4),    # Independence Day
+        (9, 3),    # Labor Day, 1st Monday
+        (10, 8),   # Columbus Day, 2nd Monday
+        (11, 11),  # Veterans Day (a Sunday in 2018)
+        (11, 12),  # ...and its observed Monday
+        (11, 22),  # Thanksgiving, 4th Thursday
+        (12, 25),  # Christmas
+    }
+    got = set()
+    for day in range(365):
+        if is_federal_holiday(day):
+            date = datetime.date(AMY_YEAR, 1, 1) + datetime.timedelta(days=day)
+            got.add((date.month, date.day))
+    assert got == expected
+
+
+def test_day_of_month_and_holidays_agree_with_day_type():
+    """Holidays are still classified as weekdays: they are billed as such."""
+    from quantum_solar.data.calendar import day_of_month, day_type, is_federal_holiday
+
+    assert day_of_month(0) == 1
+    assert day_of_month(364) == 31
+    assert is_federal_holiday(0) and day_type(0) == "weekday"   # Mon 1 Jan
+    assert is_federal_holiday(14) and day_type(14) == "weekday"  # MLK Day
+    assert not is_federal_holiday(17)                            # Thu 18 Jan
