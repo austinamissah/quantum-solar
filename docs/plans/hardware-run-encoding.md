@@ -133,29 +133,49 @@ that, and none of them is dispensable:
 
 ## Pre-registered directional prediction
 
-> **`T3/cp3` normalized TVD ~= 0.31, `T3/exact` ~= 0.55 — a ~1.8x separation.**
-> In raw terms, ~0.12 versus ~0.25.
+> **`T3/cp3` normalized TVD ≈ 0.32, `T3/exact` ≈ 0.57 — cp3 lower, with
+> non-overlapping uncertainty bands.**
 
-**These numbers are a correction.** The first draft of this plan predicted 0.486
-vs 0.765 normalized, from the depolarizing model fitted to July's *optimal mass*
-(1.32%/gate). Checking that model against the normalized TVD it is now being
-asked to predict shows it **overpredicts systematically — by +33%, +76%, +36%,
-and +6%** across the four circuits. It was fitted to a different observable and
-should not be used for this one.
+**These numbers are a correction.** The first draft predicted 0.486 vs 0.765,
+from the depolarizing model fitted to July's *optimal mass* (1.32%/gate). Checked
+against the normalized TVD it is now being asked to predict, that model
+**overpredicts systematically — by +33%, +76%, +36%, and +6%** across the four
+circuits. It was fitted to a different observable and must not be used here.
 
-Refitting the same functional form directly on the normalized TVD data gives
-**0.73% per 2-qubit gate** (f = 0.99273), with residuals +0.055, −0.066, −0.002,
-+0.041 (RMS 0.048). That fit predicts:
+### Estimator and uncertainty: out-of-sample, not in-sample
 
-| circuit | 2Q (o3) | predicted normalized | predicted raw TVD |
+Backing an implied decay rate `k = −ln(1 − normalized) / gates` out of each July
+circuit separately:
+
+| circuit | 2Q | normalized | implied `k` |
 |---|---:|---:|---:|
-| `T3/cp3` | 50 | **0.306** | 0.117 |
-| `T3/exact` | 109 | **0.548** | 0.249 |
+| T2/reps1 | 37 | 0.2918 | 0.00933 |
+| T2/reps2 | 77 | 0.3635 | 0.00587 |
+| T3/reps1 | 124 | 0.5937 | 0.00726 |
+| T3/reps2 | 290 | 0.9202 | 0.00872 |
 
-At an RMS residual of ~0.05 the two predicted bands (0.26–0.36 and 0.50–0.60) do
-not overlap, so this remains a real test rather than a formality — but the
-predicted separation is **1.8x, not the 2.2x first claimed**, and the fit rests
-on four points with one free parameter.
+Mean **0.00779**, range 0.00587–0.00933 — a half-range of **±22%** of the mean,
+with **no trend in gate count** (pearson r = +0.21, p = 0.79), so the scatter is
+circuit-to-circuit variation rather than a missing gate-count term.
+
+Propagating that observed spread through `1 − exp(−k·g)`:
+
+| circuit | 2Q (o3) | low `k` | **central** | high `k` | raw TVD range |
+|---|---:|---:|---:|---:|---|
+| `T3/cp3` | 50 | 0.254 | **0.323** | 0.373 | 0.097 – 0.142 |
+| `T3/exact` | 109 | 0.472 | **0.572** | 0.638 | 0.214 – 0.289 |
+
+The bands do not overlap, with a **0.100 gap** between cp3's upper bound and
+exact's lower bound.
+
+This replaces the earlier ±0.05 RMS-residual band deliberately. An RMS residual
+is an **in-sample** goodness-of-fit statistic for a one-parameter curve fit on
+four points; it describes how well the curve was drawn, not how far a *new*
+circuit may fall from it. The per-circuit `k` spread is an **out-of-sample**
+estimate of exactly that — how much circuits of this family actually vary around
+the shared law — and is the more defensible basis for a falsification threshold.
+As a consistency check, the least-squares fit's values (0.306, 0.548) fall inside
+both bands.
 
 **Secondary prediction:** feasible mass degrades less for `cp3`. Ideal values are
 0.2785 (`cp3`) and 0.1895 (`exact`); the prediction is that `cp3` retains a larger
@@ -163,22 +183,41 @@ on four points with one free parameter.
 
 ## What would falsify the encoding claim
 
-The claim under test is that the slack-free encoding buys *real device* margin,
-not just a smaller number in a transpiler report. It is **falsified** if:
+**Two claims are on trial here, and they are not equally strong. Do not conflate
+them.**
 
-- **`cp3`'s normalized TVD is not lower than `exact`'s** — i.e.
-  `TVD(sim,hw)/TVD(sim,uniform)` for `cp3` ≥ that for `exact`. The predicted
-  1.8× separation (0.306 vs 0.548) sits well outside both the ≈0.042 shot floor
-  and the recalibrated fit's ≈0.05 RMS residual, so this is a real test rather
-  than a formality.
-- **Or the raw gap is entirely explained by the floor**, i.e. both circuits'
-  TVD(sim,hw) lie within their floors of each other.
+### Primary — an ORDERING test (the encoding claim)
 
-A confirmed but much smaller separation than predicted (say <20% rather than
-~1.8×) does **not** falsify the encoding claim, but does falsify the
-*quantitative* noise model — for the second time, since the mass-fitted version
-of it has already been falsified against July's normalized TVD above. That must
-be reported as such rather than folded into a pass.
+> **`T3/cp3`'s normalized TVD is lower than `T3/exact`'s.**
+
+This is the encoding claim, and it is a **pure ordering test: magnitude is
+irrelevant to it.** If cp3's normalized TVD is not lower than exact's, the
+encoding claim **fails regardless of how large or small the numbers are**. If it
+is lower, the encoding claim **holds**, even if the separation is a fraction of
+what was predicted.
+
+It is also falsified if the raw gap is entirely explained by shot noise — both
+circuits' TVD(sim,hw) lying within their ≈0.042 floors of each other — since
+that is a measurement failure rather than a result in either direction.
+
+### Secondary — a MAGNITUDE test (the noise model)
+
+> **cp3 lands in [0.254, 0.373] and exact in [0.472, 0.638].**
+
+This tests the *quantitative noise model*, which is a **separate and weaker
+claim** than the encoding result. It rests on four circuits, one free parameter,
+and an uncertainty taken from their scatter.
+
+**A magnitude miss must be reported as a failure of the noise model, not of the
+encoding result.** Concretely: if cp3 comes in below exact but either value falls
+outside its band, the correct report is "the encoding claim holds; the noise model
+does not predict the magnitude" — not a hedged or negative headline. That would be
+the noise model's second falsification, the mass-fitted version having already
+failed against July's normalized TVD above.
+
+The converse also holds: values landing inside the bands while the *ordering*
+fails would refute the encoding claim outright, and no agreement of magnitudes
+could rescue it.
 
 ## Error-mitigation arm — EXPLORATORY, not gating
 
@@ -214,7 +253,11 @@ first** — it is exploratory by construction.
 
 ## Fixed interpretation rules
 
-- The primary comparison is the **normalized** TVD on the **unmitigated** pair.
+- The primary comparison is the **normalized** TVD on the **unmitigated** pair,
+  and it is an **ordering** test. Magnitude does not enter it.
+- The magnitude bands test the noise model only. **A magnitude miss is reported
+  as a noise-model failure, never as a failure of the encoding result**, and the
+  headline follows the ordering.
 - No conclusion rests on optimal-state mass, at any point, for any arm.
 - The prediction above is directional and was fixed before submission; a null or
   reversed result is reported as such and not reframed.
