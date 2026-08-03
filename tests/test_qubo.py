@@ -64,3 +64,33 @@ def test_infeasible_costs_more_than_optimum(tiny_problem, tiny_weights):
     assert not tiny_problem.is_feasible(drift)
     assert qubo.energy(both) > optimum
     assert qubo.energy(drift) > optimum
+
+
+def test_num_vars_predicts_the_built_register(tiny_problem, tiny_weights):
+    """``num_vars`` must agree with the QUBO actually built, for every encoding.
+
+    Study scripts size hardware tables from ``num_vars`` without constructing the
+    QUBO, so a disagreement would silently misreport qubit counts.
+    """
+    from quantum_solar import Encoding, max_sound_spacing, num_vars
+
+    encodings = [Encoding.EXACT, Encoding.NONE, Encoding.center_anchor(),
+                 Encoding.window_drift(2)]
+    for spacing in range(1, max_sound_spacing(tiny_problem) + 1):
+        encodings += [Encoding.checkpoint(spacing),
+                      Encoding.checkpoint(spacing, banded=True)]
+    for encoding in encodings:
+        built = build_qubo(tiny_problem, tiny_weights, encoding)
+        assert num_vars(tiny_problem, encoding) == built.num_vars, encoding
+
+
+def test_slack_bits_per_slot_matches_the_exact_encoding(tiny_problem):
+    """The back-compat helper describes ``Encoding.EXACT``, and only that one."""
+    from quantum_solar import Encoding
+
+    t = tiny_problem.num_slots
+    expected = (t - 1) * slack_bits_per_slot(tiny_problem)
+    assert Encoding.EXACT.aux_bits(tiny_problem) == expected
+    # Slack-free encodings are 2T regardless of what this helper reports.
+    for encoding in (Encoding.NONE, Encoding.center_anchor(), Encoding.window_drift(2)):
+        assert encoding.aux_bits(tiny_problem) == 0
