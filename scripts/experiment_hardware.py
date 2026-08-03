@@ -91,6 +91,16 @@ SLACKFREE_TARGETS = [
     {**_SF, "encoding": "checkpoint3", "shots": 4096, "mitigated": True},
 ]
 
+# Pre-registered in docs/plans/hardware-run-encoding-replication.md. Three
+# circuits in ONE job so they share a calibration snapshot. exact@default is the
+# identical circuit July ran, so it is simultaneously the weight contrast and a
+# direct drift probe against July's measured k.
+REPLICATION_TARGETS = [
+    {"T": 3, "seed": 0, "reps": 1, "encoding": "checkpoint3", "alpha": 0.021, "shots": 4096},
+    {"T": 3, "seed": 0, "reps": 1, "encoding": "exact", "alpha": 0.021, "shots": 65536},
+    {"T": 3, "seed": 0, "reps": 1, "encoding": "exact", "alpha": 1.0, "shots": 65536},
+]
+
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "docs" / "results"
 # hardware_params.json / hardware_counts.json are the provenance record of the
 # 2026-07-11 run and are NEVER written by the slackfree plan.
@@ -99,6 +109,12 @@ PLANS = {
         "targets": PRIMARY_TARGETS,
         "params": RESULTS_DIR / "hardware_params.json",
         "counts": RESULTS_DIR / "hardware_counts.json",
+    },
+    "replication": {
+        "targets": REPLICATION_TARGETS,
+        "params": RESULTS_DIR / "hardware_params_replication.json",
+        "counts": RESULTS_DIR / "hardware_counts_replication.json",
+        "backend": "ibm_fez",
     },
     "slackfree": {
         "targets": SLACKFREE_TARGETS,
@@ -116,10 +132,12 @@ COUNTS_PATH = PLANS["july"]["counts"]
 
 
 def target_label(t) -> str:
-    """Stable circuit label: encoding, depth, and whether mitigation is applied."""
-    enc = t.get("encoding", "exact")
+    """Stable label: encoding, weight, depth, mitigation. Weight is in the label
+    because a plan may run the same encoding at two weights as its whole point."""
+    enc, alpha = t.get("encoding", "exact"), t.get("alpha", 1.0)
+    wtag = "default" if alpha == 1.0 else f"a{alpha:g}"
     tag = "_mit" if t.get("mitigated") else ""
-    return f"T{t['T']}_{enc}_reps{t['reps']}{tag}"
+    return f"T{t['T']}_{enc}_{wtag}_reps{t['reps']}{tag}"
 
 
 # --- shared circuit/instance construction ------------------------------------
@@ -438,6 +456,13 @@ def run_submit(*, backend_name=None, include_stretch=False, yes_spend_qpu=False,
     if not yes_spend_qpu:
         print("DRY RUN — no QPU spent. Pass --yes-spend-qpu to submit.", flush=True)
         return
+    # Same guard as the params file: counts are the provenance record of a run
+    # that spent QPU and cannot be regenerated. Refuse rather than clobber.
+    if counts_path.exists():
+        raise SystemExit(
+            f"refusing to overwrite {counts_path} — it is the record of a run that "
+            f"already spent QPU and cannot be reproduced. Move or delete it deliberately."
+        )
 
     results, job_ids, actual = [None] * len(records), [], 0.0
     for mitigated in groups:
