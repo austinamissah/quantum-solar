@@ -231,7 +231,11 @@ def run_submit(*, backend_name=None, include_stretch=False, yes_spend_qpu=False,
     service = QiskitRuntimeService()
     max_m = max(r["m"] for r in records)
     backend = service.backend(backend_name) if backend_name else _select_backend(service, max_m)
-    pass_manager = generate_preset_pass_manager(optimization_level=1, backend=backend)
+    # optimization_level=3, not 1: on FakeFez this cuts transpiled 2-qubit gates
+    # ~20% (T3/exact reps1 133 -> 111, T3/reps2 290 -> 252) at no cost. Device-noise
+    # TVD tracks 2-qubit gate count monotonically (July: 37/77/124/290 gates ->
+    # 0.119/0.203/0.383/0.459), so fewer gates is strictly better here.
+    pass_manager = generate_preset_pass_manager(optimization_level=3, backend=backend)
 
     circuits, labels = [], []
     for r in records:
