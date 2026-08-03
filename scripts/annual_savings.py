@@ -137,10 +137,10 @@ def _render(weekday_mean, summer, result, snapshot):
     ax.set_ylabel("battery savings per weekday ($/day)", fontsize=11, parse_math=False)
     ax.set_ylim(0, weekday_mean.max() * 1.18)
     ax.set_title(
-        f"Battery arbitrage savings by month — {snapshot['location']} "
+        f"Battery arbitrage savings by month - {snapshot['location']} "
         f"({snapshot['system_kw']} kW PV, {snapshot['capacity']} kWh battery)\n"
         f"${result.battery_savings:.0f}/yr from the battery alone "
-        f"(solar held fixed); weekends flat off-peak → $0",
+        f"(solar held fixed); weekends flat off-peak -> $0",
         fontsize=11.5, pad=12, parse_math=False)
     ax.grid(True, axis="y", alpha=0.3)
     ax.margins(x=0.02)

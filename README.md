@@ -219,5 +219,10 @@ rather than its depth. The full analysis is in
 - Relax the v1 modeling assumptions: asymmetric buy/sell prices and round-trip
   efficiency. (This shrinks the solar-export leg; the battery-arbitrage leg is
   largely unaffected — see the caveat above.)
-- Scaling study: slack-free approximate encodings vs. the exact one.
-- Scaling study: slack-free approximate encodings vs. the exact one.
+- ~~Scaling study: slack-free approximate encodings vs. the exact one.~~ **Done.**
+  A *sound* checkpoint encoding (`Encoding.checkpoint(k, banded=True)`) captures
+  the full $455.72/yr battery value at **52 qubits** against the exact encoding's
+  **117**, priced through the real 365-day instance. The study also found that
+  `default_weights` overshoots the objective span by ~48x, which is the dominant
+  limit on QAOA concentration; the a-priori fix is **alpha* = span/penalty =
+  0.0209**. See `docs/results/slack-free-encoding.md`.
