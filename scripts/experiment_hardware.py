@@ -106,6 +106,20 @@ REPLICATION_TARGETS = [
     {"T": 3, "seed": 0, "reps": 1, "encoding": "exact", "alpha": 0.021, "shots": 65536, "replicate": 2},
 ]
 
+# Pre-registered in docs/plans/hardware-run-spread.md. Two purposes: a
+# properly-powered within-job spread estimate on the cp3 arm (5 replicates), and a
+# third independent between-run gap measurement. Order is load-bearing -- the
+# PRIMARY gap is replicate 1 of each arm, listed first, fixed before submission.
+SPREAD_TARGETS = [
+    {"T": 3, "seed": 0, "reps": 1, "encoding": "checkpoint3", "alpha": 0.021, "shots": 4096, "replicate": 1},
+    {"T": 3, "seed": 0, "reps": 1, "encoding": "exact", "alpha": 0.021, "shots": 65536, "replicate": 1},
+] + [
+    {"T": 3, "seed": 0, "reps": 1, "encoding": "checkpoint3", "alpha": 0.021, "shots": 4096, "replicate": r}
+    for r in (2, 3, 4, 5)
+] + [
+    {"T": 3, "seed": 0, "reps": 1, "encoding": "exact", "alpha": 0.021, "shots": 65536, "replicate": 2},
+]
+
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "docs" / "results"
 # hardware_params.json / hardware_counts.json are the provenance record of the
 # 2026-07-11 run and are NEVER written by the slackfree plan.
@@ -114,6 +128,12 @@ PLANS = {
         "targets": PRIMARY_TARGETS,
         "params": RESULTS_DIR / "hardware_params.json",
         "counts": RESULTS_DIR / "hardware_counts.json",
+    },
+    "spread": {
+        "targets": SPREAD_TARGETS,
+        "params": RESULTS_DIR / "hardware_params_spread.json",
+        "counts": RESULTS_DIR / "hardware_counts_spread.json",
+        "backend": "ibm_fez",
     },
     "replication": {
         "targets": REPLICATION_TARGETS,
