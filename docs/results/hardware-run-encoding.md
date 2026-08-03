@@ -19,6 +19,13 @@ gate counts before submission. Nothing below was chosen after seeing data.
 The floor-equalisation worked as designed: 0.0426 and 0.0497 against the planned
 ≈0.042 / ≈0.043, so the two circuits are compared on even footing.
 
+> **Replicated 2026-08-03** on an independent run (five circuits, job
+> `d9og4hna5u8s73e2n26g`): normalized gap median 0.0934, CI [0.0578, 0.1290],
+> falling inside this run's [0.0291, 0.1013]. See
+> `docs/results/hardware-run-encoding-replication.md`, which also decomposes the
+> `k` asymmetry into drift (43%) and weight (57%) and **retracts this document's
+> claim that drift was ruled out**.
+
 ### Primary — ordering test: **the encoding claim HOLDS**
 
 `cp3` normalized TVD **0.3043** < `exact` **0.3708**. The slack-free encoding's
@@ -109,8 +116,12 @@ Backing an implied `k = −ln(1−normalized)/gates` out of each circuit:
 
 Only one arm moved. That kills the two obvious explanations:
 
-- **Not device drift.** Drift would have shifted both arms together. `cp3` lands
-  almost exactly on July's mean.
+- ~~**Not device drift.** Drift would have shifted both arms together. `cp3`
+  lands almost exactly on July's mean.~~ **RETRACTED.** `cp3` has no July
+  baseline — it did not exist then — so "it failed to move" was never observable
+  and this argument was invalid. The replication run measured drift directly at
+  −0.00130, 43% of the shift, using a bit-identical circuit. See the replication
+  results.
 - **Not a qubit-count dependence.** An earlier draft of this document claimed the
   single-rate model was failing across qubit counts. **That claim was wrong and is
   retracted**: July's own data shows no such dependence — m=6 mean 0.00760 against
