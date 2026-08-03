@@ -167,9 +167,10 @@ The claim under test is that the slack-free encoding buys *real device* margin,
 not just a smaller number in a transpiler report. It is **falsified** if:
 
 - **`cp3`'s normalized TVD is not lower than `exact`'s** — i.e.
-  `TVD(sim,hw)/TVD(sim,uniform)` for `cp3` ≥ that for `exact`. A 2.2× predicted
-  separation (0.486 vs 0.765) against a ≈0.042 shot floor is far outside noise,
-  so this is a real test rather than a formality.
+  `TVD(sim,hw)/TVD(sim,uniform)` for `cp3` ≥ that for `exact`. The predicted
+  1.8× separation (0.306 vs 0.548) sits well outside both the ≈0.042 shot floor
+  and the recalibrated fit's ≈0.05 RMS residual, so this is a real test rather
+  than a formality.
 - **Or the raw gap is entirely explained by the floor**, i.e. both circuits'
   TVD(sim,hw) lie within their floors of each other.
 
