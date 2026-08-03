@@ -95,10 +95,15 @@ SLACKFREE_TARGETS = [
 # circuits in ONE job so they share a calibration snapshot. exact@default is the
 # identical circuit July ran, so it is simultaneously the weight contrast and a
 # direct drift probe against July's measured k.
+# Order is load-bearing: the PRIMARY comparison is the first-listed pair
+# (replicate 1), fixed here so it cannot be chosen after seeing which pair is more
+# favourable. Replicate 2 is a VARIANCE ESTIMATE and is never pooled into the gap.
 REPLICATION_TARGETS = [
-    {"T": 3, "seed": 0, "reps": 1, "encoding": "checkpoint3", "alpha": 0.021, "shots": 4096},
-    {"T": 3, "seed": 0, "reps": 1, "encoding": "exact", "alpha": 0.021, "shots": 65536},
+    {"T": 3, "seed": 0, "reps": 1, "encoding": "checkpoint3", "alpha": 0.021, "shots": 4096, "replicate": 1},
+    {"T": 3, "seed": 0, "reps": 1, "encoding": "exact", "alpha": 0.021, "shots": 65536, "replicate": 1},
     {"T": 3, "seed": 0, "reps": 1, "encoding": "exact", "alpha": 1.0, "shots": 65536},
+    {"T": 3, "seed": 0, "reps": 1, "encoding": "checkpoint3", "alpha": 0.021, "shots": 4096, "replicate": 2},
+    {"T": 3, "seed": 0, "reps": 1, "encoding": "exact", "alpha": 0.021, "shots": 65536, "replicate": 2},
 ]
 
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "docs" / "results"
@@ -137,7 +142,8 @@ def target_label(t) -> str:
     enc, alpha = t.get("encoding", "exact"), t.get("alpha", 1.0)
     wtag = "default" if alpha == 1.0 else f"a{alpha:g}"
     tag = "_mit" if t.get("mitigated") else ""
-    return f"T{t['T']}_{enc}_{wtag}_reps{t['reps']}{tag}"
+    rep = f"_r{t['replicate']}" if t.get("replicate") else ""
+    return f"T{t['T']}_{enc}_{wtag}_reps{t['reps']}{rep}{tag}"
 
 
 # --- shared circuit/instance construction ------------------------------------
@@ -269,6 +275,7 @@ def optimize_params(targets, *, seed=QAOA_SEED, n_starts=N_STARTS, shots=SHOTS,
             "encoding": encoding, "alpha": alpha,
             "shots": int(tgt.get("shots", shots)),
             "mitigated": bool(tgt.get("mitigated", False)),
+            "replicate": tgt.get("replicate"),
             "params": params,
             "dp_cost": float(dp_solve(problem).true_energy),
             "ideal_opt_mass": metrics["optimal_mass"],

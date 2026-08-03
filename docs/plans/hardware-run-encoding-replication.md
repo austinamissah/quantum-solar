@@ -36,13 +36,48 @@ pre-registered *sampled*-reference form the corrected interval is
 One job so all three share a single calibration snapshot; per-PUB shots carry the
 floor equalization.
 
-| circuit | encoding | α | m | 2Q | depth | shots | floor | TVD-uniform | PR/D | peak/unif |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| `cp3 @ α=0.021` | checkpoint(3) | 0.021 | 6 | 46 | 120 | 4,096 | 0.0430 | 0.3817 | 0.572 | 2.87x |
-| `exact @ α=0.021` | EXACT | 0.021 | 10 | 106 | 182 | 65,536 | 0.0419 | 0.4531 | 0.458 | 5.30x |
-| `exact @ default` | EXACT | 1.0 | 10 | 106 | 183 | 65,536 | 0.0349 | 0.6401 | 0.186 | 16.84x |
+| # | circuit | α | m | 2Q | depth | shots | floor | TVD-uniform | PR/D | peak/unif | role |
+|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| 1 | `cp3` r1 | 0.021 | 6 | 46 | 120 | 4,096 | 0.0430 | 0.3817 | 0.572 | 2.87x | **PRIMARY** |
+| 2 | `exact` r1 | 0.021 | 10 | 106 | 182 | 65,536 | 0.0419 | 0.4531 | 0.458 | 5.30x | **PRIMARY** |
+| 3 | `exact` default | 1.0 | 10 | 106 | 183 | 65,536 | 0.0349 | 0.6401 | 0.186 | 16.84x | weight / drift |
+| 4 | `cp3` r2 | 0.021 | 6 | 46 | 120 | 4,096 | 0.0430 | 0.3817 | 0.572 | 2.87x | variance only |
+| 5 | `exact` r2 | 0.021 | 10 | 106 | 182 | 65,536 | 0.0419 | 0.4531 | 0.458 | 5.30x | variance only |
 
-Rows 1–2 replicate the primary comparison. Rows 2–3 isolate the weight.
+Rows 1–2 replicate the primary comparison. Rows 2–3 isolate the weight. Rows 4–5
+duplicate rows 1–2 as independently sampled entries.
+
+## Duplicate arms: a variance estimate, not extra samples
+
+Both bootstraps in this programme resample *within* a fixed set of counts, so
+they can only see sampling variance. They are blind to device drift, transient
+2-qubit error, and readout instability — precisely the terms that would explain a
+reversal, and precisely what this design otherwise omits. Rows 4–5 measure that
+directly: identical transpiled circuits (same 46 / 106 gates, same 120 / 182
+depths), independently sampled in the same job.
+
+**Fixed usage rules:**
+
+- **The primary comparison uses replicate 1 only** — rows 1–2. That is fixed here
+  and in the target list order in `scripts/experiment_hardware.py` before
+  submission, so the more favourable pair cannot be selected afterwards.
+- **Duplicates are NOT pooled into the primary gap.** They do not tighten the gap
+  CI, do not enter the replication decision in cases A–D, and are not averaged
+  with replicate 1. Pooling would convert a variance measurement into a precision
+  gain, which is exactly the manoeuvre that makes a marginal result look solid.
+- **They gate the interpretation instead.** Pre-committed: **if the within-job
+  duplicate spread on either arm is comparable to or larger than the measured
+  gap, the gap is reported as unresolved at this design's precision — regardless
+  of what the bootstrap CI says.** A bootstrap interval that excludes zero while
+  the same circuit sampled twice differs by as much as the effect is not evidence
+  of an effect.
+
+**What this does and does not capture.** The duplicates run back-to-back inside
+one job, so they measure *short-timescale* variance: sampling, transient error,
+readout instability within a single calibration window. They do **not** capture
+between-job or between-day drift. A reversal across runs separated by weeks could
+therefore still exceed this estimate, and the duplicate spread must be read as a
+**lower bound** on total run-to-run variance, never as the whole of it.
 
 **Two properties this design has that the last one did not:**
 
@@ -61,8 +96,7 @@ Together these decompose the asymmetry cleanly:
 - `exact@default` **vs** `exact@α=0.021` **now** → weight (same day, same size)
 
 Backend pinned to `ibm_fez`; `optimization_level=3`; `seed_transpiler` pinned;
-params and counts files both guarded against overwrite. Estimated **~54.8 QPU
-seconds**.
+params and counts files both guarded against overwrite. Estimated **~83.7 QPU seconds** (the duplicates add ~28.9).
 
 ## Pre-committed outcome rules — replication
 
@@ -71,6 +105,10 @@ hardware-only bootstrap against an exact statevector reference (B = 10,000),
 identical to the corrected analysis of the first run.
 
 **Every case below is written now. None may be renegotiated after seeing data.**
+
+Every case below is additionally subject to the duplicate-spread gate above: if
+the within-job spread rivals the gap, the outcome is "unresolved" and the case
+rules do not apply.
 
 ### A. Gap reproduces within the prior CI — `[0.0291, 0.1013]`
 
@@ -153,7 +191,9 @@ excluded as the cause at matched gate count, not left open.
 - **Same device, same instance, same tuning seed, same day.** This measures
   run-to-run and drift. It does **not** test instance generality or device
   generality, and a successful replication must not be reported as though it did.
-- The design still cannot separate run-to-run variance from within-run sampling
-  variance; that needs repeated jobs in one calibration window, which is not run
-  here and is named as the fix if outcome D occurs.
+- The duplicate arms now measure within-job variance, which the previous design
+  omitted entirely. They remain a **lower bound** on run-to-run variance: they
+  share a calibration window, so between-day drift is still unmeasured. Fully
+  separating it needs the same circuit submitted across several calibration
+  windows, which is not run here.
 - Optimal-state mass remains excluded from every conclusion.
