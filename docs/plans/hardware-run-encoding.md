@@ -3,6 +3,17 @@
 **Date:** 2026-08-03 — written **before** any circuit is submitted. Nothing has
 been run on hardware for this plan.
 
+**Amended 2026-08-03, before any submission.** The circuit table and prediction
+bands were first stated at gate counts measured on `FakeFez`. Dry-running against
+the real device showed it transpiles *cheaper* — 46 and 106 two-qubit gates
+against the simulated 50 and 109 — so every gate-count-dependent figure below is
+restated at the real values. This amendment changes no metric, threshold, or
+decision rule, and was made with **zero** hardware outcome data in existence: the
+input that changed is a property of the circuits, not a measurement of the thing
+being predicted. The superseded figures are shown inline so the change is
+auditable rather than silent. The backend is also now pinned (see below), which
+is what makes the real gate counts stable enough to pre-register at all.
+
 ## This is not a retry of H1
 
 **H1 is closed and is not revisited here.** H1 asked whether extra QAOA depth
@@ -42,8 +53,13 @@ variable.**
 
 | circuit | encoding | qubits | 2Q (o1) | 2Q (o3) | depth (o3) | ideal feasible mass | TVD(sim, uniform) |
 |---|---|---:|---:|---:|---:|---:|---:|
-| `T3/exact` | `Encoding.EXACT` | 10 | 139 | **109** | 228 | 0.1895 | 0.4531 |
-| `T3/cp3` | `Encoding.checkpoint(3)` | 6 | 57 | **50** | 137 | 0.2785 | 0.3817 |
+| `T3/exact` | `Encoding.EXACT` | 10 | 139 | **106** | 181 | 0.1895 | 0.4531 |
+| `T3/cp3` | `Encoding.checkpoint(3)` | 6 | 57 | **46** | 120 | 0.2785 | 0.3817 |
+
+Gate counts and depths are the **real `ibm_fez`** values from the dry run, with
+`seed_transpiler` pinned. (`FakeFez` gave 109 / 50 and depths 228 / 137; the real
+device routes slightly cheaper.) The ~2.3:1 ratio — the thing under test — is
+unchanged, and is if anything slightly larger than first stated.
 
 - **Instance:** `synthetic_instance(T=3, seed=0, capacity=3.0, charge_energy=1.0,
   discharge_energy=1.0, initial_soc=1.0)` — deliberately the *same instance July
@@ -56,14 +72,26 @@ variable.**
   the *problem*, not of the encoding, so the same threshold applies to both and
   0.021 clears it for both — verified exact on 100% of 200 instance seeds for each
   encoding. Using one weight for both is what makes the encoding the only variable.
+- **Backend: pinned to `ibm_fez`**, in the plan itself rather than only at the
+  command line. The entire quantitative prediction is calibrated on July's four
+  fez circuits, and per-device error rates do not transfer across Heron devices,
+  so the baseline holds only if the device is held fixed. Recorded consequences:
+  if `ibm_fez` is unavailable the run **fails rather than substituting** another
+  device, because a silent substitution would break exactly the assumption the
+  pin protects. **This does not eliminate calibration drift**: fez's own error
+  rates have moved since 2026-07-11, and the ±22% band was measured across four
+  circuits on one device on one day, so it captures circuit-to-circuit scatter,
+  not drift. Pinning makes the baseline better, not exact. A backend calibration
+  snapshot is recorded at submission so drift is at least measurable afterwards.
 - **Transpilation:** `optimization_level=3` (the current submission path).
 - **Parameters:** re-optimized on the simulator with the existing settings
   (COBYLA, `n_starts=5`, `maxiter=200`, seed 1234), no optimization on hardware.
 
-Note the gate counts differ slightly from the figures quoted when this run was
-proposed (133 / 54): those were measured at the *default* penalty weight. At the
-α = 0.021 weight actually being submitted they are 109 / 50 at o3. The ~2:1 ratio
-— the thing under test — is unchanged.
+The gate counts have moved twice since this run was proposed, both times for
+reasons unrelated to any outcome. The originally quoted 133 / 54 were measured at
+the *default* penalty weight; at the α = 0.021 weight actually being submitted,
+on `FakeFez`, they were 109 / 50; and on the real pinned device they are
+**106 / 46**. The ratio under test survives all three (2.5:1 → 2.2:1 → 2.3:1).
 
 ## Metrics
 
@@ -133,7 +161,7 @@ that, and none of them is dispensable:
 
 ## Pre-registered directional prediction
 
-> **`T3/cp3` normalized TVD ≈ 0.32, `T3/exact` ≈ 0.57 — cp3 lower, with
+> **`T3/cp3` normalized TVD ≈ 0.30, `T3/exact` ≈ 0.56 — cp3 lower, with
 > non-overlapping uncertainty bands.**
 
 **These numbers are a correction.** The first draft predicted 0.486 vs 0.765,
@@ -162,11 +190,13 @@ Propagating that observed spread through `1 − exp(−k·g)`:
 
 | circuit | 2Q (o3) | low `k` | **central** | high `k` | raw TVD range |
 |---|---:|---:|---:|---:|---|
-| `T3/cp3` | 50 | 0.254 | **0.323** | 0.373 | 0.097 – 0.142 |
-| `T3/exact` | 109 | 0.472 | **0.572** | 0.638 | 0.214 – 0.289 |
+| `T3/cp3` | 46 | 0.237 | **0.301** | 0.349 | 0.090 – 0.133 |
+| `T3/exact` | 106 | 0.463 | **0.562** | 0.628 | 0.210 – 0.285 |
 
-The bands do not overlap, with a **0.100 gap** between cp3's upper bound and
-exact's lower bound.
+The bands do not overlap, with a **0.114 gap** between cp3's upper bound and
+exact's lower bound. (At the superseded `FakeFez` counts of 50 / 109 these were
+[0.254, 0.373] and [0.472, 0.638], gap 0.100 — the amendment slightly *widens*
+the separation.)
 
 This replaces the earlier ±0.05 RMS-residual band deliberately. An RMS residual
 is an **in-sample** goodness-of-fit statistic for a one-parameter curve fit on
@@ -174,7 +204,8 @@ four points; it describes how well the curve was drawn, not how far a *new*
 circuit may fall from it. The per-circuit `k` spread is an **out-of-sample**
 estimate of exactly that — how much circuits of this family actually vary around
 the shared law — and is the more defensible basis for a falsification threshold.
-As a consistency check, the least-squares fit's values (0.306, 0.548) fall inside
+As a consistency check, the least-squares fit's values — **0.285 and 0.539** at
+the real gate counts (0.306 and 0.548 at the superseded 50 / 109) — fall inside
 both bands.
 
 **Secondary prediction:** feasible mass degrades less for `cp3`. Ideal values are
@@ -202,7 +233,7 @@ that is a measurement failure rather than a result in either direction.
 
 ### Secondary — a MAGNITUDE test (the noise model)
 
-> **cp3 lands in [0.254, 0.373] and exact in [0.472, 0.638].**
+> **cp3 lands in [0.237, 0.349] and exact in [0.463, 0.628].**
 
 This tests the *quantitative noise model*, which is a **separate and weaker
 claim** than the encoding result. It rests on four circuits, one free parameter,
