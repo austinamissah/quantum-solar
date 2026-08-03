@@ -104,6 +104,11 @@ PLANS = {
         "targets": SLACKFREE_TARGETS,
         "params": RESULTS_DIR / "hardware_params_slackfree.json",
         "counts": RESULTS_DIR / "hardware_counts_slackfree.json",
+        # Pinned in the PLAN, not just at the command line. The quantitative
+        # prediction is calibrated on July's ibm_fez circuits and per-device error
+        # rates do not transfer across Heron devices, so the baseline holds only
+        # if the device is held fixed. Unavailable => fail, never substitute.
+        "backend": "ibm_fez",
     },
 }
 PARAMS_PATH = PLANS["july"]["params"]   # back-compat for stage (c) / the notebook
@@ -283,6 +288,30 @@ def _coarse_qpu_seconds(n_circuits, shots, depths):
     return float(sum(2.0 + sh * d * 2e-6 for sh, d in zip(shots, depths)))
 
 
+def _calibration_snapshot(backend):
+    """Median 2-qubit and readout error at submission time.
+
+    Pinning the device removes inter-device variation but NOT temporal drift, and
+    the prediction bands were measured on one device on one day. Recording this
+    makes drift measurable after the fact instead of merely acknowledged.
+    """
+    try:
+        props = backend.properties()
+        if props is None:
+            return None
+        two_q = [g.parameters[0].value for g in props.gates
+                 if len(g.qubits) == 2 and g.parameters
+                 and g.parameters[0].name == "gate_error"]
+        readout = [props.readout_error(q) for q in range(backend.num_qubits)]
+        return {
+            "median_2q_gate_error": float(np.median(two_q)) if two_q else None,
+            "median_readout_error": float(np.median(readout)) if readout else None,
+            "last_update_date": str(getattr(props, "last_update_date", None)),
+        }
+    except Exception as exc:  # never block a run on a diagnostic
+        return {"error": repr(exc)}
+
+
 def _select_backend(service, min_num_qubits):
     """Least-busy operational Heron device with enough qubits; fall back to any.
 
@@ -325,7 +354,27 @@ def run_submit(*, backend_name=None, include_stretch=False, yes_spend_qpu=False,
     # Bare service: saved default account in ~/.qiskit. No legacy channel.
     service = QiskitRuntimeService()
     max_m = max(r["m"] for r in records)
-    backend = service.backend(backend_name) if backend_name else _select_backend(service, max_m)
+    pinned = cfg.get("backend")
+    if backend_name and pinned and backend_name != pinned:
+        print(f"WARNING: --backend {backend_name} overrides the plan's pinned "
+              f"{pinned}. The prediction is calibrated on {pinned}; per-device "
+              f"error rates do not transfer across Heron devices.", flush=True)
+    chosen = backend_name or pinned
+    if chosen:
+        # Deliberately no fallback: a silent substitution would break exactly the
+        # calibration assumption the pin exists to protect.
+        try:
+            backend = service.backend(chosen)
+        except Exception as exc:
+            raise SystemExit(
+                f"pinned backend {chosen!r} is unavailable ({exc}). This plan does "
+                f"not substitute another device — its prediction is calibrated on "
+                f"{chosen}. Wait for it, or amend the plan deliberately."
+            ) from exc
+        if not backend.status().operational:
+            raise SystemExit(f"pinned backend {chosen!r} is not operational; not substituting.")
+    else:
+        backend = _select_backend(service, max_m)
     # optimization_level=3, not 1: on identical circuits this cuts transpiled
     # 2-qubit gates 12-18% (July's four circuits: 37/77/124/290 -> 33/71/109/237)
     # at no cost. Device-noise TVD tracks 2-qubit gate count monotonically (July:
@@ -359,7 +408,8 @@ def run_submit(*, backend_name=None, include_stretch=False, yes_spend_qpu=False,
 
     print("=== pre-submission summary ===")
     print(f"plan            : {plan}")
-    print(f"backend         : {backend.name}")
+    print(f"backend         : {backend.name}"
+          + ("  (PINNED by plan)" if cfg.get("backend") == backend.name else ""))
     print(f"jobs            : {len(groups)}"
           + ("  (unmitigated / mitigated)" if len(groups) > 1 else ""))
     print(f"circuits        : {len(circuits)}")
@@ -397,6 +447,7 @@ def run_submit(*, backend_name=None, include_stretch=False, yes_spend_qpu=False,
     out = {
         "plan": plan,
         "backend": backend.name,
+        "backend_calibration": _calibration_snapshot(backend),
         "job_ids": job_ids,
         "actual_qpu_seconds": actual,
         "results": [
