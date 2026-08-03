@@ -1,0 +1,74 @@
+[
+  {
+    "T": 3,
+    "seed": 0,
+    "reps": 1,
+    "m": 10,
+    "encoding": "exact",
+    "alpha": 0.021,
+    "shots": 65536,
+    "mitigated": false,
+    "params": [
+      0.28687582249333765,
+      -0.6444050927068355
+    ],
+    "dp_cost": 0.004226668082960489,
+    "ideal_opt_mass": 0.005172144306126422,
+    "ideal_feasibility": 0.18950033092672686,
+    "stretch": false
+  },
+  {
+    "T": 3,
+    "seed": 0,
+    "reps": 1,
+    "m": 6,
+    "encoding": "checkpoint3",
+    "alpha": 0.021,
+    "shots": 4096,
+    "mitigated": false,
+    "params": [
+      2.856050208518814,
+      1.2485215028715857
+    ],
+    "dp_cost": 0.004226668082960489,
+    "ideal_opt_mass": 0.044845511597402375,
+    "ideal_feasibility": 0.2784562519073607,
+    "stretch": false
+  },
+  {
+    "T": 3,
+    "seed": 0,
+    "reps": 1,
+    "m": 10,
+    "encoding": "exact",
+    "alpha": 0.021,
+    "shots": 65536,
+    "mitigated": true,
+    "params": [
+      0.28687582249333765,
+      -0.6444050927068355
+    ],
+    "dp_cost": 0.004226668082960489,
+    "ideal_opt_mass": 0.005172144306126422,
+    "ideal_feasibility": 0.18950033092672686,
+    "stretch": false
+  },
+  {
+    "T": 3,
+    "seed": 0,
+    "reps": 1,
+    "m": 6,
+    "encoding": "checkpoint3",
+    "alpha": 0.021,
+    "shots": 4096,
+    "mitigated": true,
+    "params": [
+      2.856050208518814,
+      1.2485215028715857
+    ],
+    "dp_cost": 0.004226668082960489,
+    "ideal_opt_mass": 0.044845511597402375,
+    "ideal_feasibility": 0.2784562519073607,
+    "stretch": false
+  }
+]

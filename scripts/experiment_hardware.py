@@ -38,6 +38,8 @@ from qiskit.circuit.library import QAOAAnsatz
 from qiskit.quantum_info import Statevector
 
 from quantum_solar import (
+    Encoding,
+    PenaltyWeights,
     QAOASolver,
     build_qubo,
     default_weights,
@@ -64,18 +66,78 @@ PRIMARY_TARGETS = [
 ]
 STRETCH_TARGETS = [{"T": 6, "seed": 0, "reps": 1}]
 
+# SoC-bound encodings a target may name. Stored as a string in the params file so
+# the record stays JSON and stage (c) can rebuild the exact circuit that ran.
+ENCODINGS = {
+    "exact": Encoding.EXACT,
+    "checkpoint3": Encoding.checkpoint(3),
+}
+
+# Pre-registered in docs/plans/hardware-run-encoding.md: does the slack-free
+# encoding reduce *device* degradation, or only simulated gate count? Same
+# instance, same optimum, same depth -- the encoding is the only variable.
+#
+#   alpha = 0.021 for BOTH arms. alpha* = span/penalty = 0.0209 is a property of
+#     the problem, not the encoding, so one weight serves both.
+#   shots are per-target and unequal ON PURPOSE: TVD's shot-noise floor grows
+#     with Hilbert-space dimension, so equal shots would hand the 6-qubit circuit
+#     an artificial advantage. 4,096 / 65,536 equalises the floor at ~0.042.
+#   mitigated targets are the EXPLORATORY arm and gate nothing.
+_SF = {"T": 3, "seed": 0, "reps": 1, "alpha": 0.021}
+SLACKFREE_TARGETS = [
+    {**_SF, "encoding": "exact", "shots": 65536, "mitigated": False},
+    {**_SF, "encoding": "checkpoint3", "shots": 4096, "mitigated": False},
+    {**_SF, "encoding": "exact", "shots": 65536, "mitigated": True},
+    {**_SF, "encoding": "checkpoint3", "shots": 4096, "mitigated": True},
+]
+
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "docs" / "results"
-PARAMS_PATH = RESULTS_DIR / "hardware_params.json"
-COUNTS_PATH = RESULTS_DIR / "hardware_counts.json"
+# hardware_params.json / hardware_counts.json are the provenance record of the
+# 2026-07-11 run and are NEVER written by the slackfree plan.
+PLANS = {
+    "july": {
+        "targets": PRIMARY_TARGETS,
+        "params": RESULTS_DIR / "hardware_params.json",
+        "counts": RESULTS_DIR / "hardware_counts.json",
+    },
+    "slackfree": {
+        "targets": SLACKFREE_TARGETS,
+        "params": RESULTS_DIR / "hardware_params_slackfree.json",
+        "counts": RESULTS_DIR / "hardware_counts_slackfree.json",
+    },
+}
+PARAMS_PATH = PLANS["july"]["params"]   # back-compat for stage (c) / the notebook
+COUNTS_PATH = PLANS["july"]["counts"]
+
+
+def target_label(t) -> str:
+    """Stable circuit label: encoding, depth, and whether mitigation is applied."""
+    enc = t.get("encoding", "exact")
+    tag = "_mit" if t.get("mitigated") else ""
+    return f"T{t['T']}_{enc}_reps{t['reps']}{tag}"
 
 
 # --- shared circuit/instance construction ------------------------------------
 
-def build_target(T, seed, reps):
-    """Rebuild the instance, QUBO, cost Hamiltonian, and (measurement-free) ansatz."""
+def build_from_record(r):
+    """``build_target`` for a target/params record, applying per-record defaults."""
+    return build_target(r["T"], r["seed"], r["reps"],
+                        encoding=r.get("encoding", "exact"), alpha=r.get("alpha", 1.0))
+
+
+def build_target(T, seed, reps, encoding="exact", alpha=1.0):
+    """Rebuild the instance, QUBO, cost Hamiltonian, and (measurement-free) ansatz.
+
+    ``encoding`` names a key of :data:`ENCODINGS`; ``alpha`` scales all three
+    penalties. Both default to what the July run used (exact encoding, unscaled
+    ``default_weights``), so existing callers are unaffected.
+    """
     problem = synthetic_instance(T, seed=seed, capacity=CAPACITY,
                                  charge_energy=CHARGE_ENERGY, initial_soc=INITIAL_SOC)
-    qubo = build_qubo(problem, default_weights(problem))
+    base = default_weights(problem)
+    weights = base if alpha == 1.0 else PenaltyWeights(
+        alpha * base.mutual_exclusion, alpha * base.soc_bounds, alpha * base.terminal)
+    qubo = build_qubo(problem, weights, ENCODINGS[encoding])
     hamiltonian, _ = qubo_to_ising(qubo)
     ansatz = QAOAAnsatz(cost_operator=hamiltonian, reps=reps)
     return problem, qubo, ansatz
@@ -146,18 +208,29 @@ def optimize_params(targets, *, seed=QAOA_SEED, n_starts=N_STARTS, shots=SHOTS,
     values of the tuned circuit — the same 'exact' distribution stage (c) uses.
     """
     records = []
+    tuned = {}  # (T, seed, reps, encoding, alpha) -> params; mitigation arms reuse
     for tgt in targets:
         T, s, reps = tgt["T"], tgt["seed"], tgt["reps"]
-        problem, qubo, ansatz = build_target(T, s, reps)
-        result = QAOASolver(reps=reps, n_starts=n_starts, shots=shots, seed=seed,
-                            maxiter=maxiter).solve(problem, qubo)
-        params = [float(x) for x in result.optimal_params]
+        encoding, alpha = tgt.get("encoding", "exact"), tgt.get("alpha", 1.0)
+        problem, qubo, ansatz = build_target(T, s, reps, encoding=encoding, alpha=alpha)
+        key = (T, s, reps, encoding, alpha)
+        if key not in tuned:
+            # Mitigation is a sampling-time option, not a circuit change, so a
+            # mitigated target reuses its unmitigated twin's angles rather than
+            # re-tuning to a different local optimum and confounding the pair.
+            result = QAOASolver(reps=reps, n_starts=n_starts, shots=shots, seed=seed,
+                                maxiter=maxiter).solve(problem, qubo)
+            tuned[key] = [float(x) for x in result.optimal_params]
+        params = tuned[key]
 
         probs = exact_distribution(ansatz, params)
         opt_mask, feas_mask = basis_masks(problem, qubo)
         metrics = scalar_metrics(probs, opt_mask, feas_mask)
         records.append({
             "T": T, "seed": s, "reps": reps, "m": qubo.num_vars,
+            "encoding": encoding, "alpha": alpha,
+            "shots": int(tgt.get("shots", shots)),
+            "mitigated": bool(tgt.get("mitigated", False)),
             "params": params,
             "dp_cost": float(dp_solve(problem).true_energy),
             "ideal_opt_mass": metrics["optimal_mass"],
@@ -167,18 +240,31 @@ def optimize_params(targets, *, seed=QAOA_SEED, n_starts=N_STARTS, shots=SHOTS,
     return records
 
 
-def run_optimize(include_stretch=False):
-    targets = list(PRIMARY_TARGETS)
+def run_optimize(include_stretch=False, plan="july", overwrite=False):
+    cfg = PLANS[plan]
+    params_path = cfg["params"]
+    # Refuse to clobber ANY existing params file, not just the July one. Tuned
+    # angles are the provenance record of what a run actually executed; if the
+    # file is gone, the counts beside it can no longer be reproduced. The guard
+    # is on existence, deliberately, so it cannot be defeated by pointing a new
+    # plan at the wrong filename.
+    if params_path.exists() and not overwrite:
+        raise SystemExit(
+            f"refusing to overwrite {params_path} — it is the provenance record "
+            f"for a run that already happened. Move or delete it deliberately, or "
+            f"pass --overwrite if you are certain."
+        )
+    targets = list(cfg["targets"])
     if include_stretch:
         targets += [dict(t, stretch=True) for t in STRETCH_TARGETS]
     records = optimize_params(targets)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    PARAMS_PATH.write_text(json.dumps(records, indent=2))
+    params_path.write_text(json.dumps(records, indent=2))
     for r in records:
-        print(f"T={r['T']} reps={r['reps']} m={r['m']} "
+        print(f"{target_label(r):<24} m={r['m']} "
               f"ideal_opt_mass={r['ideal_opt_mass']:.4f} "
               f"ideal_feasibility={r['ideal_feasibility']:.4f}", flush=True)
-    print(f"wrote {len(records)} records -> {PARAMS_PATH}", flush=True)
+    print(f"wrote {len(records)} records -> {params_path}", flush=True)
 
 
 # --- stage (b): submit (sampling only; QPU-gated) ----------------------------
@@ -186,10 +272,15 @@ def run_optimize(include_stretch=False):
 def _coarse_qpu_seconds(n_circuits, shots, depths):
     """Deliberately coarse order-of-magnitude estimate — NOT a quote.
 
-    Actual QPU seconds are recorded post-run from job metadata.
+    Actual QPU seconds are recorded post-run from job metadata. ``shots`` may be
+    a scalar or a per-circuit sequence; the slack-free plan uses unequal shots by
+    design, so a single figure would misestimate it badly.
     """
-    per_circuit = 2.0 + shots * max(depths) * 2e-6
-    return n_circuits * per_circuit
+    if np.isscalar(shots):
+        shots = [shots] * n_circuits
+    if len(depths) != n_circuits or len(shots) != n_circuits:
+        raise ValueError("shots/depths must align with n_circuits")
+    return float(sum(2.0 + sh * d * 2e-6 for sh, d in zip(shots, depths)))
 
 
 def _select_backend(service, min_num_qubits):
@@ -214,11 +305,15 @@ def _select_backend(service, min_num_qubits):
 
 
 def run_submit(*, backend_name=None, include_stretch=False, yes_spend_qpu=False,
-               shots=SHOTS):
+               shots=SHOTS, plan="july"):
     from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
     from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
 
-    records = json.loads(PARAMS_PATH.read_text())
+    cfg = PLANS[plan]
+    params_path, counts_path = cfg["params"], cfg["counts"]
+    if not params_path.exists():
+        raise SystemExit(f"{params_path} not found — run `optimize --plan {plan}` first")
+    records = json.loads(params_path.read_text())
     if not include_stretch:
         records = [r for r in records if not r.get("stretch")]
     elif not any(r.get("stretch") for r in records):
@@ -231,58 +326,94 @@ def run_submit(*, backend_name=None, include_stretch=False, yes_spend_qpu=False,
     service = QiskitRuntimeService()
     max_m = max(r["m"] for r in records)
     backend = service.backend(backend_name) if backend_name else _select_backend(service, max_m)
-    # optimization_level=3, not 1: on FakeFez this cuts transpiled 2-qubit gates
-    # ~20% (T3/exact reps1 133 -> 111, T3/reps2 290 -> 252) at no cost. Device-noise
-    # TVD tracks 2-qubit gate count monotonically (July: 37/77/124/290 gates ->
+    # optimization_level=3, not 1: on identical circuits this cuts transpiled
+    # 2-qubit gates 12-18% (July's four circuits: 37/77/124/290 -> 33/71/109/237)
+    # at no cost. Device-noise TVD tracks 2-qubit gate count monotonically (July:
     # 0.119/0.203/0.383/0.459), so fewer gates is strictly better here.
-    pass_manager = generate_preset_pass_manager(optimization_level=3, backend=backend)
+    pass_manager = generate_preset_pass_manager(optimization_level=3, backend=backend,
+                                                seed_transpiler=QAOA_SEED)
 
-    circuits, labels = [], []
+    # Transpile once per distinct CIRCUIT and reuse. Mitigation is a sampler
+    # option, not a circuit change, so a mitigated target must run the identical
+    # transpiled circuit as its unmitigated twin -- otherwise routing
+    # stochasticity is folded into the mitigation comparison. (Observed: the same
+    # circuit transpiled to 113 and 98 two-qubit gates on consecutive calls.)
+    transpiled = {}
+    circuits, labels, shot_counts = [], [], []
     for r in records:
-        _, _, ansatz = build_target(r["T"], r["seed"], r["reps"])
-        qc = ansatz.assign_parameters(r["params"])
-        qc.measure_all()
-        circuits.append(pass_manager.run(qc))
-        labels.append(f"T{r['T']}_reps{r['reps']}")
+        key = (r["T"], r["seed"], r["reps"], r.get("encoding", "exact"), r.get("alpha", 1.0))
+        if key not in transpiled:
+            _, _, ansatz = build_from_record(r)
+            qc = ansatz.assign_parameters(r["params"])
+            qc.measure_all()
+            transpiled[key] = pass_manager.run(qc)
+        circuits.append(transpiled[key])
+        labels.append(target_label(r))
+        shot_counts.append(int(r.get("shots", shots)))
 
     depths = [c.depth() for c in circuits]
     two_qubit_gates = [c.num_nonlocal_gates() for c in circuits]
+    # Mitigation is a Sampler-level option, not per-PUB, so each setting is its
+    # own job. The exploratory arm therefore never shares a job with the primary.
+    groups = sorted({bool(r.get("mitigated", False)) for r in records})
+
     print("=== pre-submission summary ===")
+    print(f"plan            : {plan}")
     print(f"backend         : {backend.name}")
-    print(f"jobs            : 1")
-    print(f"circuits        : {len(circuits)}  ({', '.join(labels)})")
-    print(f"shots/circuit   : {shots}")
-    print(f"transpiled depth: {depths}")
-    print(f"2-qubit gates   : {two_qubit_gates}")
-    print(f"est. QPU seconds: ~{_coarse_qpu_seconds(len(circuits), shots, depths):.1f}  (COARSE)")
+    print(f"jobs            : {len(groups)}"
+          + ("  (unmitigated / mitigated)" if len(groups) > 1 else ""))
+    print(f"circuits        : {len(circuits)}")
+    print(f"{'label':<24} {'m':>3} {'shots':>7} {'2Q':>5} {'depth':>6} {'mitigated':>10}")
+    for r, lab, sh, g2, d in zip(records, labels, shot_counts, two_qubit_gates, depths):
+        print(f"{lab:<24} {r['m']:>3} {sh:>7} {g2:>5} {d:>6} "
+              f"{str(bool(r.get('mitigated', False))):>10}")
+    print(f"est. QPU seconds: ~{_coarse_qpu_seconds(len(circuits), shot_counts, depths):.1f}"
+          f"  (COARSE)")
 
     if not yes_spend_qpu:
         print("DRY RUN — no QPU spent. Pass --yes-spend-qpu to submit.", flush=True)
         return
 
-    sampler = SamplerV2(mode=backend)
-    job = sampler.run([(c,) for c in circuits], shots=shots)
-    print(f"submitted job {job.job_id()} to {backend.name}; waiting...", flush=True)
-    result = job.result()
-
-    try:
-        actual_qpu_seconds = float(job.usage())
-    except Exception:
-        actual_qpu_seconds = None
+    results, job_ids, actual = [None] * len(records), [], 0.0
+    for mitigated in groups:
+        idx = [i for i, r in enumerate(records) if bool(r.get("mitigated", False)) is mitigated]
+        sampler = SamplerV2(mode=backend)
+        if mitigated:
+            sampler.options.dynamical_decoupling.enable = True
+            sampler.options.dynamical_decoupling.sequence_type = "XY4"
+            sampler.options.twirling.enable_measure = True
+        job = sampler.run([(circuits[i], None, shot_counts[i]) for i in idx])
+        print(f"submitted job {job.job_id()} (mitigated={mitigated}) to {backend.name}; "
+              f"waiting...", flush=True)
+        res = job.result()
+        job_ids.append(job.job_id())
+        for slot, i in enumerate(idx):
+            results[i] = res[slot].data.meas.get_counts()
+        try:
+            actual += float(job.usage())
+        except Exception:
+            actual = None if actual is None else actual
 
     out = {
+        "plan": plan,
         "backend": backend.name,
-        "job_id": job.job_id(),
-        "shots": shots,
-        "actual_qpu_seconds": actual_qpu_seconds,
+        "job_ids": job_ids,
+        "actual_qpu_seconds": actual,
         "results": [
-            {**{k: records[i][k] for k in ("T", "seed", "reps", "m", "stretch")},
-             "counts": result[i].data.meas.get_counts()}
+            {**{k: records[i][k] for k in ("T", "seed", "reps", "m") if k in records[i]},
+             "label": labels[i],
+             "encoding": records[i].get("encoding", "exact"),
+             "alpha": records[i].get("alpha", 1.0),
+             "mitigated": bool(records[i].get("mitigated", False)),
+             "shots": shot_counts[i],
+             "two_qubit_gates": two_qubit_gates[i],
+             "depth": depths[i],
+             "counts": results[i]}
             for i in range(len(records))
         ],
     }
-    COUNTS_PATH.write_text(json.dumps(out, indent=2))
-    print(f"actual QPU seconds: {actual_qpu_seconds}; wrote -> {COUNTS_PATH}", flush=True)
+    counts_path.write_text(json.dumps(out, indent=2))
+    print(f"actual QPU seconds: {actual}; wrote -> {counts_path}", flush=True)
 
 
 def main():
@@ -291,18 +422,23 @@ def main():
 
     p_opt = sub.add_parser("optimize", help="stage (a): simulator re-optimization")
     p_opt.add_argument("--include-stretch", action="store_true")
+    p_opt.add_argument("--plan", default="july", choices=sorted(PLANS))
+    p_opt.add_argument("--overwrite", action="store_true",
+                       help="allow clobbering an existing params file (provenance record)")
 
     p_sub = sub.add_parser("submit", help="stage (b): sample on hardware (QPU-gated)")
     p_sub.add_argument("--backend", default=None)
     p_sub.add_argument("--include-stretch", action="store_true")
     p_sub.add_argument("--yes-spend-qpu", action="store_true")
+    p_sub.add_argument("--plan", default="july", choices=sorted(PLANS))
 
     args = parser.parse_args()
     if args.stage == "optimize":
-        run_optimize(include_stretch=args.include_stretch)
+        run_optimize(include_stretch=args.include_stretch, plan=args.plan,
+                     overwrite=args.overwrite)
     elif args.stage == "submit":
         run_submit(backend_name=args.backend, include_stretch=args.include_stretch,
-                   yes_spend_qpu=args.yes_spend_qpu)
+                   yes_spend_qpu=args.yes_spend_qpu, plan=args.plan)
 
 
 if __name__ == "__main__":

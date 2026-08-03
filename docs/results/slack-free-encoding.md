@@ -128,6 +128,24 @@ Two things the synthetic study could not have shown:
   days needing deep cycles held across many slots, exactly the shape checkpointing
   forbids. Scaling a synthetic day would have understated the cost by >2×.
 
+### Transpiler optimization level: a free 12-18% gate reduction
+
+Independent of any encoding question, and worth recording on its own. The
+submission path transpiled at `optimization_level=1`. Re-transpiling **the same
+four July circuits** at level 3 gives:
+
+| circuit | 2Q at o1 (July) | 2Q at o3 | reduction |
+|---|---:|---:|---:|
+| T2/reps1 | 37 | 33 | 11% |
+| T2/reps2 | 77 | 71 | 8% |
+| T3/reps1 | 124 | 109 | 12% |
+| T3/reps2 | 290 | 237 | 18% |
+
+Since device-noise TVD tracks two-qubit gate count monotonically on exactly these
+circuits, this is a strict improvement at no cost — no change to the problem, the
+encoding, the parameters, or the shot budget. It is now the default in
+`scripts/experiment_hardware.py`.
+
 ### Circuit cost (FakeFez; o1 reproduces July's 37/77/290 exactly)
 
 | circuit | qubits | 2Q (o1) | 2Q (o3) | ε |
