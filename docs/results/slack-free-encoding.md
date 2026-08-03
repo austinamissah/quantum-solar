@@ -1,6 +1,9 @@
 # Slack-free SoC encodings: results
 
-**Status:** all measurements complete. **No hardware run** — the pre-registered
+**Status:** all measurements complete. The hardware encoding claim is
+**replicated across two independent runs** (`docs/results/hardware-run-encoding.md`
+and `-replication.md`, Case A); the within-job variance gate on the second run is
+**inconclusive**, one replicate pair per arm being too imprecise to adjudicate it. **No hardware run** — the pre-registered
 gate was not met on the instance designated in advance, though it *was* met on
 both robustness instances, so the result is instance-dependent rather than a
 verdict on the method.
@@ -29,7 +32,7 @@ elsewhere, and it took three corrections to locate:
 2. **Transpiled gate count was a second, independent limit** — T3/exact at 133
    gates would have degraded on hardware whatever the weights were. These two are
    separate causes and are not collapsed here.
-3. **After both were addressed, reps=2 mass reached 0.0716–0.0750 against a
+3. **After both were addressed, reps=2 mass reached 0.0716-0.0750 against a
    required 0.078125** on the primary instance, and all 12 pre-registered
    optimizer arms failed to close it — but the same arms **pass reliably on both
    robustness instances** (up to 10/10 at 0.106). The primary instance is simply

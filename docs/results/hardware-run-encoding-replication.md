@@ -1,5 +1,9 @@
 # Replication + weight/drift decomposition: results
 
+**Headline:** the encoding claim is **replicated across two independent runs**
+(Case A). The duplicate-spread gate is **inconclusive** — one replicate pair per
+arm cannot estimate the spread precisely enough to adjudicate it.
+
 **Run date:** 2026-08-03 · **Backend:** `ibm_fez` (pinned) · **56.0 QPU-seconds**
 (estimated ~83.7) · Job `d9og4hna5u8s73e2n26g`, five circuits, one calibration
 snapshot (median 2Q gate error 0.00274, readout 0.00830)
@@ -14,34 +18,65 @@ Pre-registered in `docs/plans/hardware-run-encoding-replication.md`.
 | `cp3 @ α=0.021` r2 | 46 | 0.1137 | 0.2980 | 0.00769 |
 | `exact @ α=0.021` r2 | 106 | 0.1613 | 0.3561 | 0.00415 |
 
-## Gate 1 — duplicate spread (evaluated before the gap, as pre-registered)
+## Gate 1 — duplicate spread: **INCONCLUSIVE**
 
 | arm | r1 | r2 | spread |
 |---|---:|---:|---:|
 | `cp3 @ α=0.021` | 0.2590 | 0.2980 | **0.0389** |
 | `exact @ α=0.021` | 0.3623 | 0.3561 | **0.0062** |
 
-Measured gap (replicate 1 only): **0.1033**. Largest duplicate spread: **0.0389**,
-i.e. **38% of the gap**.
+**The gate could not be decided on this data, and the reason is statistical, not
+editorial.**
 
-**A flaw in the pre-registration, and in how I applied it.** The plan said the gap
-is unresolved if the spread is "comparable to or larger than" it — and never
-quantified *comparable*. In the analysis I operationalised it as ≥50% of the gap,
-**a threshold I picked after seeing the data**. That is exactly the kind of choice
-pre-registration exists to prevent, and the plan's vagueness is what allowed it.
+A spread estimated from a *single pair* is extremely imprecise. For two draws,
 
-So the honest report is the raw number rather than a verdict dressed as one: the
-spread is 38% of the gap. Under the strict reading in the plan's own words
-("larger than") the gate passes clearly. Under a loose reading of "comparable" it
-is arguable. **Any future plan using this gate must state a numeric threshold in
-advance.**
+    sd|X₁ − X₂| / E|X₁ − X₂| = √(2 − 4/π) / (2/√π) = 0.756
 
-What the duplicates do show is informative in its own right. `exact`'s spread is
-tiny (0.0062 at 65,536 shots) while `cp3`'s is 6x larger (0.0389 at 4,096 shots) —
-the ratio tracks shot count, not device behaviour. Both are consistent with
-sampling noise, so **this job shows no evidence of large within-job device
-drift**. That is the term both bootstraps were blind to, and it turns out to be
-small here.
+— **≈76% relative uncertainty** (confirmed by Monte Carlo: 0.7554). So the
+observed 0.0389 has a ±1 SD band of **[0.0095, 0.0683]**, which against the
+bootstrap median gap of 0.0934 is **10% to 73% of the gap**. That range spans
+"negligible" to "comparable". One pair per arm cannot distinguish them.
+
+**Two separate failures, and fixing only the first would not have helped:**
+
+1. *Wording.* The plan said "comparable to or larger than" without quantifying
+   *comparable*, and in analysis I operationalised it as ≥50% — a threshold
+   chosen **after seeing the data**. That is precisely what pre-registration
+   exists to prevent.
+2. *Power.* Even with a numeric threshold fixed in advance, **one pair per arm
+   could not have adjudicated it.** A 76%-uncertain estimate straddles any
+   threshold in the plausible range. Fixing the number is necessary but **not
+   sufficient**.
+
+**Requirement for any future use of this gate:** at least **3 replicates per
+arm**, and preferably more. Precision of the spread estimate by replicate count:
+
+| replicates | df | relative sd of the estimate |
+|---:|---:|---:|
+| 2 (this run) | 1 | **71%** |
+| 3 | 2 | 50% |
+| 5 | 4 | 35% |
+| 10 | 9 | 24% |
+
+Three replicates is a floor, not a target — even there the estimate is 50%
+uncertain.
+
+### Shot scaling: consistent with shot noise, not evidence against drift
+
+With floors equalized the spread should scale as `1/√N`, predicting a ratio of
+`√(65536/4096) = 4.0x` between the two arms. Observed: `0.0389 / 0.0062 = 6.3x`.
+Same order of magnitude.
+
+An earlier draft read this as showing "no evidence of large within-job device
+drift". **That is too strong and is withdrawn.** A ratio of two single-pair
+estimates carries roughly **107%** relative uncertainty, so 6.3x versus a
+predicted 4.0x is entirely unremarkable — but by the same token it is far too
+imprecise to *exclude* a drift component sitting underneath the shot noise.
+
+The defensible statement is the weaker one: **the duplicate spreads are
+consistent with shot noise alone, and this design cannot determine whether a
+device-drift component is also present.** The term both bootstraps are blind to
+remains unmeasured, not measured-and-found-small.
 
 ## Primary — CASE A: the encoding result REPLICATES
 
