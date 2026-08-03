@@ -1,7 +1,7 @@
 # Slack-free SoC encodings: results
 
-**Status:** classical results complete; three measurements still running (marked
-PENDING below). **No hardware run** — the pre-registered gate was not met.
+**Status:** all measurements complete. **No hardware run** — the pre-registered
+gate was not met on the primary instance, though it was met on both robustness instances (see below).
 
 ## Summary
 
@@ -117,21 +117,68 @@ ones. The only clearing run in the entire study came from `cobyla-5`, the
 clear. `transfer` is near-deterministic (sd 0.00014) and lands at 0.065: a free,
 perfectly repeatable warm start, below the bar.
 
-**PENDING:** landscape correlation of `<H>` against ideal mass, conditioned on the
-best 1% and 5% of `<H>` (a global correlation is dominated by uniformly-bad
-parameters and is uninformative). If the relationship is weak or positive where
-optimizers operate, `<H>` minimization is misaligned with the gate metric and no
-optimizer can close the gap. Note the asymmetry: a sampled mass *maximum* is a
-valid lower bound on what is achievable, but a sampled `<H>` *minimum* is not, so
-the `<H>` side is refined with L-BFGS seeded from the best sampled points.
+### The result is INSTANCE-DEPENDENT
 
-**PENDING:** robustness instances (seeds 2, 3). If arms clear there, the result is
-*instance-dependent* rather than "optimizers do not help", and must be reported
-that way.
+The pre-registration's second interpretation rule fired. On the **robustness**
+instances, arms pass — reliably:
 
-**PENDING:** soft-encoding weight sweep — `CenterAnchor` and `WindowDrift` are so
-far judged only at one arbitrary weight and are not yet ruled out on their best
-setting.
+| instance | α | best arm | mean | clears | verdict |
+|---|---:|---|---:|---:|---|
+| 1 (primary) | 0.021 | cobyla-50 | 0.07488 | 0/10 | fail |
+| 1 (primary) | 0.030 | cobyla-50 | 0.07500 | 0/10 | fail |
+| 2 | 0.021 | cobyla-50 | 0.08099 | 9/10 | **PASS+RELIABLE** |
+| 2 | 0.030 | cobyla-50 | 0.07904 | 9/10 | **PASS+RELIABLE** |
+| 3 | 0.021 | transfer | 0.10587 | 10/10 | **PASS+RELIABLE** |
+| 3 | 0.030 | cobyla-25 | 0.09057 | 7/10 | PASS (unreliable) |
+
+So **"QAOA's concentration on this problem is the limiting factor" is not
+supported.** Four of six instance×α cells have at least one passing arm, and on
+instance 3 four arms clear 10/10. Instance seed 1 — designated primary *in
+advance*, which is the only reason this is a finding rather than a selection
+effect — is simply the hardest of the three.
+
+Arm ranking across all six cells: `cobyla-50` and `cobyla-25` pass in 4, and
+`transfer` passes in 1 but does so at **949 evaluations against cobyla-50's
+9,977** — 10× cheaper, sd 0.00102, 10/10. `cobyla-5` and `spsa` never pass.
+
+Formally the study **fails on the primary instance**, and the bar is not moved
+and the primary is not reselected. The honest reading is that a hardware
+candidate at this size is plausible but must be established by a *fresh*
+pre-registration designating its instance in advance — picking instance 3 now,
+having seen that it clears, is precisely the error this discipline exists to
+prevent.
+
+### Landscape: `<H>` and mass are aligned in direction, but their optima are not
+
+| α | pearson (best 5%) | mass at refined `<H>` min | achievable mass max |
+|---:|---:|---:|---:|
+| 0.021 | −0.574 | 0.06570 (below bar) | 0.24565 (3.1× bar) |
+| 0.030 | −0.614 | 0.05398 (below bar) | 0.10858 (clears) |
+
+The correlation is **negative** — lower `<H>` goes with *higher* mass — so by the
+stated test `<H>` is **not** misaligned with the metric, and an earlier
+"misaligned objective" framing of ours fails it. What is true is narrower: the
+two argmins are far apart. On the primary instance the refined `<H>` optimum
+captures only **26.7%** (α=0.021) and **49.7%** (α=0.030) of achievable mass, and
+sits below the bar — so on *that instance* no `<H>`-minimizing procedure clears
+it, while mass over 3× the bar exists at a worse `<H>`. Expressivity is ample;
+the objective does not reach it. **This analysis is instance-1 only** and does not
+generalize — the robustness results above show other instances clearing.
+
+Asymmetry, deliberately handled: a sampled mass *maximum* is a valid lower bound
+on what is achievable, but a sampled `<H>` *minimum* bounds nothing, so the `<H>`
+side is refined by L-BFGS seeded from the 25 best sampled points plus 25 random
+restarts.
+
+### Soft encodings: `center` was mis-weighted, `wd` is genuinely bad
+
+At the default `weight_scale=1`, `CenterAnchor` loses 100% of battery value. At
+**`scale=0.001` it loses 28.79% with 0% infeasible** (T=24) — so "catastrophic"
+was an artifact of the weight, the same mistake the penalty-scaling finding
+identifies elsewhere. It is still not competitive (`cp5band` is 0%), but it is
+not useless. `WindowDrift` does not recover at any scale: `wd2`/`wd3` are sound
+but ~78-80% regret, `wd4`/`wd6` are 25-35% infeasible, and scales 0.1/1/10 are
+bit-identical, since once the penalty dominates the argmin stops moving.
 
 ### A lever that turned out not to be one
 
