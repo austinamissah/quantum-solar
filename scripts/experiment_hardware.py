@@ -189,6 +189,21 @@ def scalar_metrics(probs, opt_mask, feas_mask):
     }
 
 
+def ideal_sim_for_record(ansatz, record, *, seed=QAOA_SEED):
+    """Ideal-sim counts at the record's OWN shot count.
+
+    Use this, not ``ideal_sim_counts``, whenever a plan uses unequal shots. The
+    slack-free plan deliberately runs 4,096 / 65,536 to equalise the TVD
+    shot-noise floor across dimensions; sampling the reference at the module
+    default instead would leave the reference carrying a 4,096-shot floor while
+    the hardware side carries a 65,536-shot one, re-inflating exactly the
+    asymmetry the unequal shots exist to remove. (Observed: it put the 10-qubit
+    circuit's floor at 0.164 instead of 0.043 and inflated its TVD by 35%.)
+    """
+    return ideal_sim_counts(ansatz, record["params"],
+                            shots=int(record.get("shots", SHOTS)), seed=seed)
+
+
 def ideal_sim_counts(ansatz, params, *, shots=SHOTS, seed=QAOA_SEED):
     """Aer SamplerV2 counts for the tuned circuit (shot noise, no device noise)."""
     from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
