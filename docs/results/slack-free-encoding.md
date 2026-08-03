@@ -1,16 +1,67 @@
 # Slack-free SoC encodings: results
 
 **Status:** all measurements complete. **No hardware run** — the pre-registered
-gate was not met on the primary instance, though it was met on both robustness instances (see below).
+gate was not met on the instance designated in advance, though it *was* met on
+both robustness instances, so the result is instance-dependent rather than a
+verdict on the method.
 
 ## Summary
 
 The exact SoC encoding spends `(T−1)·b` qubits on slack. Replacing it with a
-*sound* checkpoint encoding removes most of that at no cost in dollars, and cuts
-transpiled two-qubit gates by more than half. It did not, however, clear the
-pre-registered gate on the instance designated in advance — for a reason that
-turned out to have nothing to do with the encoding, and that does not hold on two
-of three instances tested.
+**sound** checkpoint encoding — one whose zero-penalty assignments are provably
+feasible — removes most of that, and the removal is close to free:
+
+- **`cp5band` captures the entire $455.72/yr battery value at 52 qubits against
+  the exact encoding's 117.** Halving the qubit count costs nothing; going fully
+  slack-free (48 qubits) costs $113.93/yr, so the last four qubits are the
+  expensive ones.
+- **At T=3, like-for-like: ideal optimal mass 0.00013 → 0.0453 (349×), and 133 →
+  54 transpiled two-qubit gates**, at 6 qubits instead of 10.
+
+Every claim made for the encoding held. What stopped a hardware run was
+elsewhere, and it took three corrections to locate:
+
+1. **The dominant limit on ideal concentration was penalty scaling, not the
+   encoding.** `default_weights` overshoots the objective span by **48×**, making
+   cost nearly invisible in `<H>`. Rescaling moved reps=2 mass **440×** with
+   nothing else changed. The fix is a priori: **α\* = span/penalty = 0.0209**,
+   which predicts the exactness cliff exactly.
+2. **Transpiled gate count was a second, independent limit** — T3/exact at 133
+   gates would have degraded on hardware whatever the weights were. These two are
+   separate causes and are not collapsed here.
+3. **After both were addressed, reps=2 mass reached 0.0716–0.0750 against a
+   required 0.078125** on the primary instance, and all 12 pre-registered
+   optimizer arms failed to close it — but the same arms **pass reliably on both
+   robustness instances** (up to 10/10 at 0.106). The primary instance is simply
+   the hardest of the three.
+
+The mechanism behind the shortfall is now precise: **`<H>` tracks optimal-state
+mass through the bulk of the low-energy region and decouples in the final
+approach to the minimum.** Correlation weakens ~40% from the best-5% to the
+best-0.01% `<H>` band, and the refined argmin carries *less* mass than the mean
+of the best-0.01% band — which is why partially-converged optimizers scored 14%
+better than fully-converged ones.
+
+A hardware candidate at this size now looks plausible, but it requires a fresh
+pre-registration naming its instance in advance; selecting one that has already
+been seen to clear is the error this discipline exists to prevent.
+
+### Our own predictions that were wrong
+
+Recorded with their reasoning rather than quietly replaced:
+
+- **"$0 weekend days dilute annual regret."** They cannot — a $0 day contributes
+  to neither numerator nor denominator. Regret went the *other* way (75% annual
+  vs 32.5% synthetic) because tariff value concentrates into high-spread days.
+- **"Dropping mutual exclusion is a lever on the gate."** It doubles the ground
+  state manifold *and* `n_opt`, so the beats-random bar doubles in lockstep.
+  Neutral by construction; it helps absolute counts only.
+- **"reps=2 optimization is failing outright."** It achieved `<H>` = 1.14 vs
+  reps=1's 16.08. Containment bounds `<H>`, not mass; inferring one from the
+  other was the error.
+- **"No `<H>`-minimizing procedure can clear the bar."** Too strong — the
+  best-0.01% band's *maximum* grazes just above it. The argmin does not clear it,
+  and the typical near-minimum point does not.
 
 ## Two independent limits, in order
 
