@@ -78,7 +78,8 @@ in the band, that is a legitimate and pre-registered result, and the correct
 report is "still undetermined at n = 5", not a nudge to whichever side is closer.
 
 Narrowing the band needs more replicates: the bounds scale as `√(df/χ²)`, so 10
-replicates would give roughly `[0.71, 1.66]·σ̂` and a band of `[0.22, 0.51]`.
+replicates would give `[0.688, 1.826]·σ̂` and a band of `[0.198, 0.525]` — better,
+but still wide. This gate does not become sharp cheaply.
 
 ## Primary gap — fixed rules
 
