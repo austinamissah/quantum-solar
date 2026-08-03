@@ -175,8 +175,10 @@ not just a smaller number in a transpiler report. It is **falsified** if:
   TVD(sim,hw) lie within their floors of each other.
 
 A confirmed but much smaller separation than predicted (say <20% rather than
-~2×) does **not** falsify the encoding claim, but does falsify the *quantitative*
-noise model, and must be reported as such rather than folded into a pass.
+~1.8×) does **not** falsify the encoding claim, but does falsify the
+*quantitative* noise model — for the second time, since the mass-fitted version
+of it has already been falsified against July's normalized TVD above. That must
+be reported as such rather than folded into a pass.
 
 ## Error-mitigation arm — EXPLORATORY, not gating
 
