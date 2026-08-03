@@ -98,29 +98,68 @@ So: **`cp3` at 4,096 shots and `exact` at 65,536 shots**, which equalizes the
 floor at ≈0.042 for both. Any measured difference is then device degradation, not
 dimension. Both floors are reported alongside the results.
 
+## Validation of the normalized metric on July's data
+
+Requested before approval, and it changed the predicted values. Computing
+`TVD(sim,hw) / TVD(sim,uniform)` for all four July circuits:
+
+| circuit | 2Q | TVD(sim,hw) | TVD(sim,uniform) | **normalized** | TVD(hw,uniform) | max bitstring / uniform |
+|---|---:|---:|---:|---:|---:|---:|
+| T2/reps1 | 37 | 0.1189 | 0.4075 | **0.2918** | 0.3848 | 4.25x |
+| T2/reps2 | 77 | 0.2031 | 0.5588 | **0.3635** | 0.4167 | 5.05x |
+| T3/reps1 | 124 | 0.3828 | 0.6448 | **0.5937** | 0.4038 | 8.25x |
+| T3/reps2 | 290 | 0.4590 | 0.4988 | **0.9202** | 0.2883 | 5.00x |
+
+**The normalized ratio is monotonic in gate count** (0.292 → 0.364 → 0.594 →
+0.920), so it is validated as the adjudicating metric. Three caveats travel with
+that, and none of them is dispensable:
+
+1. **This validates the ratio as an *ordering statistic*, not as a physical
+   fraction.** The device asymptote is biased, not flat: `TVD(hw,uniform)` never
+   approaches 0 (it bottoms out at 0.288) and individual bitstrings reach 8.25x
+   uniform. So the ratio must not be read as "fraction of the way to uniform" —
+   at 290 gates it is 0.92 while the hardware distribution is still 0.288 away
+   from uniform, i.e. displaced off the sim-uniform line toward a biased limit.
+2. **n = 4, and raw TVD is monotonic on the same data.** July therefore shows the
+   normalized ratio is *not worse* than raw; it cannot show it is better. The
+   reason to prefer it here is specific to this run's design — the two circuits
+   differ in peakedness (0.3817 vs 0.4531) by construction, and the ratio divides
+   that out. Raw TVD is reported alongside, and if the two disagree, that
+   disagreement is the result and gets reported as such.
+3. **`TVD(sim,uniform)` is not monotonic in gate count** across July's circuits
+   (0.408, 0.559, 0.645, 0.499). Raw TVD stayed monotonic anyway, which is mild
+   evidence that peakedness variation of that size does not by itself reorder raw
+   TVD.
+
 ## Pre-registered directional prediction
 
-> **TVD(sim, hw) will be lower for `T3/cp3` than for `T3/exact`, by roughly a
-> factor of two: ≈0.19 versus ≈0.35.**
+> **`T3/cp3` normalized TVD ~= 0.31, `T3/exact` ~= 0.55 — a ~1.8x separation.**
+> In raw terms, ~0.12 versus ~0.25.
 
-Reasoning: the fitted depolarizing model from July's one usable row gives ~1.32%
-effective error per 2-qubit gate, which predicts held-out TVD at 77 and 290 gates
-to within 3.5% and 1%. It gives ε(50) = 0.486 and ε(109) = 0.765. Under a
-mixture model TVD(sim,hw) ≈ ε · TVD(sim, uniform), and the tuned circuits have
-TVD(sim,uniform) = 0.3817 and 0.4531. Hence 0.486 × 0.3817 = **0.185** and
-0.765 × 0.4531 = **0.347**.
+**These numbers are a correction.** The first draft of this plan predicted 0.486
+vs 0.765 normalized, from the depolarizing model fitted to July's *optimal mass*
+(1.32%/gate). Checking that model against the normalized TVD it is now being
+asked to predict shows it **overpredicts systematically — by +33%, +76%, +36%,
+and +6%** across the four circuits. It was fitted to a different observable and
+should not be used for this one.
+
+Refitting the same functional form directly on the normalized TVD data gives
+**0.73% per 2-qubit gate** (f = 0.99273), with residuals +0.055, −0.066, −0.002,
++0.041 (RMS 0.048). That fit predicts:
+
+| circuit | 2Q (o3) | predicted normalized | predicted raw TVD |
+|---|---:|---:|---:|
+| `T3/cp3` | 50 | **0.306** | 0.117 |
+| `T3/exact` | 109 | **0.548** | 0.249 |
+
+At an RMS residual of ~0.05 the two predicted bands (0.26–0.36 and 0.50–0.60) do
+not overlap, so this remains a real test rather than a formality — but the
+predicted separation is **1.8x, not the 2.2x first claimed**, and the fit rests
+on four points with one free parameter.
 
 **Secondary prediction:** feasible mass degrades less for `cp3`. Ideal values are
 0.2785 (`cp3`) and 0.1895 (`exact`); the prediction is that `cp3` retains a larger
 *fraction* of its ideal value.
-
-**Stated confound.** The two circuits do not have equal TVD(sim,uniform) (0.3817
-vs 0.4531), so part of any raw gap is the ideal distributions' differing
-peakedness rather than device degradation. Both scales are computed by simulation
-before submission (above) and are reported, so the normalized quantity
-`TVD(sim,hw) / TVD(sim,uniform)` — predicted 0.486 vs 0.765 — is available as the
-confound-corrected comparison. **The normalized comparison is the one that
-adjudicates the claim**; the raw one is reported for continuity with July.
 
 ## What would falsify the encoding claim
 
