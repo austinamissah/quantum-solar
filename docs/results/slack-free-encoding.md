@@ -7,9 +7,10 @@ gate was not met on the primary instance, though it was met on both robustness i
 
 The exact SoC encoding spends `(T−1)·b` qubits on slack. Replacing it with a
 *sound* checkpoint encoding removes most of that at no cost in dollars, and cuts
-transpiled two-qubit gates by more than half. It did not, however, produce a
-submittable circuit — for a reason that turned out to have nothing to do with the
-encoding.
+transpiled two-qubit gates by more than half. It did not, however, clear the
+pre-registered gate on the instance designated in advance — for a reason that
+turned out to have nothing to do with the encoding, and that does not hold on two
+of three instances tested.
 
 ## Two independent limits, in order
 
@@ -99,7 +100,9 @@ interior SoC penalty is needed at T=3 at all.
 
 At the a-priori weight, reps=2 ideal mass is **0.0716–0.0750** against a required
 **0.078125** (5 × uniform at m=6). Pre-registered optimizer study
-(`docs/plans/optimizer-study.md`): **all 12 arm × α combinations fail.**
+(`docs/plans/optimizer-study.md`): **all 12 arm × α combinations fail on the
+primary instance.** (They do *not* fail on the robustness instances — see
+"INSTANCE-DEPENDENT" below, which qualifies everything in this subsection.)
 
 | arm | mean (α=0.021) | mean (α=0.030) | evals |
 |---|---:|---:|---:|
