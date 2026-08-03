@@ -3,10 +3,11 @@
 from .annual import AnnualResult, DayResult, annual_savings
 from .brute_force import brute_force_solve
 from .dynamic_programming import dp_solve
+from .encodings import Encoding, SoCEncoding, max_sound_spacing
 from .ising import qubo_to_ising
 from .problem import BatteryProblem, synthetic_instance
 from .qaoa import QAOAResult, QAOASolver
-from .qubo import QUBO, PenaltyWeights, build_qubo, default_weights
+from .qubo import QUBO, PenaltyWeights, build_qubo, default_weights, num_vars
 from .solution import Solution
 
 __all__ = [
@@ -16,6 +17,10 @@ __all__ = [
     "PenaltyWeights",
     "build_qubo",
     "default_weights",
+    "num_vars",
+    "Encoding",
+    "SoCEncoding",
+    "max_sound_spacing",
     "qubo_to_ising",
     "brute_force_solve",
     "dp_solve",
