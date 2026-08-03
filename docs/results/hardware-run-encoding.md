@@ -28,36 +28,63 @@ optimum, same depth.
 
 #### Bootstrap confidence intervals
 
-"Clears by 0.0025 against a 0.0497 floor" is a margin, not an inference. A
-nonparametric bootstrap (B = 10,000) resampling **both** finite samples on both
-arms — the ideal-sim reference carries its own shot noise, so resampling only the
-hardware side would understate the variance:
+"Clears by 0.0025 against a 0.0497 floor" is a margin, not an inference. The
+estimand is `TVD(ideal, hardware)`, and the ideal side is **known exactly** from
+the statevector — it is not something we estimate. So the bootstrap resamples
+only the hardware counts (B = 10,000) and takes the reference as given:
 
-| quantity | point | 95% CI | excludes 0? |
+| quantity | median | 95% CI | excludes 0? |
 |---|---:|---|---|
-| raw TVD gap (exact − cp3) | 0.0522 | **[0.0293, 0.0662]** | **yes** |
-| normalized gap (exact − cp3) | 0.0665 | **[0.0038, 0.0977]** | **yes, marginally** |
+| raw TVD gap (exact − cp3) | 0.0516 | **[0.0375, 0.0654]** | **yes** |
+| normalized gap (exact − cp3) | 0.0658 | **[0.0291, 0.1013]** | **yes** |
 
-Both exclude zero, so the ordering is a real effect rather than a coincidence of
-sampling. **But the normalized interval — the adjudicating metric — has a lower
-bound of 0.0038.** It clears zero by a hair. The raw ordering is solid; the
-normalized ordering is real but thin, and the honest reading is that this run
-establishes the direction, not a well-resolved effect size.
+**Both intervals exclude zero comfortably. The ordering result is solid.**
 
-Two methodological notes, both checked rather than assumed:
+An earlier version of this section reported the normalized CI as [0.0038, 0.0977]
+and called the adjudicating metric "marginal, clearing zero by a hair". **That was
+an artifact of the estimator, not a property of the data, and is retracted.** That
+bootstrap resampled *both* the hardware counts and the ideal-sim reference, which
+injects sampling noise the estimand does not contain — visible in individual CIs
+that sat entirely above their own point estimates (`exact` raw: point 0.1682, CI
+[0.1745, 0.1839]). Removing that spurious noise moves the normalized lower bound
+from 0.0038 to **0.0291**, an eightfold improvement in margin. With the corrected
+estimator the individual medians track their point estimates properly (cp3
+0.3061 vs 0.3043; exact 0.3719 vs 0.3708), i.e. the bias is gone.
 
-- **The individual bootstrap CIs are biased upward and must not be read as CIs on
-  the true TVD** — resampling two samples adds noise the originals did not carry,
-  so e.g. `exact`'s raw CI [0.1745, 0.1839] sits entirely above its 0.1682 point
-  estimate. The inflation is larger for `cp3` (≈0.014) than for `exact` (≈0.011),
-  so it works *against* the gap: the interval above is conservative.
-- **The residual floor mismatch also cuts the conservative way.** `cp3`'s floor
-  (0.0497) exceeds `exact`'s (0.0426), so `cp3`'s TVD carries the larger
-  finite-sample bias; correcting it would push `cp3` down and widen the gap.
-- The normalization denominator is not the noise source. Re-running with the
-  exactly-known `TVD(statevector, uniform)` instead of the sampled one gives
-  [0.0031, 0.0991] — essentially unchanged, so the width is genuine numerator
-  variability.
+For continuity with the pre-registered metric — which specifies `TVD(ideal-sim,
+hardware)` against a *sampled* reference, matching July — the same
+hardware-only bootstrap on that form gives a normalized gap CI of
+**[0.0220, 0.0942]**, likewise excluding zero. The conclusion does not depend on
+which reference is used; only the pre-registered form is comparable to the
+July-calibrated bands in the next section.
+
+#### Did the normalization do its job, or is the gap really peakedness?
+
+If `cp3`'s ideal distribution were *relatively* peakier than `exact`'s, then
+`TVD(sim, uniform)` would under-correct and part of the primary gap would be
+distribution shape rather than encoding. Dimension-normalized shape statistics:
+
+| circuit | D | PR | **PR/D** | **peak/uniform** | entropy | H/ln D | TVD-uniform |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `cp3` | 64 | 36.6 | **0.572** | **2.87x** | 3.7486 | 0.9013 | 0.3817 |
+| `exact` | 1024 | 469.3 | **0.458** | **5.30x** | 6.3797 | 0.9204 | 0.4531 |
+
+**The concern does not materialise, and the effect runs the other way.** `cp3`
+occupies a *larger* fraction of its space (PR/D 0.572 vs 0.458) with a peak
+*half* as tall relative to uniform (2.87x vs 5.30x) — it is the flatter of the
+two, not the peakier.
+
+The consequence is direct and does not depend on preferring any one shape proxy:
+`cp3`'s denominator is **smaller** (0.3817 vs 0.4531), so the normalization
+*divides its degradation by less* and therefore **penalises `cp3`**. It wins the
+adjudicating comparison despite carrying the handicap. The measured gap is a
+lower bound on the encoding effect, not an inflation of it.
+
+One honest wrinkle: relative entropy disagrees slightly with the other two
+measures (`cp3` 0.9013 vs `exact` 0.9204, so marginally *less* flat by that
+statistic). The disagreement is ~2% and concerns tail weighting rather than bulk
+spread, and it does not affect the argument above, which rests on the denominator
+itself rather than on a shape proxy.
 
 ### Secondary — magnitude test: **the noise model FAILS**
 
