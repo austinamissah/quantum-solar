@@ -92,10 +92,26 @@ documents, not a reinterpretation of their data.
 | t(2) 95% CI | **[+0.0075, +0.1285]** |
 | all three positive | yes (sign test p = 0.25) |
 
-The pooled estimate still excludes zero, and the direction is consistent 3/3. But
-the between-run sd (0.02437) is **larger than σ_device** (0.01743), so run-to-run
-variation exceeds what within-job replication explains — as the plan warned,
-within-job spread does not bound between-run variance.
+The pooled estimate still excludes zero and the direction is consistent 3/3.
+
+**This interval needs no device correction.** Unlike the per-run intervals above,
+it derives from the between-run scatter, which already subsumes every variance
+component — shot noise, within-job device variance, and between-run drift — since
+each run's gap is one realization of all three. Adding σ_device to it would
+double-count.
+
+**Between-run variance remains unbounded, and is *not* measured to exceed
+σ_device.** On 2 df the between-run sd of 0.02437 carries a 95% interval of
+**[0.0127, 0.1532]**, and σ_device = 0.01743 falls inside it. The two are
+statistically **indistinguishable**, and the data are consistent with either
+ordering.
+
+An earlier draft of this document said run-to-run variation "exceeds what
+within-job replication explains", from a bare point comparison of 0.02437 against
+0.01743. **That is retracted.** It is the same failure this document criticises
+one level up — comparing point estimates without their intervals — and at n = 3
+the interval is far too wide to support it. What holds is only that within-job
+spread does not *bound* between-run variance, which was known in advance.
 
 ## Where this leaves the headline
 
@@ -119,7 +135,9 @@ qubits for $0.00/yr, the 349x ideal-mass improvement at T=3, and the
 
 ## Still unmeasured
 
-- **Between-run variance is n = 3.** The sd above has 2 df.
+- **Between-run variance is n = 3**, with 2 df and a 95% interval of
+  [0.0127, 0.1532] — a 12x span. It is neither bounded nor distinguishable from
+  σ_device, and no claim about their relative size is supported.
 - **`exact`-arm device variance remains unbounded** (n = 2, σ_total 0.00434). As
   pre-registered, if it were large the gate would err toward *keeping* the
   headline. This run cannot test that, and the risk direction is unchanged.
