@@ -12,6 +12,14 @@ return-to-initial state-of-charge constraint. The schedule is expressed as a QUB
 and solved with QAOA on the Qiskit Aer simulator, verified against exact classical
 baselines.
 
+> **New to quantum computing, or here to learn rather than to use the code?**
+> Start with **[docs/LESSONS.md](docs/LESSONS.md)** — a standalone field report on
+> what went wrong in this project and what each mistake cost, with the numbers. It
+> assumes no knowledge of this repo. Topics include why a penalty weight 48x too
+> large made QAOA optimize the wrong thing, why we spent a phase optimizing qubit
+> count when gate count was the binding constraint, and why a variance estimate
+> from two samples cannot decide anything.
+
 ## Example schedule
 
 The optimizer charges when energy is cheap (overnight and midday, when solar is
