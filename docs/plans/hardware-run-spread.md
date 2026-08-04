@@ -10,29 +10,35 @@ Follows `docs/plans/hardware-run-encoding-replication.md` and its result.
 **1. A properly-powered within-job spread estimate.** The replication run's
 duplicate gate was **inconclusive**, and not merely for want of a stated
 threshold: a spread from a *single pair* carries ~76% relative uncertainty, so
-0.0389 was consistent with anything from 10% to 73% of the gap. Five replicates on
-the `cp3` arm estimates the spread properly enough to adjudicate — within the
-limits set out below, which are real.
+0.0389 was consistent with anything from 10% to 73% of the gap. **Ten** replicates
+on the `cp3` arm estimates it well enough to adjudicate.
+
+Ten, not five: at n = 5 the **RESOLVED verdict is unreachable**. With χ² upper
+factor 2.874 on 4 df, even *zero* true device variance leaves the upper bound on
+σ_device at 0.048 against a cap of 0.034 — the test could only ever return
+UNRESOLVED or INDETERMINATE, never confirm. n = 8 is marginal (0.032 vs 0.034);
+n = 10 gives real margin (0.027) for ~15 extra QPU-seconds. A test that cannot
+return one of its own verdicts is not a test.
 
 **2. A third independent between-run gap measurement.** Two runs so far: gap
 medians 0.0658 and 0.0934.
 
-## Circuits — one job, seven circuits
+## Circuits — one job, twelve circuits
 
 | # | circuit | m | 2Q | depth | shots | role |
 |---:|---|---:|---:|---:|---:|---|
 | 1 | `cp3 @ α=0.021` r1 | 6 | 46 | 120 | 4,096 | **PRIMARY gap** |
 | 2 | `exact @ α=0.021` r1 | 10 | 106 | 182 | 65,536 | **PRIMARY gap** |
-| 3–6 | `cp3 @ α=0.021` r2–r5 | 6 | 46 | 120 | 4,096 | spread only |
-| 7 | `exact @ α=0.021` r2 | 10 | 106 | 182 | 65,536 | spread only |
+| 3–11 | `cp3 @ α=0.021` r2–r10 | 6 | 46 | 120 | 4,096 | spread only |
+| 12 | `exact @ α=0.021` r2 | 10 | 106 | 182 | 65,536 | spread only |
 
 One job, one calibration snapshot. Backend pinned `ibm_fez`,
 `optimization_level=3`, `seed_transpiler` pinned, params and counts guarded
 against overwrite.
 
-**Estimated ~66.6 QPU seconds** — not the ~41 assumed when this run was proposed.
+**Estimated ~81.5 QPU seconds** — not the ~41 assumed when this run was proposed.
 The `exact` arm dominates: two circuits at 65,536 shots and depth 182 cost ~51.7 s
-of the total, against ~14.9 s for all five `cp3` circuits. Recorded here so the
+of the total, against ~29.8 s for all ten `cp3` circuits. Recorded here so the
 budget is not a surprise.
 
 ## The threshold, fixed and derived
@@ -58,28 +64,63 @@ both arms **overestimates** the gap's SE, since `exact` at 65,536 shots is
 quieter. The threshold is therefore conservative — it declares "unresolved" more
 readily than a two-arm estimate would.
 
-### Point estimate or interval bound? — a three-way rule
+### σ must be the DEVICE component, not the total spread
 
-The ambiguity that sank the last gate was never resolving this. It is resolved
-here by refusing the binary. With 5 replicates σ̂ has 4 df, giving a 95% CI of
-`[0.599, 2.874]·σ̂` — a span of 4.8x. Applying the threshold to the **interval**
-yields three regions, all fixed now:
+The replicate spread contains **both** device variance and shot noise. The
+bootstrap CI on the gap already accounts for shot noise. Comparing *total* spread
+against the gap therefore charges the result twice for the same term, and would
+declare "unresolved" on the strength of noise the primary analysis has already
+handled.
+
+The gate is therefore defined on the device-only component:
+
+```
+σ_device = √( σ_total² − σ_shot² )
+```
+
+- **σ_total** — the sample standard deviation of the ten `cp3` normalized-TVD
+  values.
+- **σ_shot** — the mean per-measurement bootstrap standard deviation across those
+  same ten counts, i.e. shot noise estimated from the identical data rather than
+  assumed.
+
+Both are computed from this run's own counts; nothing is imported.
+
+#### If the subtraction goes negative
+
+`σ_total² < σ_shot²` is a real possibility — it means the observed replicate
+spread is smaller than shot noise alone predicts, which happens by fluctuation.
+**It must not be silently clamped to zero and read as RESOLVED.** Pre-committed
+reading:
+
+- The **point estimate** of device variance is reported as *consistent with zero*
+  and explicitly as **not resolvable at this shot count** — not as "zero".
+- **The verdict is still decided by the upper confidence bound**, which remains
+  positive and finite. A negative point estimate with a large upper bound is
+  **INDETERMINATE**, not RESOLVED.
+- **UNRESOLVED can never be triggered** by a negative point estimate, since the
+  lower bound clamps at zero.
+- If σ_total falls *far* below σ_shot (below the χ² lower bound on σ_total given
+  σ_shot), that is a **diagnostic finding, not a result**: it would mean the
+  bootstrap overestimates shot noise, and the primary analysis's CIs — which rest
+  on that same bootstrap — would need re-examining before any verdict is issued.
+
+### The three-way rule
+
+With 10 replicates σ̂_total has 9 df and a 95% CI of `[0.688, 1.826]·σ̂_total`.
+Propagating through the subtraction (treating σ_shot as known — it is estimated
+from 20,000 bootstrap draws, so its own uncertainty is negligible beside σ̂'s)
+gives an interval for σ_device. Against `cap = 0.361 × gap`:
 
 | region | condition | verdict |
 |---|---|---|
-| **RESOLVED** | σ̂/gap < **0.126** (CI upper bound below threshold) | Spread is confidently small. The gap stands. |
-| **UNRESOLVED** | σ̂/gap > **0.602** (CI lower bound above threshold) | Spread is confidently large. The gap is not resolvable; see below. |
-| **INDETERMINATE** | 0.126 ≤ σ̂/gap ≤ 0.602 | Neither. Reported as still undetermined — *not* forced to a verdict. |
+| **RESOLVED** | upper bound of σ_device < cap | Device spread confidently below what would obscure the gap. The gap stands. |
+| **UNRESOLVED** | lower bound of σ_device > cap | Device spread confidently large enough to obscure it. See withdrawal language below. |
+| **INDETERMINATE** | interval straddles cap | Neither. Reported as undetermined — *not* forced to a verdict. |
 
-**The indeterminate band is wide, and that is stated in advance rather than
-discovered afterwards.** Five replicates is a real improvement on one pair, but it
-does not make this test decisive across the plausible range. If the outcome lands
-in the band, that is a legitimate and pre-registered result, and the correct
-report is "still undetermined at n = 5", not a nudge to whichever side is closer.
-
-Narrowing the band needs more replicates: the bounds scale as `√(df/χ²)`, so 10
-replicates would give `[0.688, 1.826]·σ̂` and a band of `[0.198, 0.525]` — better,
-but still wide. This gate does not become sharp cheaply.
+This is stated on the interval rather than the point estimate deliberately: the
+unstated point-vs-bound choice is what sank the previous gate, and picking one
+side would merely relocate the ambiguity rather than remove it.
 
 ## Primary gap — fixed rules
 

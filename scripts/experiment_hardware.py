@@ -107,7 +107,8 @@ REPLICATION_TARGETS = [
 ]
 
 # Pre-registered in docs/plans/hardware-run-spread.md. Two purposes: a
-# properly-powered within-job spread estimate on the cp3 arm (5 replicates), and a
+# properly-powered within-job spread estimate on the cp3 arm (10 replicates -- at 5,
+# the RESOLVED verdict is unreachable even at zero device variance), and a
 # third independent between-run gap measurement. Order is load-bearing -- the
 # PRIMARY gap is replicate 1 of each arm, listed first, fixed before submission.
 SPREAD_TARGETS = [
@@ -115,7 +116,7 @@ SPREAD_TARGETS = [
     {"T": 3, "seed": 0, "reps": 1, "encoding": "exact", "alpha": 0.021, "shots": 65536, "replicate": 1},
 ] + [
     {"T": 3, "seed": 0, "reps": 1, "encoding": "checkpoint3", "alpha": 0.021, "shots": 4096, "replicate": r}
-    for r in (2, 3, 4, 5)
+    for r in (2, 3, 4, 5, 6, 7, 8, 9, 10)
 ] + [
     {"T": 3, "seed": 0, "reps": 1, "encoding": "exact", "alpha": 0.021, "shots": 65536, "replicate": 2},
 ]
