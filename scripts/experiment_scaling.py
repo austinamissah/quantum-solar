@@ -29,7 +29,9 @@ from quantum_solar import (
     dp_solve,
     synthetic_instance,
 )
-from quantum_solar.brute_force import MAX_ENUMERATION_SITES
+from quantum_solar.brute_force import MAX_ENUMERATION_SITES, enumerate_bitstrings
+from quantum_solar.qubo import PenaltyWeights
+from quantum_solar.qubo_search import qubo_min_exact
 
 # --- Fixed sweep configuration (chosen before results) -----------------------
 T_VALUES = [2, 3, 4, 5, 6]        # qubits m = 4T-2 -> 6, 10, 14, 18, 22
@@ -45,6 +47,7 @@ INITIAL_SOC = 1.0
 
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "docs" / "results"
 CSV_PATH = RESULTS_DIR / "qaoa_scaling.csv"
+CSV_PATH_ALPHASTAR = RESULTS_DIR / "qaoa_scaling_alphastar.csv"
 
 FIELDNAMES = [
     "T", "m", "seed", "reps", "dp_cost", "qaoa_cost", "exact_match",
@@ -59,6 +62,29 @@ UNIFORM_FIELDS = [
     "mass_ratio_is_upper_bound", "shots_cover_space",
 ]
 AUG_FIELDNAMES = FIELDNAMES + UNIFORM_FIELDS
+
+# Weight-mode columns, recorded so a row is self-describing about which penalty
+# scale produced it. The default-weight sweep predates these and omits them.
+WEIGHT_FIELDS = ["weight_mode", "alpha", "alpha_star", "surrogate_optimal"]
+AUG_FIELDNAMES_ALPHASTAR = FIELDNAMES + WEIGHT_FIELDS + UNIFORM_FIELDS
+
+
+def alpha_star(problem, weights) -> float:
+    """The a-priori exactness threshold: objective span / default penalty scale.
+
+    The span is taken over *physically feasible schedules*, so it is a property of
+    the problem rather than of any encoding. Below this the QUBO's optimum can
+    stop being the true optimum; at and above it, verified exact on 200 instance
+    seeds. See docs/results/slack-free-encoding.md.
+    """
+    costs = [problem.energy(x) for x in enumerate_bitstrings(2 * problem.num_slots)
+             if problem.is_feasible(x)]
+    return (max(costs) - min(costs)) / weights.soc_bounds
+
+
+def scaled(weights, alpha) -> PenaltyWeights:
+    return PenaltyWeights(alpha * weights.mutual_exclusion,
+                          alpha * weights.soc_bounds, alpha * weights.terminal)
 
 
 def _key_to_x(key: str, m: int) -> np.ndarray:
@@ -81,15 +107,32 @@ def _mass_and_feasibility(problem, qubo, counts, optimum_energy):
     return opt / total, feas / total
 
 
-def run_single(T, seed, reps, *, n_starts, shots, maxiter, qaoa_seed):
-    """Run one (T, seed, reps) cell and return its metrics row."""
+def run_single(T, seed, reps, *, n_starts, shots, maxiter, qaoa_seed,
+               weight_mode="default"):
+    """Run one (T, seed, reps) cell and return its metrics row.
+
+    ``weight_mode`` is ``"default"`` (``default_weights`` as-is, the original
+    sweep) or ``"alphastar"`` (scaled to the a-priori exactness threshold). The
+    default overshoots the objective span by ~48x at T=3, which suppresses the
+    cost signal in ``<H>`` and is documented to invert the reps=1/reps=2 ordering,
+    so the two sweeps are kept as separate artifacts rather than one overwriting
+    the other.
+    """
     problem = synthetic_instance(
         T, seed=seed, capacity=CAPACITY, charge_energy=CHARGE_ENERGY,
         initial_soc=INITIAL_SOC,
     )
-    weights = default_weights(problem)  # fixed principled rule, applied uniformly
+    base = default_weights(problem)  # fixed principled rule, applied uniformly
+    a_star = alpha_star(problem, base)
+    alpha = 1.0 if weight_mode == "default" else a_star
+    weights = base if weight_mode == "default" else scaled(base, alpha)
     qubo = build_qubo(problem, weights)
     m = qubo.num_vars
+    # Is the surrogate's optimum still the TRUE optimum at this weight? alpha* is
+    # the boundary, so this is recorded per row rather than assumed.
+    _sur = qubo_min_exact(problem, weights)
+    surrogate_optimal = bool(_sur.feasible and np.isclose(
+        _sur.true_energy, dp_solve(problem).true_energy, atol=1e-9))
 
     t0 = time.perf_counter()
     dp = dp_solve(problem)
@@ -129,6 +172,8 @@ def run_single(T, seed, reps, *, n_starts, shots, maxiter, qaoa_seed):
         "qaoa_time_s": qaoa_time, "dp_time_s": dp_time,
         "brute_cost": brute_cost, "brute_matches_dp": brute_matches,
         "n_starts": n_starts, "shots": shots,
+        "weight_mode": weight_mode, "alpha": alpha, "alpha_star": a_star,
+        "surrogate_optimal": surrogate_optimal,
     }
 
 
@@ -154,7 +199,8 @@ def run_experiment(t_values=T_VALUES, seeds=SEEDS, reps_values=REPS_VALUES, *,
 
 def run_and_stream(t_values=T_VALUES, seeds=SEEDS, reps_values=REPS_VALUES, *,
                    n_starts=N_STARTS, shots=SHOTS, maxiter=MAXITER,
-                   qaoa_seed=QAOA_SEED, csv_path=CSV_PATH):
+                   qaoa_seed=QAOA_SEED, csv_path=CSV_PATH, weight_mode="default",
+                   fieldnames=FIELDNAMES):
     """Run the sweep serially, appending each row to the CSV as it completes.
 
     Serial by design: QAOA statevector simulation is memory-bandwidth bound, so
@@ -167,16 +213,18 @@ def run_and_stream(t_values=T_VALUES, seeds=SEEDS, reps_values=REPS_VALUES, *,
     csv_path = Path(csv_path)
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     with open(csv_path, "w", newline="") as f:
-        csv.DictWriter(f, fieldnames=FIELDNAMES).writeheader()
+        csv.DictWriter(f, fieldnames=fieldnames).writeheader()
 
     rows = []
     total = len(configs)
     for i, (T, seed, reps) in enumerate(configs, 1):
         row = run_single(T, seed, reps, n_starts=n_starts, shots=shots,
-                         maxiter=maxiter, qaoa_seed=qaoa_seed)
+                         maxiter=maxiter, qaoa_seed=qaoa_seed,
+                         weight_mode=weight_mode)
         rows.append(row)
         with open(csv_path, "a", newline="") as f:
-            csv.DictWriter(f, fieldnames=FIELDNAMES).writerow(row)
+            csv.DictWriter(f, fieldnames=fieldnames, restval="",
+                           extrasaction="ignore").writerow(row)
         print(f"[{i}/{total}] T={T} m={row['m']} seed={seed} reps={reps} "
               f"exact={row['exact_match']} mass={row['opt_prob_mass']:.3f} "
               f"feas={row['feasibility_rate']:.3f} t={row['qaoa_time_s']:.1f}s", flush=True)
@@ -412,7 +460,7 @@ def plot_mass_ratio(rows):
     return fig
 
 
-def make_all_plots(rows, outdir=RESULTS_DIR):
+def make_all_plots(rows, outdir=RESULTS_DIR, suffix=""):
     # NOTE: this writes the PLAIN experiment figures to docs/results/, including a
     # plain mass_ratio.png. The polished, web-facing mass-ratio figure is a
     # SEPARATE artifact at docs/figures/web/mass_ratio.png
@@ -428,21 +476,36 @@ def make_all_plots(rows, outdir=RESULTS_DIR):
     if any("mass_ratio" in r for r in rows):
         figs["mass_ratio"] = plot_mass_ratio(rows)
     for name, fig in figs.items():
-        fig.savefig(outdir / f"{name}.png", dpi=110, bbox_inches="tight")
+        fig.savefig(outdir / f"{name}{suffix}.png", dpi=110, bbox_inches="tight")
     return figs
 
 
 def main():
+    import argparse
     import matplotlib
     matplotlib.use("Agg")
-    print(f"running sweep (serial): T={T_VALUES} seeds={SEEDS} reps={REPS_VALUES} "
-          f"(n_starts={N_STARTS}, shots={SHOTS}, maxiter={MAXITER})", flush=True)
-    rows = run_and_stream()
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--weight", default="default", choices=["default", "alphastar"],
+                    help="penalty scale: default_weights as-is, or scaled to alpha*")
+    args = ap.parse_args()
+    alphastar = args.weight == "alphastar"
+    csv_path = CSV_PATH_ALPHASTAR if alphastar else CSV_PATH
+    fields = AUG_FIELDNAMES_ALPHASTAR if alphastar else AUG_FIELDNAMES
+    suffix = "_alphastar" if alphastar else ""
+    print(f"running sweep (serial, weight={args.weight}): T={T_VALUES} seeds={SEEDS} "
+          f"reps={REPS_VALUES} (n_starts={N_STARTS}, shots={SHOTS}, maxiter={MAXITER})",
+          flush=True)
+    rows = run_and_stream(csv_path=csv_path, weight_mode=args.weight,
+                          fieldnames=fields if alphastar else FIELDNAMES)
     add_uniform_baseline(rows)                       # post-hoc uniform baseline
-    write_csv(rows, CSV_PATH, fieldnames=AUG_FIELDNAMES)
-    make_all_plots(rows, RESULTS_DIR)
+    write_csv(rows, csv_path, fieldnames=fields)
+    make_all_plots(rows, RESULTS_DIR, suffix=suffix)
     n_exact = sum(1 for r in rows if r["exact_match"])
-    print(f"done: {len(rows)} runs, {n_exact} exact; CSV -> {CSV_PATH}", flush=True)
+    n_sur = sum(1 for r in rows if r.get("surrogate_optimal") is False)
+    print(f"done: {len(rows)} runs, {n_exact} exact; CSV -> {csv_path}", flush=True)
+    if n_sur:
+        print(f"WARNING: {n_sur} rows had a surrogate optimum that is NOT the true "
+              f"optimum at this weight", flush=True)
 
 
 if __name__ == "__main__":
