@@ -274,11 +274,34 @@ gates for what was supposed to be the same circuit. The comparison would have
 measured compilation randomness alongside the effect. Compiling once and reusing
 fixed it.
 
-**Kill the process, not the wrapper.** We ran a long job, decided to stop it, and
-killed what turned out to be the shell wrapper rather than the program. It ran for
-**another hour at 784% CPU**, invisibly, while we reported it stopped and drew
-conclusions from timings taken during the contention it caused. Check that what
-you killed is dead.
+**Process matching is a string search over command lines — including your own.**
+This one cost three separate incidents in a single afternoon, and the last two
+were *silent*:
+
+1. `pkill -f optimizer_study.py` matched the very shell command that invoked it,
+   and killed the parent instead of the target.
+2. We killed a long job by PID — but the PID belonged to the shell *wrapper*, not
+   the program. It ran for **another hour at 784% CPU**, invisibly, while we
+   reported it stopped and drew conclusions from timings taken during the
+   contention it was causing.
+3. A queued experiment waited on `while pgrep -f "[s]tdbuf ..."` — but the
+   waiting shell's own command line *contained that string*, in the line that
+   would later launch the job. It waited on itself. **Fifty-one minutes at 0.0%
+   CPU, reported twice as "running", having never started.**
+
+The `[s]tdbuf` bracket trick stops the *pattern literal* from matching itself. It
+does nothing when the same text appears elsewhere on the same command line — which
+it always does when one shell invocation both waits for a job and launches one.
+
+Match on a PID you captured, or on a marker that cannot appear in the launcher.
+
+**The failure mode matters more than the bug.** In (2) and (3) the system reported
+success while doing nothing. A `while pgrep` loop sitting at 0% CPU is
+indistinguishable from a job in progress unless you check something the process
+cannot fake — the child's CPU time, or whether the output file has grown. That is
+the same lesson as "look at the artifact, not the exit code", applied to process
+state instead of program output. **If you are going to report that something ran,
+check evidence it produced, not that its supervisor is alive.**
 
 **Prefer measurements that are immune to your own mistakes.** In the middle of that
 mess we compared two configurations by *iteration count* rather than wall-clock
@@ -384,7 +407,8 @@ discriminate.
 5. Never compare two point estimates without their intervals.
 6. Do not let the same noise into your analysis twice.
 7. Dry-run anything that spends; open the artifact rather than trusting exit
-   codes; verify fast paths against slow ones.
+   codes; verify fast paths against slow ones. Before reporting that a job ran,
+   check evidence it produced — not that its supervisor is alive.
 8. Derive inputs that must agree from a single source.
 9. Write down what would falsify you *before* you look, including the wording of
    the retraction.
