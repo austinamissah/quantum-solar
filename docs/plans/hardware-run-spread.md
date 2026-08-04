@@ -43,8 +43,9 @@ budget is not a surprise.
 
 ## The threshold, fixed and derived
 
-The statistic is **σ̂**, the sample standard deviation of the five `cp3`
-normalized-TVD values, expressed as a ratio to the measured gap.
+The statistic is **σ_device** (defined in the next subsection — the device-only
+component of the ten `cp3` replicates' spread), expressed as a ratio to the
+measured gap.
 
 **Derivation.** The primary gap is a difference between *one* measurement of each
 arm. If a single measurement carries within-job SD σ_w, the gap's device-variance
@@ -55,11 +56,11 @@ two-sided 95%:
 |gap| > 1.96 · √2 · σ_w      ⟺      σ_w / |gap| < 1 / (1.96·√2) = 0.3608
 ```
 
-> **Threshold: σ̂ / gap = 0.361.**
+> **Threshold: σ_device / gap = 0.361.**
 
 The number is not chosen for roundness — it is `1/(z₀.₉₇₅·√2)`, the point at which
 device variance alone consumes the whole 95% interval of a one-replicate-per-arm
-difference. Measuring σ̂ on `cp3` (4,096 shots, the noisier arm) and applying it to
+difference. Measuring σ on `cp3` (4,096 shots, the noisier arm) and applying it to
 both arms **overestimates** the gap's SE, since `exact` at 65,536 shots is
 quieter. The threshold is therefore conservative — it declares "unresolved" more
 readily than a two-arm estimate would.
@@ -127,7 +128,7 @@ side would merely relocate the ambiguity rather than remove it.
 - The primary gap is **replicate 1 of each arm** (rows 1–2), fixed here and in
   `SPREAD_TARGETS` order in `scripts/experiment_hardware.py` before submission.
 - **The extra `cp3` replicates are never pooled into the gap or its CI.** They
-  estimate σ̂ and nothing else. Pooling would convert a variance measurement into
+  estimate σ_device and nothing else. Pooling would convert a variance measurement into
   a precision gain — the manoeuvre that makes a marginal result look solid.
 - Analysis is identical to both prior runs: hardware-only bootstrap, B = 10,000,
   against an exactly-known statevector reference.
@@ -135,8 +136,9 @@ side would merely relocate the ambiguity rather than remove it.
 ## This test can only weaken the headline
 
 Stated plainly because it is the point of running it. There is **no outcome here
-that strengthens the encoding claim.** A small σ̂ leaves the claim exactly where
-two runs already put it; a large σ̂ removes it. Language for that outcome, written
+that strengthens the encoding claim.** A small σ_device leaves the claim exactly
+where two runs already put it; a large σ_device removes it. Language for that
+outcome, written
 now:
 
 > **UNRESOLVED outcome.** The within-job spread on the `cp3` arm is large enough
