@@ -65,7 +65,8 @@ AUG_FIELDNAMES = FIELDNAMES + UNIFORM_FIELDS
 
 # Weight-mode columns, recorded so a row is self-describing about which penalty
 # scale produced it. The default-weight sweep predates these and omits them.
-WEIGHT_FIELDS = ["weight_mode", "alpha", "alpha_star", "surrogate_optimal"]
+WEIGHT_FIELDS = ["weight_mode", "alpha", "alpha_star", "surrogate_optimal",
+                 "ideal_opt_mass", "qaoa_evals", "params"]
 AUG_FIELDNAMES_ALPHASTAR = FIELDNAMES + WEIGHT_FIELDS + UNIFORM_FIELDS
 
 
@@ -164,6 +165,25 @@ def run_single(T, seed, reps, *, n_starts, shots, maxiter, qaoa_seed,
 
     opt_mass, feas_rate = _mass_and_feasibility(problem, qubo, result.counts, dp_cost)
 
+    # Sampled mass bottoms out at 1/shots and was uninformative past T=3 in BOTH
+    # weight configurations (default: exact zero in all 9 cells at T=5 and again
+    # at T=6). The statevector value is exact, has no floor, and costs one
+    # simulation — so it is recorded alongside rather than instead, keeping the
+    # sampled column comparable with the original sweep.
+    from qiskit.circuit.library import QAOAAnsatz
+    from qiskit.quantum_info import Statevector
+    from quantum_solar import qubo_to_ising
+    _h, _ = qubo_to_ising(qubo)
+    _probs = Statevector(QAOAAnsatz(cost_operator=_h, reps=reps).assign_parameters(
+        list(result.optimal_params))).probabilities()
+    _X = enumerate_bitstrings(m).astype(float)
+    _E = np.einsum("bi,ij,bj->b", _X, qubo.Q, _X) + qubo.offset
+    ideal_opt_mass = float(_probs[np.isclose(_E, _E.min(), atol=1e-6)].sum())
+    # Function evaluations across all restarts -- tests directly whether a
+    # less penalty-dominated landscape costs more iterations, rather than
+    # inferring it from wall time.
+    qaoa_evals = len(result.cost_history)
+
     return {
         "T": T, "m": m, "seed": seed, "reps": reps,
         "dp_cost": dp_cost, "qaoa_cost": qaoa_cost, "exact_match": exact,
@@ -174,6 +194,8 @@ def run_single(T, seed, reps, *, n_starts, shots, maxiter, qaoa_seed,
         "n_starts": n_starts, "shots": shots,
         "weight_mode": weight_mode, "alpha": alpha, "alpha_star": a_star,
         "surrogate_optimal": surrogate_optimal,
+        "ideal_opt_mass": ideal_opt_mass, "qaoa_evals": qaoa_evals,
+        "params": ";".join(f"{v:.9g}" for v in result.optimal_params),
     }
 
 
