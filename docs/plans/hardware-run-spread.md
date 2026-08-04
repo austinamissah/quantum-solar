@@ -60,10 +60,41 @@ two-sided 95%:
 
 The number is not chosen for roundness — it is `1/(z₀.₉₇₅·√2)`, the point at which
 device variance alone consumes the whole 95% interval of a one-replicate-per-arm
-difference. Measuring σ on `cp3` (4,096 shots, the noisier arm) and applying it to
-both arms **overestimates** the gap's SE, since `exact` at 65,536 shots is
-quieter. The threshold is therefore conservative — it declares "unresolved" more
-readily than a two-arm estimate would.
+difference.
+
+#### The gap's SE is BOUNDED, not estimated — and two `exact` replicates cannot check it
+
+Using `√2·σ_cp3` in place of `√(σ_cp3² + σ_exact²)` is conservative **iff
+σ_cp3 ≥ σ_exact**. Measured on the replication run:
+
+| arm | shots | σ_total | σ_shot | σ_device |
+|---|---:|---:|---:|---:|
+| `cp3` | 4,096 | 0.02754 | 0.01789 | **0.02094** |
+| `exact` | 65,536 | 0.00440 | 0.00396 | **0.00191** |
+
+On point estimates the condition holds with an **11x margin**, and there is a
+physical reason to expect it: a 65,536-shot circuit takes 16x longer to acquire
+and so averages over more of the drift timescale.
+
+**But this cannot be verified at two replicates.** With 1 df the χ² 95% upper
+factor is **31.9**, putting `exact`'s σ_device upper bound at 0.140 — 6.7x
+`cp3`'s. The bound is vacuous. So:
+
+> **The gap's standard error is bounded by a proxy, not estimated. Two `exact`
+> replicates cannot test whether that proxy is conservative.**
+
+**The direction of the residual risk matters and is stated rather than left
+implicit.** If `exact`'s device variance were in fact large, the true gap SE would
+*exceed* the proxy, so the gate would declare UNRESOLVED **less** readily than it
+should — i.e. it would err toward *keeping* the headline. That is the opposite of
+this run's stated purpose, and it is the one way this design can fail quietly.
+
+Fixing it properly needs `exact` at **4 replicates** (3 df, upper factor 3.73 →
+σ_device upper 0.0159 < `cp3`'s 0.0209, so the condition would be verified at the
+95% bound). Three is not enough (upper 0.0274, still above). Four costs **~51.7
+extra QPU-seconds**, taking the run from ~81.5 s to ~133 s — a 63% increase to
+bound a term that point-estimates at one-eleventh of the other. **Not taken
+here**, and recorded as the known limitation rather than an oversight.
 
 ### σ must be the DEVICE component, not the total spread
 
