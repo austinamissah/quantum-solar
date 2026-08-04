@@ -1,12 +1,16 @@
 # Slack-free SoC encodings: results
 
-**Status:** all measurements complete. The hardware encoding claim is
-**replicated across two independent runs** (`docs/results/hardware-run-encoding.md`
-and `-replication.md`, Case A); the within-job variance gate on the second run is
-**inconclusive**, one replicate pair per arm being too imprecise to adjudicate it. **No hardware run** — the pre-registered
-gate was not met on the instance designated in advance, though it *was* met on
-both robustness instances, so the result is instance-dependent rather than a
-verdict on the method.
+**Status:** all measurements complete. **Two distinct hardware questions were
+asked, and they had different outcomes — do not conflate them.**
+
+- **H1 (does depth help, net of noise?)** — judged on *ideal optimal mass*, gate
+  5x uniform. **Never submitted.** The gate was not met on the instance
+  designated in advance, though it *was* met on both robustness instances, so
+  that failure is instance-dependent rather than a verdict on the method. See
+  `docs/plans/optimizer-study.md`.
+- **Does the slack-free encoding reduce *device degradation*?** — judged on
+  TVD(ideal, hardware), a different metric entirely. **Three runs submitted on
+  `ibm_fez`, 146 QPU-seconds total.** Result below.
 
 ## Summary
 
@@ -21,8 +25,46 @@ feasible — removes most of that, and the removal is close to free:
 - **At T=3, like-for-like: ideal optimal mass 0.00013 → 0.0453 (349×), and 133 →
   54 transpiled two-qubit gates**, at 6 qubits instead of 10.
 
-Every claim made for the encoding held. What stopped a hardware run was
-elsewhere, and it took three corrections to locate:
+### Hardware: three runs, pooled
+
+`cp3` (6 qubits, 46 gates) against `exact` (10 qubits, 106 gates) — same instance,
+same optimum, same depth, same weight, shot-noise floors equalized.
+
+| run | normalized gap | job |
+|---|---:|---|
+| 1 | 0.0658 | `d9of01va5u8s73e2ljhg` |
+| 2 | 0.0934 | `d9og4hna5u8s73e2n26g` |
+| 3 | 0.0448 | `d9ojlotoh1qc73bc2b8g` |
+
+> **Pooled: mean 0.0680, t(2) 95% CI [+0.0075, +0.1285], all three positive.**
+> Across three runs the slack-free encoding shows a consistently positive but
+> **small** reduction in device degradation, with run-to-run variation of the same
+> order as the effect.
+
+Three qualifications, all load-bearing:
+
+- **The single-run intervals originally published were too narrow.** They captured
+  shot noise only. The third run measured the device term directly
+  (σ_device = 0.01743, **70% of the replicate spread**); including it, run 3 alone
+  no longer excludes zero. The pooled interval above needs no such correction —
+  between-run scatter already subsumes every variance component.
+- **The pre-registered variance gate returned INDETERMINATE**, and awkwardly: the
+  point estimate σ_device/gap = 0.389 *fails* the 0.361 threshold, and only the
+  width of the χ² interval keeps that from being the verdict.
+- **Between-run variance is unbounded at n = 3** (95% interval [0.0127, 0.1532])
+  and is *not* distinguishable from σ_device. No claim about their relative size
+  is supported.
+
+A separate decomposition, using a circuit bit-identical to the one July ran,
+found the `k` asymmetry is **43% device drift, 57% penalty weight**.
+
+Full detail per run: `hardware-run-encoding.md` (run 1),
+`hardware-run-encoding-replication.md` (run 2 + the drift/weight decomposition),
+`hardware-run-spread.md` (run 3 + the variance measurement).
+
+Every claim made for the encoding held. What stopped the **H1** run — a separate
+question from the device-degradation result above — was elsewhere, and it took
+three corrections to locate:
 
 1. **The dominant limit on ideal concentration was penalty scaling, not the
    encoding.** `default_weights` overshoots the objective span by **48×**, making
