@@ -26,6 +26,13 @@ The floor-equalisation worked as designed: 0.0426 and 0.0497 against the planned
 > `k` asymmetry into drift (43%) and weight (57%) and **retracts this document's
 > claim that drift was ruled out**.
 
+
+> **Interval corrected 2026-08-03.** The CI below captures **shot noise only**.
+> The spread run (`hardware-run-spread.md`) measured the device term for the
+> first time — σ_device = 0.01743, contributing √2·σ_device = 0.02465 to a
+> one-replicate-per-arm gap. Including it widens this run's interval to
+> **[+0.0055, +0.1261] (still excludes zero)**. The published interval was too narrow.
+
 ### Primary — ordering test: **the encoding claim HOLDS**
 
 `cp3` normalized TVD **0.3043** < `exact` **0.3708**. The slack-free encoding's

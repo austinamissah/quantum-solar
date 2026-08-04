@@ -78,6 +78,13 @@ consistent with shot noise alone, and this design cannot determine whether a
 device-drift component is also present.** The term both bootstraps are blind to
 remains unmeasured, not measured-and-found-small.
 
+
+> **Interval corrected 2026-08-03.** The CI below captures **shot noise only**.
+> The spread run (`hardware-run-spread.md`) measured the device term for the
+> first time — σ_device = 0.01743, contributing √2·σ_device = 0.02465 to a
+> one-replicate-per-arm gap. Including it widens this run's interval to
+> **[+0.0334, +0.1534] (still excludes zero)**. The published interval was too narrow.
+
 ## Primary — CASE A: the encoding result REPLICATES
 
 Bootstrap on replicate 1 only, hardware-only resampling against an exact
