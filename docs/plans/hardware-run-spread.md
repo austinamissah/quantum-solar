@@ -165,7 +165,7 @@ of them depend on any hardware measurement.
 
 - **Between-run variance remains n = 3.** Within-job spread does **not** bound it.
   The replicates here share a calibration window, a queue position, and a thermal
-  state; runs separated by hours or weeks do not. A small σ̂ therefore licenses no
+  state; runs separated by hours or weeks do not. A small σ_device therefore licenses no
   claim about run-to-run stability, and the three between-run gap medians remain
   three points.
 - **`exact`-arm spread stays at n = 2** (one pair, ~76% uncertain) and is reported
