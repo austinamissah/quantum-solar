@@ -32,6 +32,7 @@ from quantum_solar import (
 from quantum_solar.brute_force import MAX_ENUMERATION_SITES, enumerate_bitstrings
 from quantum_solar.qubo import PenaltyWeights
 from quantum_solar.qubo_search import qubo_min_exact
+from quantum_solar.statevector import qaoa_probabilities
 
 # --- Fixed sweep configuration (chosen before results) -----------------------
 T_VALUES = [2, 3, 4, 5, 6]        # qubits m = 4T-2 -> 6, 10, 14, 18, 22
@@ -61,13 +62,17 @@ UNIFORM_FIELDS = [
     "uniform_opt_mass", "uniform_best_cost", "mass_ratio",
     "mass_ratio_is_upper_bound", "shots_cover_space",
 ]
-AUG_FIELDNAMES = FIELDNAMES + UNIFORM_FIELDS
 
 # Weight-mode columns, recorded so a row is self-describing about which penalty
-# scale produced it. The default-weight sweep predates these and omits them.
+# scale produced it. Written in BOTH weight modes: the whole point of the
+# ideal_opt_mass / qaoa_evals columns is to compare the two penalty scales on the
+# same metric, which is impossible if only one mode records them. (The original
+# T=2..6 default-weight sweep predates these columns and omits them; it is left in
+# place as its own artifact rather than being retro-fitted.)
 WEIGHT_FIELDS = ["weight_mode", "alpha", "alpha_star", "surrogate_optimal",
-                 "ideal_opt_mass", "qaoa_evals", "params"]
-AUG_FIELDNAMES_ALPHASTAR = FIELDNAMES + WEIGHT_FIELDS + UNIFORM_FIELDS
+                 "ideal_opt_mass", "qaoa_evals", "maxiter", "evals_censored",
+                 "params"]
+AUG_FIELDNAMES_FULL = FIELDNAMES + WEIGHT_FIELDS + UNIFORM_FIELDS
 
 
 def alpha_star(problem, weights) -> float:
@@ -170,19 +175,29 @@ def run_single(T, seed, reps, *, n_starts, shots, maxiter, qaoa_seed,
     # at T=6). The statevector value is exact, has no floor, and costs one
     # simulation — so it is recorded alongside rather than instead, keeping the
     # sampled column comparable with the original sweep.
-    from qiskit.circuit.library import QAOAAnsatz
-    from qiskit.quantum_info import Statevector
-    from quantum_solar import qubo_to_ising
-    _h, _ = qubo_to_ising(qubo)
-    _probs = Statevector(QAOAAnsatz(cost_operator=_h, reps=reps).assign_parameters(
-        list(result.optimal_params))).probabilities()
+    #
+    # Computed with the NumPy statevector, NOT `Statevector(QAOAAnsatz(...))`:
+    # the latter matrix-exponentiates the un-decomposed cost layer and dies with
+    # MemoryError from T=4 (m=14) upward, which is why the first attempt at this
+    # column produced nothing above T=3. See quantum_solar.statevector.
     _X = enumerate_bitstrings(m).astype(float)
     _E = np.einsum("bi,ij,bj->b", _X, qubo.Q, _X) + qubo.offset
+    # A constant shift of the diagonal is a global phase, so the QUBO energies
+    # serve directly as the cost diagonal.
+    _probs = qaoa_probabilities(_E, result.optimal_params, reps)
     ideal_opt_mass = float(_probs[np.isclose(_E, _E.min(), atol=1e-6)].sum())
     # Function evaluations across all restarts -- tests directly whether a
     # less penalty-dominated landscape costs more iterations, rather than
     # inferring it from wall time.
+    #
+    # COBYLA's `maxiter` caps function evaluations PER RESTART, so this total is
+    # bounded above by n_starts*maxiter. A total exactly at that bound means every
+    # restart ran out of budget: the eval count is CENSORED and any ratio built
+    # from it is a lower bound. (The converse does not hold -- a total below the
+    # bound can still contain individual capped restarts, which the aggregate
+    # cannot distinguish. So `evals_censored` detects full censoring only.)
     qaoa_evals = len(result.cost_history)
+    evals_censored = bool(qaoa_evals == n_starts * maxiter)
 
     return {
         "T": T, "m": m, "seed": seed, "reps": reps,
@@ -195,6 +210,7 @@ def run_single(T, seed, reps, *, n_starts, shots, maxiter, qaoa_seed,
         "weight_mode": weight_mode, "alpha": alpha, "alpha_star": a_star,
         "surrogate_optimal": surrogate_optimal,
         "ideal_opt_mass": ideal_opt_mass, "qaoa_evals": qaoa_evals,
+        "maxiter": maxiter, "evals_censored": evals_censored,
         "params": ";".join(f"{v:.9g}" for v in result.optimal_params),
     }
 
@@ -267,18 +283,21 @@ def load_results(path=CSV_PATH):
 
     Tolerant of the base or the uniform-augmented schema.
     """
-    int_cols = {"T", "m", "seed", "reps", "n_starts", "shots"}
+    int_cols = {"T", "m", "seed", "reps", "n_starts", "shots", "qaoa_evals",
+                "maxiter"}
     float_cols = {"dp_cost", "qaoa_cost", "gap_abs", "gap_pct", "opt_prob_mass",
                   "feasibility_rate", "qaoa_time_s", "dp_time_s", "brute_cost",
-                  "uniform_opt_mass", "uniform_best_cost", "mass_ratio"}
-    bool_cols = {"exact_match", "mass_ratio_is_upper_bound", "shots_cover_space"}
+                  "uniform_opt_mass", "uniform_best_cost", "mass_ratio",
+                  "alpha", "alpha_star", "ideal_opt_mass"}
+    bool_cols = {"exact_match", "mass_ratio_is_upper_bound", "shots_cover_space",
+                 "surrogate_optimal", "evals_censored"}
     tri_cols = {"brute_matches_dp"}
     rows = []
     with open(path, newline="") as f:
         for r in csv.DictReader(f):
             for k, v in list(r.items()):
                 if k in int_cols:
-                    r[k] = int(v)
+                    r[k] = int(v) if v != "" else None
                 elif k in float_cols:
                     r[k] = float(v) if v not in ("", "nan") else float("nan")
                 elif k in bool_cols:
@@ -352,6 +371,12 @@ def add_uniform_baseline(rows, *, shots=SHOTS):
     cache = {}
     for r in rows:
         T, seed, m = r["T"], r["seed"], r["m"]
+        # The baseline must be built at the SAME penalty scale as the row it
+        # normalizes: uniform_opt_mass counts the QUBO's minimizers, and rescaling
+        # the penalties can change how many bitstrings (slack assignments included)
+        # sit at the minimum. Mixing the two scales would put a numerator and a
+        # denominator from different QUBOs into one ratio.
+        mode = r.get("weight_mode", "default")
         r["shots_cover_space"] = (2 ** m <= shots)
         if m > MAX_ENUMERATION_SITES:  # not enumerable (T=6): no uniform baseline
             r["uniform_opt_mass"] = float("nan")
@@ -359,12 +384,14 @@ def add_uniform_baseline(rows, *, shots=SHOTS):
             r["mass_ratio"] = float("nan")
             r["mass_ratio_is_upper_bound"] = False
             continue
-        if (T, seed) not in cache:
+        if (T, seed, mode) not in cache:
             problem = synthetic_instance(T, seed=seed, capacity=CAPACITY,
                                          charge_energy=CHARGE_ENERGY, initial_soc=INITIAL_SOC)
-            qubo = build_qubo(problem, default_weights(problem))
-            cache[(T, seed)] = uniform_baseline(problem, qubo, shots)
-        u_mass, u_cost = cache[(T, seed)]
+            base = default_weights(problem)
+            weights = base if mode == "default" else scaled(base, alpha_star(problem, base))
+            qubo = build_qubo(problem, weights)
+            cache[(T, seed, mode)] = uniform_baseline(problem, qubo, shots)
+        u_mass, u_cost = cache[(T, seed, mode)]
         below_floor = (r["opt_prob_mass"] == 0.0)
         effective = (1.0 / shots) if below_floor else r["opt_prob_mass"]
         r["uniform_opt_mass"] = u_mass
@@ -404,19 +431,42 @@ def plot_success_rate(rows):
 
 
 def plot_optimal_mass(rows):
+    """Optimal-probability mass vs T, from the EXACT statevector where available.
+
+    Deliberately not the sampled `opt_prob_mass`: at 4096 shots that metric floors
+    at 1/shots and reads exactly 0 in 19 of 36 default-weight cells here, which
+    renders as a curve "declining to zero" when the true values span 4e-12 to
+    7e-2. That figure -- a trend line that is really a metric bottoming out -- is
+    the one docs/LESSONS.md section 3 was written about. The statevector value is
+    exact and has no floor, so it is plotted on a log axis instead.
+    """
     import matplotlib.pyplot as plt
-    Ts, reps_vals, means = _by_reps_T(rows, "opt_prob_mass", agg=np.mean)
-    _, _, los = _by_reps_T(rows, "opt_prob_mass", agg=np.min)
-    _, _, his = _by_reps_T(rows, "opt_prob_mass", agg=np.max)
+    exact = all(r.get("ideal_opt_mass") not in (None, "") for r in rows)
+    key = "ideal_opt_mass" if exact else "opt_prob_mass"
+    Ts, reps_vals, means = _by_reps_T(rows, key, agg=np.mean)
+    _, _, los = _by_reps_T(rows, key, agg=np.min)
+    _, _, his = _by_reps_T(rows, key, agg=np.max)
+    n_seeds = len({r["seed"] for r in rows})
+
     fig, ax = plt.subplots(figsize=(8, 5))
     for reps in reps_vals:
         line, = ax.plot(Ts, means[reps], marker="o", label=f"reps={reps}")
-        ax.fill_between(Ts, los[reps], his[reps], alpha=0.15, color=line.get_color())
+        if n_seeds > 1:
+            ax.fill_between(Ts, los[reps], his[reps], alpha=0.15, color=line.get_color())
     ax.set_xticks(Ts)
-    ax.set_ylim(-0.02, 1.02)
     ax.set_xlabel("T (time slots)")
-    ax.set_ylabel("prob. mass on optimal bitstrings (4096 shots)")
-    ax.set_title("QAOA optimal-probability-mass vs T (band = seed min/max)")
+    if exact:
+        ax.set_yscale("log")
+        ax.set_ylabel("prob. mass on optimal bitstrings (exact, statevector)")
+        floor = 1.0 / rows[0]["shots"]
+        ax.axhline(floor, color="crimson", ls=":", lw=1.2)
+        ax.text(Ts[0], floor * 1.15, f"1/{rows[0]['shots']} shots — sampling would "
+                "read 0 below here", color="crimson", va="bottom", fontsize=8)
+    else:
+        ax.set_ylim(-0.02, 1.02)
+        ax.set_ylabel(f"prob. mass on optimal bitstrings ({rows[0]['shots']} shots)")
+    band = " (band = seed min/max)" if n_seeds > 1 else f" (single seed, n={n_seeds})"
+    ax.set_title(f"QAOA optimal-probability-mass vs T{band}")
     ax.legend()
     fig.tight_layout()
     return fig
@@ -502,6 +552,26 @@ def make_all_plots(rows, outdir=RESULTS_DIR, suffix=""):
     return figs
 
 
+def _validate_statevector(t=2, seed=0, reps_values=REPS_VALUES):
+    """Cross-check the NumPy statevector against Qiskit's, and raise if it drifts.
+
+    Runs at T=2 (m=6), where the Qiskit reference is cheap; the NumPy path is
+    size-independent in its logic, so agreement here validates it everywhere.
+    """
+    from quantum_solar import qubo_to_ising
+    from quantum_solar.statevector import assert_matches_qiskit
+
+    problem = synthetic_instance(t, seed=seed, capacity=CAPACITY,
+                                 charge_energy=CHARGE_ENERGY, initial_soc=INITIAL_SOC)
+    hamiltonian, _ = qubo_to_ising(build_qubo(problem, default_weights(problem)))
+    rng = np.random.default_rng(0)
+    worst = 0.0
+    for reps in reps_values:
+        worst = max(worst, assert_matches_qiskit(
+            hamiltonian, rng.uniform(0.0, np.pi, 2 * reps), reps))
+    print(f"statevector self-check: NumPy vs Qiskit agree to {worst:.1e}", flush=True)
+
+
 def main():
     import argparse
     import matplotlib
@@ -509,22 +579,47 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--weight", default="default", choices=["default", "alphastar"],
                     help="penalty scale: default_weights as-is, or scaled to alpha*")
+    ap.add_argument("--t-values", type=int, nargs="+", default=T_VALUES,
+                    help=f"T values to sweep (default: {T_VALUES})")
+    ap.add_argument("--seeds", type=int, nargs="+", default=SEEDS,
+                    help=f"instance seeds to sweep (default: {SEEDS})")
+    ap.add_argument("--maxiter", type=int, default=MAXITER,
+                    help=f"COBYLA evaluation cap PER RESTART (default: {MAXITER}). "
+                         "Raising it lifts the n_starts*maxiter censoring bound on "
+                         "qaoa_evals.")
+    ap.add_argument("--tag", default="",
+                    help="suffix for the CSV/figure filenames, so a partial or "
+                         "differently-configured sweep never overwrites another")
     args = ap.parse_args()
     alphastar = args.weight == "alphastar"
-    csv_path = CSV_PATH_ALPHASTAR if alphastar else CSV_PATH
-    fields = AUG_FIELDNAMES_ALPHASTAR if alphastar else AUG_FIELDNAMES
-    suffix = "_alphastar" if alphastar else ""
-    print(f"running sweep (serial, weight={args.weight}): T={T_VALUES} seeds={SEEDS} "
-          f"reps={REPS_VALUES} (n_starts={N_STARTS}, shots={SHOTS}, maxiter={MAXITER})",
-          flush=True)
-    rows = run_and_stream(csv_path=csv_path, weight_mode=args.weight,
-                          fieldnames=fields if alphastar else FIELDNAMES)
+    tag = f"_{args.tag}" if args.tag else ""
+    suffix = ("_alphastar" if alphastar else "") + tag
+    csv_path = (CSV_PATH_ALPHASTAR if alphastar else CSV_PATH)
+    if tag:
+        csv_path = csv_path.with_name(csv_path.stem + tag + csv_path.suffix)
+    fields = AUG_FIELDNAMES_FULL
+    # Refuse to report from an unvalidated fast path. The NumPy statevector is
+    # what every ideal_opt_mass in this sweep comes from; check it against
+    # Qiskit's own at a size where Qiskit's still works, before spending hours.
+    _validate_statevector()
+    print(f"running sweep (serial, weight={args.weight}): T={args.t_values} "
+          f"seeds={args.seeds} reps={REPS_VALUES} (n_starts={N_STARTS}, "
+          f"shots={SHOTS}, maxiter={args.maxiter}) -> {csv_path}", flush=True)
+    rows = run_and_stream(t_values=args.t_values, seeds=args.seeds,
+                          csv_path=csv_path, weight_mode=args.weight,
+                          fieldnames=fields, maxiter=args.maxiter)
     add_uniform_baseline(rows)                       # post-hoc uniform baseline
     write_csv(rows, csv_path, fieldnames=fields)
     make_all_plots(rows, RESULTS_DIR, suffix=suffix)
     n_exact = sum(1 for r in rows if r["exact_match"])
     n_sur = sum(1 for r in rows if r.get("surrogate_optimal") is False)
+    n_cens = sum(1 for r in rows if r.get("evals_censored"))
     print(f"done: {len(rows)} runs, {n_exact} exact; CSV -> {csv_path}", flush=True)
+    if n_cens:
+        print(f"NOTE: {n_cens}/{len(rows)} rows hit the eval cap exactly "
+              f"({N_STARTS}x{args.maxiter}={N_STARTS * args.maxiter}); their "
+              f"qaoa_evals is censored and any ratio from it is a LOWER BOUND",
+              flush=True)
     if n_sur:
         print(f"WARNING: {n_sur} rows had a surrogate optimum that is NOT the true "
               f"optimum at this weight", flush=True)
