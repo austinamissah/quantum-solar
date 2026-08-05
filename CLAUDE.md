@@ -54,6 +54,19 @@ domain-agnostic over "a QUBO + a problem exposing `energy(x)`/`is_feasible(x)`".
   call it at startup and refuse to report if it drifts.
 - All solvers return the shared `Solution` type (`x`, `qubo_energy`,
   `true_energy`, `feasible`).
+
+**Qiskit is an optional dependency of the classical half.** `ising.py` and
+`qaoa.py` are the only modules that import it, and `__init__.py` loads their three
+exports (`qubo_to_ising`, `QAOASolver`, `QAOAResult`) lazily via PEP 562
+`__getattr__`. So `import quantum_solar` pulls **numpy and the stdlib only** — not
+qiskit, scipy or matplotlib — and `dp_solve`/`brute_force_solve`/`build_qubo`/
+`annual_savings` all run without a quantum stack installed. Touching a quantum name
+raises `ImportError` at the attribute, not at package import. Keep the deferral at
+the package boundary: `ising`/`qaoa` should keep ordinary top-level imports so each
+module still declares its real dependencies, and importing them directly is
+eagerly-qiskit by design. `tests/test_optional_qiskit.py` enforces this by blocking
+qiskit in `sys.meta_path`, so a stray top-level import fails the suite rather than
+passing silently in an environment that happens to have qiskit.
 - `annual.py` — `annual_savings` sweeps **all 365 days exactly** (PVWatts fetched
   once, URDB memoized per `(month, weekend)`; ~0.1 s, no extra API calls). Days are
   independent by the `S_T = S_0` constraint, so the annual optimum is the sum of
