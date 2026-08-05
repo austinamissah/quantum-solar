@@ -251,3 +251,13 @@ nine zeros — see `docs/LESSONS.md`.
   `default_weights` overshoots the objective span by ~48x, which is the dominant
   limit on QAOA concentration; the a-priori fix is **alpha* = span/penalty =
   0.0209**. See `docs/results/slack-free-encoding.md`.
+
+  Measured exactly rather than by sampling, that fix is worth **4–20x uniform
+  random at every size tested (T=2..5), with no decay as the problem grows** —
+  against roughly parity, collapsing at T=5, at the default weight. An earlier
+  chart concluded there was "no measurable quantum advantage as the problem scales
+  up"; that was an artifact of a metric that reads zero below one part in 4096
+  combined with the mis-scaled weight, and is retracted. The bar is a low one —
+  `dp_solve` returns the exact optimum for every one of these instances in
+  microseconds — so this measures concentration, not advantage. Figure:
+  `docs/figures/web/mass_ratio_exact.png`. See `docs/results/eval-censoring.md`.

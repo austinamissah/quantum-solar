@@ -1,5 +1,33 @@
 """Regenerate the web-facing mass-ratio figure (docs/figures/web/mass_ratio.png).
 
+SUPERSEDED 2026-08-04 by scripts/make_mass_ratio_exact_figure.py
+(docs/figures/web/mass_ratio_exact.png), which is what the site now uses.
+
+Nothing here is wrong: given a metric that floors at 1/4096, drawing sub-floor
+points as upper limits inside a "too small to measure" band was the correct and
+conservative call. But the exact optimal mass is now available from the
+statevector with no floor at all (quantum_solar.statevector), so the band does not
+need to exist -- and the values inside it turn out to be 4-20x uniform, not
+"too small".
+
+The caption below is RETRACTED IN PLACE rather than deleted, per LESSONS section 8,
+because its final sentence is the claim that reversed:
+
+> "The honest takeaway: a small, depth-dependent edge at the smallest size, and no
+> measurable quantum advantage as the problem scales up."
+
+That was true of what could be *measured* at 4096 shots at the default penalty
+weight. It was not true of the algorithm. Two separate defects produced it -- a
+metric below its own resolution (LESSONS section 3) and a penalty weight ~48x too
+large (LESSONS section 1) -- and correcting either alone would not have revealed
+it. Measured exactly and at the a-priori weight, the edge is 4-20x at every size
+tested with no decay through T=5.
+
+This script is kept runnable so the superseded figure can be reproduced, and so
+the before/after is checkable rather than asserted. Do not put its output on the
+site.
+
+
 Reads the committed results CSV only (docs/results/qaoa_scaling.csv) via
 experiment_scaling.load_results and re-renders the mass-ratio chart with
 non-technical framing and blog-readable fonts. The underlying numbers are

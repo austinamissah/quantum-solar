@@ -25,6 +25,46 @@ It is NOT a claim of advantage over classical optimization -- dp_solve returns t
 exact optimum for these instances in microseconds. The bar here is whether the
 quantum state concentrates on good answers at all.
 
+This figure SUPERSEDES docs/figures/web/mass_ratio.png. That one is not wrong --
+it handled its sampling floor correctly, with upper-limit markers and a "too small
+to measure" band -- but its conclusion was a property of the floor and of a
+mis-scaled penalty weight, not of the algorithm.
+
+Caption (for the site):
+
+  This chart asks a simple question: does the quantum optimizer concentrate on the
+  best battery schedule more often than random guessing would? Above the dashed
+  line beats random; on it is no better than chance.
+
+  The two panels are the same algorithm on the same problems, run at two different
+  settings of a single knob -- the penalty weight, which controls how hard the
+  formulation pushes the optimizer to respect the battery's physical limits. On the
+  left it is set by the usual rule of thumb, roughly 48x larger than the range of
+  the actual electricity cost. The optimizer duly spends almost all its effort
+  satisfying constraints and barely any on price: it hovers around random and
+  collapses at the largest size. On the right the weight is set to a threshold
+  derivable in advance from the problem itself. The same circuits now land on the
+  best schedule 4 to 20 times more often than chance, at every size tested, with no
+  decline as the problem grows.
+
+  The gap between the two panels is the entire finding. Nothing about the encoding,
+  the circuits, or the optimizer differs between them.
+
+  Two honest caveats. Triangles mark points where the classical optimizer ran out
+  of its evaluation budget, so those values are lower bounds -- the true numbers are
+  at least this good and possibly better. And "better than random guessing" is a
+  deliberately low bar: an exact classical solver finds the true optimum for every
+  one of these instances in microseconds. What this measures is whether the quantum
+  state concentrates on good answers at all, which is a precondition for any future
+  advantage, not evidence of one.
+
+  An earlier version of this chart, built by sampling the simulator 4096 times per
+  circuit rather than reading the exact probability off it, concluded there was "no
+  measurable quantum advantage as the problem scales up". That conclusion was an
+  artifact of the measurement: below roughly one part in 4096 the sampled value
+  reads zero regardless of the truth, and at the two largest sizes it read zero in
+  every cell. Read exactly, the values it called unmeasurable are 4 to 20x.
+
 Run:  python scripts/make_mass_ratio_exact_figure.py
 """
 
