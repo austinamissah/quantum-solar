@@ -139,9 +139,66 @@ the statevector directly — no sampling, no floor, one extra computation. We ha
 been sampling a simulator, which is like rolling dice to estimate a number
 printed on the box.
 
+**Then the fix itself failed, silently, in the same shape.** We implemented that
+exact-probability column with the library's obvious call — build the circuit, ask
+for its statevector. The library realizes the circuit's cost layer by
+**exponentiating a 2ⁿ × 2ⁿ matrix**, which is fine at 6 qubits and dies of
+`MemoryError` at 14. The column had **never produced a value at the sizes it was
+added for**; the sweep ran for hours and died at the same place every time.
+
+The expensive object was never the statevector — 2¹⁸ amplitudes is 4 MB — it was
+the operator the library built on the way there. Written directly (the cost
+Hamiltonian is diagonal, so it is one elementwise multiply and one rotation per
+qubit) it agrees to **3×10⁻¹⁶** and does 22 qubits in five seconds.
+
+**Two lessons, and the second is the one we keep relearning.** A metric can be
+unmeasurable because it is below your resolution *or* because the code computing
+it cannot reach your problem size — check both. And a fix prescribed in a
+retrospective is not a fix until something runs it at full scale: this one was
+written down as the lesson from §3 and shipped broken.
+
 **Before you spend anything, compute what your metric will read if your hypothesis
 is true.** If the answer is smaller than your resolution, you are not going to
 learn anything, and you should find that out for free.
+
+### The same trap at the other end: a number sitting on its ceiling
+
+The floor case above reports a value that is below its own resolution. The ceiling
+case reports a value that is **the limit you imposed**, and it is harder to see
+because the number looks perfectly reasonable.
+
+We capped our classical optimizer at 5 restarts × 200 iterations and recorded, per
+run, how many evaluations it used. Many runs reported **1000** — which is exactly
+5 × 200. That is not a measurement of how much work the optimizer wanted; it is
+the budget, read back to us.
+
+Two things followed, and the second is the nastier one:
+
+> **The cap bound the result, not just the count.** Given 5× the budget, runs that
+> had been at the cap moved the quantity we actually cared about by a median of
+> **100%** — one doubled — while runs that had genuinely converged moved by
+> **0.0%**. Every headline number from the capped configuration was a lower bound.
+> The 0.0% control is what makes this causal rather than noise: the pipeline is
+> deterministic, so the movement is real.
+
+> **Both arms of our comparison were capped, so the comparison read as a clean
+> null.** We were comparing effort between two configurations. Numerator at 1000,
+> denominator at 1000, ratio 1.000 — "no difference", tidy and false. A ratio of
+> two censored quantities is dragged toward 1.0 *by construction*. Restricted to
+> the pairs where neither side was capped, one configuration used **41% fewer**
+> evaluations (95% CI [0.479, 0.708]) — a large effect in the opposite direction,
+> hidden by the ceiling.
+
+A floor makes a real effect look like zero. **A ceiling makes a real difference
+look like agreement**, which is worse, because "no difference" is a conclusion
+people are happy to accept and stop.
+
+**Record the cap next to the count and flag equality.** It is one column and one
+warning line. And note that the obvious test is one-sided: a total *below*
+5 × 200 can still contain individual restarts that hit 200. Ours undercounted
+badly — the aggregate test flagged 5 of 12 cells; 8 of 12 actually consumed more
+when offered more. **The honest check is whether the run takes more budget when you
+offer it**, which costs exactly one re-run.
 
 ### A related trap: fitting a model to the wrong observable
 
@@ -243,6 +300,18 @@ unspecified that could have decided the outcome** — which of two quantities we
 a denominator, whether a threshold applied to an estimate or its interval, whether
 noise was subtracted. Stating a threshold in advance is not enough. **Every
 quantity that feeds it has to be pinned too.**
+
+**Then we did it a fourth time, in an experiment written specifically to avoid
+it.** The pre-registration for the budget-ceiling test above fixed the threshold
+(10%), the subset of runs, the interpretation table, and the direction of the risk.
+It left the **classifier** loose — what counts as a "capped" run. Under the
+registered definition the effect is 100% and the verdict fires; under the more
+inclusive definition it is 8.0% and the verdict flips. The one thing we forgot to
+pin is the one that decided it.
+
+The pattern is worth naming: we keep pinning the *threshold* and forgetting the
+**population it applies to**. A threshold is a number and feels like the decision;
+the subgroup definition is a sentence and feels like description. It is not.
 
 ---
 
@@ -402,9 +471,13 @@ discriminate.
 2. Work out which resource actually limits you. It is usually not the one that is
    easy to count.
 3. Compute what your metric will read if your hypothesis is true. If that is below
-   your resolution, redesign before spending.
-4. Simulate your own decision rule. Check it can return every verdict it defines.
-5. Never compare two point estimates without their intervals.
+   your resolution, redesign before spending. Check the code computing it reaches
+   your largest size, too — "unmeasurable" includes "the implementation dies there".
+4. Simulate your own decision rule. Check it can return every verdict it defines,
+   and pin the *population* it applies to, not just the threshold.
+5. Never compare two point estimates without their intervals. Check neither is
+   sitting on a limit you imposed — a ratio of two capped numbers is 1.0 by
+   construction, and reads as a clean null.
 6. Do not let the same noise into your analysis twice.
 7. Dry-run anything that spends; open the artifact rather than trusting exit
    codes; verify fast paths against slow ones. Before reporting that a job ran,

@@ -79,6 +79,22 @@ uniform-superposition value of 33.47 to the QUBO minimum of 0.0042) while puttin
 Rescaling the weight moved reps=2 ideal mass **440×** (0.00019 → 0.0832) with the
 encoding and the optimizer untouched.
 
+> **Qualified 2026-08-04 — this is a lower bound, and its last digit is not
+> stable.** Both numbers were produced at `n_starts=5, maxiter=200`, i.e. a hard
+> cap of 1000 COBYLA evaluations, and the runs sat *on* that cap. Given 5× the
+> budget, α\* cells that were at the cap moved their ideal mass by a median of
+> **100%** (one reps=3 cell doubled, 0.0909 → 0.1879) while cells that had
+> genuinely converged moved by **0.0%**. The rescaling effect is therefore at least
+> this large; how much larger is unmeasured.
+>
+> Separately, on re-running: the `0.00019` endpoint reproduces exactly, but
+> `0.0832` does not reproduce at any single stated α. The result is **sensitive to
+> α in its third decimal** — α=0.0209 gives 0.08839 (465×), α=0.021 gives 0.07265
+> (382×). A 0.5% change in the weight swings the mass 22%. **Read this as
+> "several-hundred-fold", not as "440×"**; the precision implied by three
+> significant figures is not there, and the direction of the sensitivity is the
+> same direction as the budget effect. See [eval-censoring.md](eval-censoring.md).
+
 The correct weight is derivable a priori, with no reference to any mass:
 
 > **α\* = (objective span) / (default penalty) = 0.0209**
@@ -95,6 +111,17 @@ instance. Pre-registered optimizer study (`docs/plans/optimizer-study.md`): **al
 12 arm × α combinations fail on the primary instance** — but see the
 instance-dependence result immediately below, which qualifies that.
 
+> **Qualified 2026-08-04 — the arms were budget-limited, and one axis was never
+> tested.** Every COBYLA arm ran at ≥99% of its own evaluation cap (`cobyla-5`
+> ~1,000 of 5×200; `cobyla-25` ~4,950 of 25×200; `cobyla-50` ~9,900 of 50×200), so
+> the masses below are lower bounds and the gap to the 0.078125 bar is an upper
+> bound on the true shortfall. More importantly the ladder varied **`n_starts`
+> only** — `maxiter` was fixed at 200 across every rung. In a separate paired test,
+> raising `maxiter` 5× moved capped cells' ideal mass by a median of 100%. So
+> "the budget ladder saturates below the bar" is established for *starts* and
+> **not** for *budget in general*: iterations-per-restart was never a rung.
+> See [eval-censoring.md](eval-censoring.md).
+
 | arm | mean (α=0.021) | mean (α=0.030) | evals |
 |---|---:|---:|---:|
 | cobyla-5 | 0.06071 | 0.05895 | ~1,000 |
@@ -106,7 +133,8 @@ instance-dependence result immediately below, which qualifies that.
 
 The budget ladder **saturates below the bar** while variance collapses (sd 0.0101
 → 0.0032 → 0.0018). More starts converge on one basin rather than finding better
-ones. The only clearing run in the entire study came from `cobyla-5`, the
+ones. (The `evals` column above is each arm's *cap*, not a converged count — see
+the qualification opening this section.) The only clearing run in the entire study came from `cobyla-5`, the
 *weakest* arm — so the clearing run had a **worse** `<H>` than runs that did not
 clear. `transfer` is near-deterministic (sd 0.00014) and lands at 0.065: a free,
 perfectly repeatable warm start, below the bar.
