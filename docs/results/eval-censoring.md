@@ -188,8 +188,20 @@ only reveal the α\* result to be understated. It did.
   about three points that were all budget-exhausted, and *iterations per restart
   was never a rung on the ladder*. It is the axis that moved mass by 100%+ here.
   The study's finding about **starts** ("more starts converge on one basin rather
-  than finding better ones") is unaffected; its implied conclusion about **budget
-  in general** is not supported.
+  than finding better ones") is unaffected; ~~its implied conclusion about **budget
+  in general** is not supported~~.
+
+  > **Corrected 2026-08-05 — that last clause was too strong.** "Not supported"
+  > overreached: it treated an untested axis as an untrue conclusion. The axis was
+  > since tested directly
+  > ([optimizer-budget-study.md](optimizer-budget-study.md), 120 runs,
+  > pre-registered). Iterations-per-restart *is* a real axis — 25× the budget buys
+  > a paired +0.0072 with a 95% CI excluding zero — and the conclusion **survives
+  > it**: the gap is 0.0102, so the budget effect closes under a third of it, and
+  > the best-funded arm then converges at 38% of its cap. The right statement is
+  > that the study's conclusion held **for a reason it had not demonstrated**, and
+  > now has. See the closing section of that document: a censored measurement
+  > invalidates a claim's *precision*, not automatically its *direction*.
 
 **What is not affected:** the a-priori derivation of α\* itself (a property of the
 problem, computed with no reference to any optimizer), the exactness sweep over

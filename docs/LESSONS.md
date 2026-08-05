@@ -193,6 +193,32 @@ A floor makes a real effect look like zero. **A ceiling makes a real difference
 look like agreement**, which is worse, because "no difference" is a conclusion
 people are happy to accept and stop.
 
+### The correction to that, which we also got wrong
+
+Having found the ceiling, we wrote that a conclusion resting on it "is not
+supported". That was the natural next step and it was an overreach, so we went and
+checked: 120 runs varying the capped axis directly.
+
+> The budget **was** binding — the baseline hit its cap on 10 of 10 runs. Lifting
+> it 25× **did** help, by a statistically clear margin. And the conclusion
+> **survived**, because the gap it had to close was three times larger than the
+> effect the cap was hiding.
+>
+> The tell was that the extra budget went unspent: given 25× the allowance, the
+> optimizer used 38% of it and stopped. It was no longer being cut off. Whatever
+> limits it now is not the budget.
+
+**A censored measurement invalidates a claim's precision, not automatically its
+direction.** "This number is a bound, not a measurement" and "the conclusion drawn
+from it is wrong" are different statements, and the second does not follow from the
+first. Both of our steps were necessary: finding the ceiling was right, and
+assuming it overturned the result was not. The only way to know which was to lift
+the cap and look.
+
+There is a cheap diagnostic in there. **If you raise a limit and the extra
+allowance goes unused, the limit was not what was binding** — whatever the old
+numbers looked like.
+
 **Record the cap next to the count and flag equality.** It is one column and one
 warning line. And note that the obvious test is one-sided: a total *below*
 5 × 200 can still contain individual restarts that hit 200. Ours undercounted
@@ -477,7 +503,9 @@ discriminate.
    and pin the *population* it applies to, not just the threshold.
 5. Never compare two point estimates without their intervals. Check neither is
    sitting on a limit you imposed — a ratio of two capped numbers is 1.0 by
-   construction, and reads as a clean null.
+   construction, and reads as a clean null. Then check whether the cap actually
+   changed the answer: raise it, and if the extra allowance goes unused, it was
+   never what was binding.
 6. Do not let the same noise into your analysis twice.
 7. Dry-run anything that spends; open the artifact rather than trusting exit
    codes; verify fast paths against slow ones. Before reporting that a job ran,

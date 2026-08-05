@@ -24,14 +24,23 @@ at the a-priori penalty weight, reps=2 ideal mass saturated at ~0.075 against a
 required 0.078125, and all twelve pre-registered optimizer arms failed to close
 it. On that instance the refined `<H>` argmin carries mass 0.0657, below the bar.
 
-> **Qualified 2026-08-04 — "saturated" was the budget, not a ceiling.** Every
-> COBYLA arm ran at ≥99% of its own evaluation cap, and the ladder varied
-> `n_starts` only; `maxiter` was fixed at 200 across every rung. In a paired test,
-> raising `maxiter` 5× moved capped cells' ideal mass by a median of 100%. So
-> ~0.075 is a **lower bound** and the shortfall against 0.078125 is an **upper
-> bound** — the gap that closed this question may not exist. Re-deciding it needs
-> a run with iterations-per-restart as a rung.
-> See [eval-censoring.md](../results/eval-censoring.md).
+> **Qualified 2026-08-04, resolved 2026-08-05 — the gap is real; this closure
+> stands.** The qualification was that every COBYLA arm ran at ≥99% of its
+> evaluation cap while the ladder varied `n_starts` only, `maxiter` pinned at 200
+> on every rung — so ~0.075 was a lower bound, the shortfall an upper bound, and
+> ~~the gap that closed this question may not exist~~.
+>
+> That run has now happened, with iterations-per-restart as a rung
+> ([optimizer-budget-study.md](../results/optimizer-budget-study.md), 120 runs,
+> pre-registered). **CONFIRMED-CLOSED at both α.** The budget *was* binding
+> (10/10 seeds at the cap) and lifting it *did* help — a paired +0.0072, 95% CI
+> excluding zero, at 25× the per-restart budget — but that closes under a third of
+> the 0.0102 gap, and the best-funded arm then spends only 38% of its cap, i.e. it
+> converges rather than being cut off. One run in 120 cleared the bar, and it came
+> from the *original, weakest-budget* arm: a lucky basin draw, not a resource
+> constraint.
+>
+> The qualification was **cautionary, not consequential**.
 
 Two qualifications that must travel with that statement (both established in
 `docs/results/slack-free-encoding.md`, and neither of which reopens H1):

@@ -120,11 +120,17 @@ def spsa(cost, x0, rng, n_iter=SPSA_ITERS, a=0.2, c=0.1, alpha=0.602, gamma=0.10
     return x
 
 
-def multistart(cost, n_params, rng, n_starts, method):
+def multistart(cost, n_params, rng, n_starts, method, maxiter=MAXITER):
+    """Multi-start local search. ``maxiter`` caps evaluations PER RESTART.
+
+    The default reproduces this study's pre-registered arms exactly; it is a
+    parameter only so `optimizer_budget_study.py` can vary the axis this study
+    held fixed, while reusing this exact code path.
+    """
     best, best_cost = None, np.inf
     for _ in range(n_starts):
         x0 = rng.uniform(0.0, np.pi, size=n_params)
-        res = minimize(cost, x0, method=method, options={"maxiter": MAXITER})
+        res = minimize(cost, x0, method=method, options={"maxiter": maxiter})
         if res.fun < best_cost:
             best, best_cost = res.x, float(res.fun)
     return best

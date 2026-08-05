@@ -111,16 +111,22 @@ instance. Pre-registered optimizer study (`docs/plans/optimizer-study.md`): **al
 12 arm × α combinations fail on the primary instance** — but see the
 instance-dependence result immediately below, which qualifies that.
 
-> **Qualified 2026-08-04 — the arms were budget-limited, and one axis was never
-> tested.** Every COBYLA arm ran at ≥99% of its own evaluation cap (`cobyla-5`
-> ~1,000 of 5×200; `cobyla-25` ~4,950 of 25×200; `cobyla-50` ~9,900 of 50×200), so
-> the masses below are lower bounds and the gap to the 0.078125 bar is an upper
-> bound on the true shortfall. More importantly the ladder varied **`n_starts`
-> only** — `maxiter` was fixed at 200 across every rung. In a separate paired test,
-> raising `maxiter` 5× moved capped cells' ideal mass by a median of 100%. So
-> "the budget ladder saturates below the bar" is established for *starts* and
-> **not** for *budget in general*: iterations-per-restart was never a rung.
-> See [eval-censoring.md](eval-censoring.md).
+> **Qualified 2026-08-04, resolved 2026-08-05 — the arms were budget-limited, and
+> the conclusion survives it.** Every COBYLA arm ran at ≥99% of its own evaluation
+> cap (`cobyla-5` ~1,000 of 5×200; `cobyla-25` ~4,950 of 25×200; `cobyla-50`
+> ~9,900 of 50×200), so the masses below are lower bounds and the gap to the
+> 0.078125 bar is an upper bound on the true shortfall. The ladder also varied
+> **`n_starts` only** — `maxiter` was pinned at 200 across every rung.
+>
+> That axis has since been tested directly
+> ([optimizer-budget-study.md](optimizer-budget-study.md), 120 runs,
+> pre-registered). Raising `maxiter` 25× buys a paired **+0.0072** (95% CI
+> excluding zero) and leaves **0.0102** still to find; the best-funded arm then
+> spends only 38% of its cap, converging rather than being cut off. At a *fixed*
+> 10,000-evaluation budget, allocation dominates: 50 shallow restarts beat 2 deep
+> ones by **40%**. So "the budget ladder saturates below the bar" is confirmed —
+> and the reason is now demonstrated rather than assumed. The bar is not reached
+> by any arm at any budget tested.
 
 | arm | mean (α=0.021) | mean (α=0.030) | evals |
 |---|---:|---:|---:|
