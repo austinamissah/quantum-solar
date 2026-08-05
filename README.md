@@ -217,6 +217,23 @@ rather than its depth. The full analysis is in
 `notebooks/experiment_hardware.ipynb`, and the run was pre-registered in
 `docs/plans/hardware-run.md`.
 
+Three further runs followed on August 3, 2026, all on `ibm_fez` and all
+pre-registered: the **slack-free encoding** against the exact encoding with and
+without error mitigation, a **replication** of the encoding gap with a
+default-weight control, and a **10-replicate spread** measurement sized so its
+`RESOLVED` verdict was actually reachable.
+
+**In total: 5 jobs, 25 circuits, 532,480 shots, 153 seconds of QPU time.** Every
+number in every hardware write-up traces to one of those job IDs, listed with
+backend, date, shot count and device calibration in
+[`docs/results/hardware-jobs.md`](docs/results/hardware-jobs.md) (generated from
+the raw result files by `scripts/hardware_jobs.py`, so it cannot drift from them).
+
+153 seconds is the point, not an apology for it. The most useful decision in the
+project was **declining** to spend a planned 10-hour run once it was clear the
+metric had already bottomed out two problem sizes earlier and would have returned
+nine zeros — see `docs/LESSONS.md`.
+
 ## Roadmap
 
 - **Done — annualized savings.** `annual_savings` sweeps all **365 days exactly**
