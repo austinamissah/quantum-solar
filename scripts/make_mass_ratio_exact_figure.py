@@ -1,0 +1,112 @@
+"""Web figure: QAOA vs uniform random, measured exactly, at both penalty weights.
+
+The existing `mass_ratio.png` is honest but conservative: it is built on the
+*sampled* optimal mass, which floors at 1/4096, so every point where a seed fell
+below the floor could only be drawn as an upper limit inside a "too small to
+measure" band. That was the right call with the data then available.
+
+It is no longer necessary. The exact optimal mass is available from the
+statevector with no sampling floor (quantum_solar.statevector), so the band of
+unmeasurable points can be replaced with measured values -- and the answer inside
+that band turns out not to be "too small", it is 4-20x.
+
+Two panels, because the comparison only means something at a stated penalty
+weight:
+  * default weights -- penalties ~48x the objective span, the configuration the
+    original figure used. QAOA hovers around parity with random and collapses at
+    T=5.
+  * alpha* weights -- penalties scaled to the a-priori threshold. QAOA sits at
+    4-20x uniform at every size tested, with no decay through T=5.
+
+The gap between the panels is the penalty-weight finding, drawn.
+
+IMPORTANT, and stated on the figure: "beats uniform random sampling" is a low bar.
+It is NOT a claim of advantage over classical optimization -- dp_solve returns the
+exact optimum for these instances in microseconds. The bar here is whether the
+quantum state concentrates on good answers at all.
+
+Run:  python scripts/make_mass_ratio_exact_figure.py
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import matplotlib
+import numpy as np
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402
+
+from experiment_scaling import RESULTS_DIR, load_results  # noqa: E402
+
+OUT = (Path(__file__).resolve().parent.parent / "docs" / "figures" / "web"
+       / "mass_ratio_exact.png")
+PANELS = [
+    ("qaoa_scaling_T5.csv", "Default weights",
+     "penalties ~48x the objective span"),
+    ("qaoa_scaling_alphastar_T5.csv", "Rescaled to $\\alpha^*$",
+     "penalties at the a-priori threshold"),
+]
+
+
+def main() -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(12.5, 5.4), sharey=True)
+    censored_any = False
+
+    for ax, (csv, title, subtitle) in zip(axes, PANELS):
+        rows = load_results(RESULTS_DIR / csv)
+        Ts = sorted({r["T"] for r in rows})
+        reps_vals = sorted({r["reps"] for r in rows})
+        censored_any |= any(r.get("evals_censored") for r in rows)
+
+        for reps in reps_vals:
+            ys, cens = [], []
+            for T in Ts:
+                g = [r for r in rows if r["T"] == T and r["reps"] == reps]
+                # Ratio of means, not mean of ratios: the uniform baseline is
+                # identical within a (T, seed) cell, and this keeps a single
+                # near-zero seed from dominating a mean of ratios.
+                ys.append(float(np.mean([r["ideal_opt_mass"] for r in g]))
+                          / float(np.mean([r["uniform_opt_mass"] for r in g])))
+                cens.append(any(r.get("evals_censored") for r in g))
+            line, = ax.plot(Ts, ys, marker="o", label=f"{reps} layer"
+                            + ("s" if reps > 1 else ""))
+            # Up-arrows where the optimizer ran out of budget: those points are
+            # lower bounds, and the bound is one-sided upward.
+            cx = [t for t, c in zip(Ts, cens) if c]
+            cy = [y for y, c in zip(ys, cens) if c]
+            ax.scatter(cx, cy, marker="^", s=85, facecolors="none",
+                       edgecolors=line.get_color(), linewidths=1.4, zorder=3)
+
+        ax.axhline(1.0, color="0.35", ls="--", lw=1.2)
+        ax.set_yscale("log")
+        ax.set_xticks(Ts)
+        ax.set_xlabel("problem size (T time slots)")
+        ax.set_title(f"{title}\n{subtitle}", fontsize=11.5)
+        ax.legend(fontsize=9, loc="lower left")
+
+    axes[0].set_ylabel("how much better than random guessing\n(exact, "
+                       "statevector — no sampling floor)")
+    # Label the parity line in the right panel: the band just above it is empty
+    # there, whereas in the left panel it lands on top of the T=2 points.
+    axes[1].text(2.04, 1.12, "parity with random guessing", color="0.35",
+                 fontsize=9, va="bottom")
+
+    fig.suptitle("Does the quantum optimizer beat random guessing?",
+                 fontsize=14, y=0.995)
+    fig.tight_layout(rect=(0, 0.075, 1, 0.97))
+    note = ("△ = the classical optimizer hit its evaluation budget, so the point "
+            "is a lower bound.\n"
+            "'Better than random' is a low bar: the exact classical solver "
+            "returns the optimum for every instance here in microseconds. "
+            "This measures whether the quantum state concentrates on good "
+            "answers at all — not advantage over classical methods.")
+    fig.text(0.5, 0.008, note, ha="center", fontsize=9, color="0.35")
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(OUT, dpi=140, bbox_inches="tight")
+    print(f"wrote {OUT}  (censored points marked: {censored_any})")
+
+
+if __name__ == "__main__":
+    main()

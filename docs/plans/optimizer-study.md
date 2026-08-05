@@ -15,6 +15,10 @@ The slack-free encoding study established, in order:
    of 0.3095 across the feasible set — a 48× overshoot that makes cost nearly
    invisible in `<H>`. Rescaling moved reps=2 ideal mass by 440× (0.00019 →
    0.0832) with the encoding and optimizer untouched.
+   *(Qualified 2026-08-04: a lower bound — the runs sat on a 1000-evaluation cap,
+   and the endpoint is sensitive to α in its third decimal, 465× at 0.0209 vs
+   382× at 0.021. Read as "several-hundred-fold". See
+   [eval-censoring.md](../results/eval-censoring.md).)*
 2. **Transpiled gate count was a second, independent limit.** T3/exact at 133
    two-qubit gates (ε≈0.77 under the fitted per-gate model) would have degraded
    on hardware *regardless* of penalty weights. The encoding fixed this axis —
