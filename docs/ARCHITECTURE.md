@@ -1,6 +1,9 @@
-# CLAUDE.md
+# Architecture and development notes
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Orientation for working in this repository: how the pipeline fits together, the
+non-obvious invariants, where the data comes from, and the conventions to keep.
+The gotchas are the point — most of them were bugs first. `README.md` is the
+project overview; this is the working detail behind it.
 
 ## Project
 
@@ -218,8 +221,6 @@ do:
   **lazily** so stages (a)/(c) and the tests run without it installed. Hardware
   auth is a saved account (`~/.qiskit`) via a bare `QiskitRuntimeService()` — no
   legacy `channel="ibm_quantum"` (sunset in the 2025 migration).
-- Commit attribution is intentionally disabled in `.claude/settings.json`
-  (empty `commit`/`pr` trailers) — do not add co-author/attribution trailers.
-  `.claude/settings.json` is **shared and committed**; `.claude/settings.local.json`
-  (and its `*.tmp.*` temp files) is **machine-local and gitignored** — never commit
-  it.
+- Commits carry no attribution or co-author trailers. Keep it that way.
+- Editor and local tooling configuration stays out of the repository; add it to
+  `.gitignore` rather than committing machine-local settings.

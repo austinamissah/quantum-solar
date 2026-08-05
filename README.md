@@ -100,6 +100,16 @@ jupyter lab notebooks/demo.ipynb
 The notebook builds a small instance, solves it with brute force, DP, and QAOA
 (showing they agree), then plots the optimal schedule for a full day.
 
+## Documentation
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how the pipeline fits together,
+  the invariants that are easy to break, data provenance, and conventions. Start
+  here before changing anything.
+- [`docs/LESSONS.md`](docs/LESSONS.md) — a standalone field report on what went
+  wrong in this project and what each mistake cost. Readable on its own.
+- `docs/plans/` — pre-registrations, written before the runs they describe.
+  `docs/results/` — the corresponding write-ups, including the retractions.
+
 ## Hardware (IBM Quantum)
 
 Running the tuned QAOA circuits on real hardware uses an extra dependency, kept

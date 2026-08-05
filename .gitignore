@@ -220,6 +220,5 @@ __marimo__/
 # NREL API response cache
 data/cache/
 
-# Claude Code machine-local settings (settings.json is shared/committed).
-.claude/settings.local.json
-.claude/settings.local.json.tmp.*
+# Machine-local editor and tooling configuration is kept in .git/info/exclude
+# rather than here, so this file stays limited to the project's own artifacts.
