@@ -214,7 +214,17 @@ do:
 ## Conventions
 
 - `requirements.txt` lists only direct dependencies with `~=` major.minor bounds.
-  Keep it that way; add a line when introducing a new direct dependency.
+  Keep it that way; add a line when introducing a new direct dependency. It is the
+  **single source of truth** for dependencies — `pyproject.toml` deliberately
+  declares none, which is why the package installs with `pip install -e . --no-deps`.
+  Each line is annotated with which half of the project needs it (only `numpy` is
+  required by the classical path), but the file is still one full environment, not
+  a set of installable tiers. **Do not split it into core/quantum files and do not
+  mirror it into `pyproject.toml` extras**: either creates two declarations of the
+  same dependency, and they drift. If a slim install is ever actually needed —
+  publishing to PyPI, or someone asking for one — do it properly in one move:
+  dependencies and `quantum`/`hardware`/`dev` extras into `pyproject.toml`, and
+  delete `requirements.txt`. Maintaining both is the failure mode to avoid.
 - `requirements-hardware.txt` holds hardware-only deps (`qiskit-ibm-runtime`),
   kept separate so simulator/test users (and CI) don't pull them. Code that needs
   it (`scripts/experiment_hardware.py` submit stage) imports `qiskit_ibm_runtime`

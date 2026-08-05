@@ -1,9 +1,20 @@
 # Direct dependencies only. Bounds pinned to the installed major.minor via ~=
 # (e.g. qiskit~=2.5 allows >=2.5,<3.0). Transitive deps are resolved by pip.
-qiskit~=2.5
-qiskit-aer~=0.17
-numpy~=2.5
-scipy~=1.18
-matplotlib~=3.11
-jupyter~=1.1
-pytest~=9.1
+#
+# This is the full environment and the supported way to install the project.
+# It is NOT the minimum: the exact classical solvers (dp_solve, brute_force_solve,
+# build_qubo, annual_savings) need only numpy, because quantum_solar defers its
+# qiskit imports -- see docs/ARCHITECTURE.md. The annotations below say which
+# lines each half needs, so nothing here is load-bearing by accident.
+#
+# Hardware-only dependencies live in requirements-hardware.txt.
+
+numpy~=2.5         # everything, including the classical-only path
+
+qiskit~=2.5        # QAOA path only (quantum_solar.ising, quantum_solar.qaoa)
+qiskit-aer~=0.17   # QAOA path only (simulator backend)
+scipy~=1.18        # QAOA path only (COBYLA in the variational loop)
+
+matplotlib~=3.11   # figures and notebooks
+jupyter~=1.1       # notebooks
+pytest~=9.1        # tests

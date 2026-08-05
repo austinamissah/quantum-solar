@@ -91,6 +91,12 @@ pip install -r requirements.txt   # qiskit, qiskit-aer, numpy, scipy, matplotlib
 pip install -e . --no-deps        # install the quantum_solar package (src layout)
 ```
 
+The exact **classical** solvers — `dp_solve`, `brute_force_solve`, `build_qubo`,
+`annual_savings` — need only **numpy**. `quantum_solar` defers its qiskit imports,
+so `import quantum_solar` pulls in no quantum stack and those solvers run without
+one; qiskit loads on first use of `QAOASolver` or `qubo_to_ising`. The install
+above is the supported path and gives you everything.
+
 ## Run the demo
 
 ```bash
