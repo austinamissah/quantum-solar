@@ -446,6 +446,23 @@ We withdrew several claims. One example, because the reasoning error is common:
 >
 > **What we later measured:** drift was real and accounted for 43% of the shift.
 
+A second, because the error is the opposite shape — over-correcting rather than
+over-claiming:
+
+> **Claim:** having discovered that an optimizer's evaluation counts were pinned
+> at the budget we set, we wrote that a conclusion resting on them "is not
+> supported".
+>
+> **Why it was wrong:** a censored measurement invalidates a claim's *precision*,
+> not automatically its *direction*. We went from "this number is a bound, not a
+> measurement" to "the conclusion drawn from it is wrong", and the second does not
+> follow from the first.
+>
+> **What we later measured:** 120 runs varying the capped axis directly. The
+> budget really was binding, and lifting it 25× really did help — by a
+> statistically clear margin. The conclusion survived anyway, because the gap it
+> had to close was three times larger than the effect the cap was hiding.
+
 Others: a claim that an optimizer was "failing outright" (it was succeeding at a
 mis-specified objective); a claim that no procedure could clear a threshold (the
 top of the relevant range grazed just above it); the variance comparison in §4.
@@ -458,6 +475,13 @@ needs to calibrate how much to trust everything else.
 **The pattern worth internalizing:** almost every retraction here was *a point
 estimate compared without its uncertainty*. Two numbers, one bigger, conclusion
 drawn. It is the single most common way to be confidently wrong with real data.
+
+The exception is the second one above, and it is worth separating because the
+instinct that produced it is the *good* one. Finding a defect in how something was
+measured feels like finding the answer, and the honest move is smaller: a bad
+measurement tells you that you do not know, which is not the same as knowing the
+opposite. **Scepticism about a result is not evidence against it.** We had to run
+the experiment to find out, and it went the other way.
 
 ---
 
