@@ -42,6 +42,16 @@ domain-agnostic over "a QUBO + a problem exposing `energy(x)`/`is_feasible(x)`".
   `EstimatorV2`/`SamplerV2` + multi-start COBYLA (not `qiskit_algorithms`).
 - `brute_force.py` — exact `2^M` enumeration of the QUBO; validates the
   *encoding* on tiny instances. Refuses `> MAX_ENUMERATION_SITES` (20) vars.
+- `statevector.py` — `qaoa_probabilities`: the exact QAOA output distribution in
+  NumPy. **Use this, never `Statevector(QAOAAnsatz(...))`** — the latter
+  matrix-exponentiates the undecomposed cost layer and raises `MemoryError` from
+  `m=14` up, which silently capped `ideal_opt_mass` at `T=3` for a whole sweep.
+  The cost Hamiltonian is diagonal, so no exponentiation is needed. A constant
+  shift of the diagonal is a global phase, so raw QUBO energies work as the cost
+  diagonal. Params are `[β_0..β_{p-1}, γ_0..γ_{p-1}]` — `QAOAAnsatz.parameters`
+  order, all betas then all gammas, **not** interleaved. `assert_matches_qiskit`
+  cross-checks it against Qiskit at a size where Qiskit still works; the scripts
+  call it at startup and refuse to report if it drifts.
 - All solvers return the shared `Solution` type (`x`, `qubo_energy`,
   `true_energy`, `feasible`).
 - `annual.py` — `annual_savings` sweeps **all 365 days exactly** (PVWatts fetched

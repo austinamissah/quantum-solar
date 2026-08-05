@@ -39,9 +39,6 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from qiskit.circuit.library import QAOAAnsatz  # noqa: E402
-from qiskit.quantum_info import Statevector  # noqa: E402
-
 import experiment_hardware as hw  # noqa: E402
 from quantum_solar import (  # noqa: E402
     Encoding,
@@ -54,6 +51,10 @@ from quantum_solar import (  # noqa: E402
     synthetic_instance,
 )
 from quantum_solar.qubo_search import qubo_min_exact  # noqa: E402
+from quantum_solar.statevector import (  # noqa: E402
+    assert_matches_qiskit,
+    qaoa_probabilities,
+)
 
 DEFAULT_ALPHAS = "0.003,0.01,0.03,0.1,0.3,1.0,3.0"
 
@@ -89,7 +90,18 @@ def main() -> None:
     )
     uniform = 1.0 / 2**m
     print(f"T={t} encoding=checkpoint(3) m={m}  uniform={uniform:.5f}  "
-          f"5x-uniform bar={5 * uniform:.5f}  true-optimal states={int(true_opt.sum())}\n")
+          f"5x-uniform bar={5 * uniform:.5f}  true-optimal states={int(true_opt.sum())}")
+
+    # Every mass below comes from the NumPy statevector; check it against
+    # Qiskit's own at this exact size before reporting anything from it. (The
+    # Qiskit path is what this script used to call per row. It is correct here
+    # and only here: it matrix-exponentiates the cost layer, so it survives m=12
+    # and dies with MemoryError by m=14 — see quantum_solar.statevector.)
+    _ref_h, _ = qubo_to_ising(build_qubo(problem, default_weights(problem), encoding))
+    _rng = np.random.default_rng(0)
+    _worst = max(assert_matches_qiskit(_ref_h, _rng.uniform(0.0, np.pi, 2 * r), r)
+                 for r in (1, 2))
+    print(f"statevector self-check: NumPy vs Qiskit agree to {_worst:.1e}\n")
 
     header = (f"{'alpha':>7} {'surrogate':>10} {'reps':>5} {'<H>':>10} "
               f"{'mass(argmin)':>13} {'mass(true)':>11} {'x unif':>7} {'feas':>7}")
@@ -106,15 +118,14 @@ def main() -> None:
         energies = np.einsum("bi,ij,bj->b", Xf, qubo.Q, Xf) + qubo.offset
         argmin_mask = np.isclose(energies, energies.min(), atol=1e-6)
         _, feas_mask = hw.basis_masks(problem, qubo)
-        hamiltonian, _ = qubo_to_ising(qubo)
 
         for reps in (1, 2):
             res = QAOASolver(reps=reps, n_starts=hw.N_STARTS, shots=hw.SHOTS,
                              seed=hw.QAOA_SEED, maxiter=hw.MAXITER).solve(problem, qubo)
-            ansatz = QAOAAnsatz(cost_operator=hamiltonian, reps=reps)
-            probs = Statevector(
-                ansatz.assign_parameters(list(res.optimal_params))
-            ).probabilities()
+            # `energies` is the QUBO diagonal; it differs from the Ising
+            # Hamiltonian's by a constant, which is a global phase and so leaves
+            # probabilities untouched (tests/test_statevector.py).
+            probs = qaoa_probabilities(energies, res.optimal_params, reps)
             mass_true = float(probs[true_opt].sum())
             print(f"{alpha:>7.3f} {verdict:>10} {reps:>5} {float(probs @ energies):>10.4f} "
                   f"{float(probs[argmin_mask].sum()):>13.5f} {mass_true:>11.5f} "
