@@ -145,6 +145,26 @@ the qualification opening this section.) The only clearing run in the entire stu
 clear. `transfer` is near-deterministic (sd 0.00014) and lands at 0.065: a free,
 perfectly repeatable warm start, below the bar.
 
+> **`lbfgs-sv` is basin-stable under a roundoff-scale objective perturbation
+> (measured 2026-08-06).** `lbfgs-sv` is the only arm that *optimizes* against the
+> exact statevector rather than the shot estimator, so it is the only one whose
+> search path can be moved by a change below reporting precision. Recomputing that
+> objective on the NumPy statevector instead of Qiskit's perturbs it by ≤1.3e-15
+> on `<H>` (≤1e-16 on mass) — and that is enough to move the L-BFGS-B trajectory
+> in **16 of 20 (α, tuning-seed) cells**, which change evaluation count by up to
+> 80 (e.g. 755 → 835).
+>
+> Every one of the 20 cells still converged to the same basin, and both α means
+> reproduce the table above to the 5 d.p. it is published at (0.06751 / 0.06307).
+> So the arm's landscape has **wide basins with unstable paths through them**: the
+> reported means do not depend on the exact arithmetic route, but the `evals`
+> column for this arm is only reproducible to ~±10%. Read that column as a scale,
+> not a fixed cost. This is a property of the arm, not of the refactor that
+> exposed it.
+>
+> *Resolution caveat: agreement was checked at 1e-5 logging resolution against a
+> harness tolerance of 5e-4 — 50× inside the gate, but not a bitwise claim.*
+
 ### The result is INSTANCE-DEPENDENT
 
 The pre-registration's second interpretation rule fired. On the **robustness**

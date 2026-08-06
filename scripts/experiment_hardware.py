@@ -35,7 +35,6 @@ from pathlib import Path
 
 import numpy as np
 from qiskit.circuit.library import QAOAAnsatz
-from qiskit.quantum_info import Statevector
 
 from quantum_solar import (
     Encoding,
@@ -48,6 +47,7 @@ from quantum_solar import (
     synthetic_instance,
 )
 from quantum_solar.brute_force import enumerate_bitstrings
+from quantum_solar.statevector import assert_matches_qiskit, qaoa_probabilities
 
 # Must match the scaling sweep so the instances are identical.
 CAPACITY = 3.0
@@ -193,20 +193,34 @@ def build_target(T, seed, reps, encoding="exact", alpha=1.0):
     return problem, qubo, ansatz
 
 
+def qubo_energy_diagonal(qubo):
+    """QUBO energies of every basis state (index i -> bit j = qubit j)."""
+    X = enumerate_bitstrings(qubo.num_vars).astype(float)
+    return np.einsum("bi,ij,bj->b", X, qubo.Q, X) + qubo.offset
+
+
 def basis_masks(problem, qubo):
     """Boolean masks over basis states (index i -> bit j = qubit j): optimal, feasible."""
-    m = qubo.num_vars
-    X = enumerate_bitstrings(m).astype(float)
-    energies = np.einsum("bi,ij,bj->b", X, qubo.Q, X) + qubo.offset
+    energies = qubo_energy_diagonal(qubo)
     opt_mask = np.isclose(energies, energies.min(), atol=1e-6)
-    feas_mask = np.array([problem.is_feasible(x) for x in enumerate_bitstrings(m)])
+    feas_mask = np.array([problem.is_feasible(x)
+                          for x in enumerate_bitstrings(qubo.num_vars)])
     return opt_mask, feas_mask
 
 
-def exact_distribution(ansatz, params):
-    """Noiseless statevector probabilities of the tuned circuit (indexed by basis int)."""
-    bound = ansatz.assign_parameters(list(params))
-    return Statevector(bound).probabilities()
+def exact_distribution(qubo, params, reps):
+    """Noiseless statevector probabilities of the tuned circuit (indexed by basis int).
+
+    Computed with the NumPy statevector, NOT `Statevector(QAOAAnsatz(...))`: the
+    latter matrix-exponentiates the un-decomposed cost layer and dies with
+    MemoryError from m=14 up. That ceiling is *below* this script's own stretch
+    target — T=6 is m=22 — so the Qiskit path could not evaluate the targets this
+    script defines. See quantum_solar.statevector.
+
+    A constant shift of the cost diagonal is a global phase, so the QUBO energies
+    serve directly as the cost diagonal in place of the Ising ones.
+    """
+    return qaoa_probabilities(qubo_energy_diagonal(qubo), params, reps)
 
 
 # --- stage (c) analysis helpers ----------------------------------------------
@@ -265,6 +279,21 @@ def ideal_sim_counts(ansatz, params, *, shots=SHOTS, seed=QAOA_SEED):
 
 # --- stage (a): simulator re-optimization ------------------------------------
 
+def validate_statevector(t=2, seed=0, reps_values=(1, 2)):
+    """Cross-check the NumPy statevector against Qiskit's, and raise if it drifts.
+
+    Runs at T=2 (m=6), where the Qiskit reference is still cheap; the NumPy path
+    is size-independent in its logic, so agreement here validates it at every
+    target size. Gates the reported ideal metrics rather than annotating them.
+    """
+    _, qubo, _ = build_target(t, seed, max(reps_values))
+    hamiltonian, _ = qubo_to_ising(qubo)
+    rng = np.random.default_rng(0)
+    worst = max(assert_matches_qiskit(hamiltonian, rng.uniform(0.0, np.pi, 2 * r), r)
+                for r in reps_values)
+    print(f"statevector self-check: NumPy vs Qiskit agree to {worst:.1e}", flush=True)
+
+
 def optimize_params(targets, *, seed=QAOA_SEED, n_starts=N_STARTS, shots=SHOTS,
                     maxiter=MAXITER):
     """Re-optimize QAOA angles on the simulator; return one record per target.
@@ -272,12 +301,13 @@ def optimize_params(targets, *, seed=QAOA_SEED, n_starts=N_STARTS, shots=SHOTS,
     Reference metrics (ideal_opt_mass, ideal_feasibility) are the EXACT statevector
     values of the tuned circuit — the same 'exact' distribution stage (c) uses.
     """
+    validate_statevector()
     records = []
     tuned = {}  # (T, seed, reps, encoding, alpha) -> params; mitigation arms reuse
     for tgt in targets:
         T, s, reps = tgt["T"], tgt["seed"], tgt["reps"]
         encoding, alpha = tgt.get("encoding", "exact"), tgt.get("alpha", 1.0)
-        problem, qubo, ansatz = build_target(T, s, reps, encoding=encoding, alpha=alpha)
+        problem, qubo, _ = build_target(T, s, reps, encoding=encoding, alpha=alpha)
         key = (T, s, reps, encoding, alpha)
         if key not in tuned:
             # Mitigation is a sampling-time option, not a circuit change, so a
@@ -288,7 +318,7 @@ def optimize_params(targets, *, seed=QAOA_SEED, n_starts=N_STARTS, shots=SHOTS,
             tuned[key] = [float(x) for x in result.optimal_params]
         params = tuned[key]
 
-        probs = exact_distribution(ansatz, params)
+        probs = exact_distribution(qubo, params, reps)
         opt_mask, feas_mask = basis_masks(problem, qubo)
         metrics = scalar_metrics(probs, opt_mask, feas_mask)
         records.append({

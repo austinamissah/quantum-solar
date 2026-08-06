@@ -51,7 +51,7 @@ def test_exact_distribution_and_metrics_consistent():
     problem, qubo, ansatz = hw.build_target(2, 0, 1)
     rng = np.random.default_rng(0)
     params = rng.uniform(0, np.pi, size=ansatz.num_parameters)
-    probs = hw.exact_distribution(ansatz, params)
+    probs = hw.exact_distribution(qubo, params, 1)
     assert np.isclose(probs.sum(), 1.0)
 
     opt_mask, feas_mask = hw.basis_masks(problem, qubo)

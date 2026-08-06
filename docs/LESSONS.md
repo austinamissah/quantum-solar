@@ -432,6 +432,36 @@ numerator nor the denominator — it drops out entirely. The real mechanism was 
 value concentrates into a few high-spread days, which are exactly the days the
 approximation handled worst. **Toy cases mislead about magnitude and direction.**
 
+### The opposite failure: a bug that *would* have crashed, if anyone had run it
+
+Every bug above produced plausible numbers. This one would have produced a hard
+`MemoryError` — and still went undetected for months, because it lived on a path
+that only runs behind a flag.
+
+`scripts/experiment_hardware.py` computed its exact reference distribution with
+`Statevector(QAOAAnsatz(...))`, which dies from m=14 up (§3). Its `PRIMARY_TARGETS`
+are m=6 and m=10, so every default run passed. But `STRETCH_TARGETS` is T=6 →
+**m=22**, reachable only via `optimize --include-stretch`. That flag had not been
+exercised since the stretch target was added, so the script could not evaluate one
+of the targets it itself defined, and nothing said so. It was found by reading for
+a *different* instance of the pattern, not by any test or run.
+
+The tests were not negligent about the function — `test_exact_distribution_and_metrics_consistent`
+covers it. They exercised it at T=2. **A test that calls the right function at the
+wrong size is not coverage of the size that matters.**
+
+**Opt-in code paths rot silently.** A flag, an `--include-*` switch, a stretch
+target, a `slow`-marked branch, an environment-variable override — anything the
+default run skips is untested by default, and "the suite is green" says nothing
+about it. Either give the opt-in path its own test at its real size, or accept that
+you will discover it is broken at the moment you need it. Note which way this cuts:
+the defaults being well covered is exactly what made the gap invisible.
+
+The cheap version of this test is not the expensive one. Verifying stage (a) end to
+end at m=22 is slow, but asserting that the *reference distribution* can be built
+at the largest declared target size — and normalizes to 1 — is seconds, and would
+have caught it.
+
 ---
 
 ## 8. Retract in place
@@ -534,7 +564,11 @@ discriminate.
 7. Dry-run anything that spends; open the artifact rather than trusting exit
    codes; verify fast paths against slow ones. Before reporting that a job ran,
    check evidence it produced — not that its supervisor is alive.
-8. Derive inputs that must agree from a single source.
-9. Write down what would falsify you *before* you look, including the wording of
-   the retraction.
-10. Retract in place.
+8. Test opt-in paths at their real size. Flags, `--include-*` switches, stretch
+   targets and env-var overrides are skipped by the default run, so a green suite
+   says nothing about them — and calling the right function at the wrong size is
+   not coverage of the size that matters.
+9. Derive inputs that must agree from a single source.
+10. Write down what would falsify you *before* you look, including the wording of
+    the retraction.
+11. Retract in place.

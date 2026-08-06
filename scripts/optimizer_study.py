@@ -33,7 +33,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 warnings.filterwarnings("ignore")
 
 from qiskit.circuit.library import QAOAAnsatz  # noqa: E402
-from qiskit.quantum_info import Statevector  # noqa: E402
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager  # noqa: E402
 from qiskit_aer import AerSimulator  # noqa: E402
 from qiskit_aer.primitives import EstimatorV2  # noqa: E402
@@ -48,6 +47,11 @@ from quantum_solar import (  # noqa: E402
     dp_solve,
     qubo_to_ising,
     synthetic_instance,
+)
+from quantum_solar.brute_force import enumerate_bitstrings  # noqa: E402
+from quantum_solar.statevector import (  # noqa: E402
+    assert_matches_qiskit,
+    qaoa_probabilities,
 )
 
 # --- Fixed by the pre-registration -------------------------------------------
@@ -85,11 +89,18 @@ class Objective:
     def __init__(self, qubo, reps: int, seed: int) -> None:
         hamiltonian, constant = qubo_to_ising(qubo)
         self.hamiltonian, self.constant = hamiltonian, constant
+        self.reps = reps
         self.ansatz = QAOAAnsatz(cost_operator=hamiltonian, reps=reps)
         backend = AerSimulator(seed_simulator=seed)
         self.isa = generate_preset_pass_manager(optimization_level=1, backend=backend).run(self.ansatz)
         self.isa_hamiltonian = hamiltonian.apply_layout(self.isa.layout)
         self.estimator = EstimatorV2(options={"backend_options": {"seed_simulator": seed}})
+        # QUBO energies of every basis state. `qubo_to_ising` guarantees
+        # <x|H|x> + constant == qubo.energy(x), so this diagonal doubles as both
+        # the cost diagonal for the NumPy statevector and the observable that
+        # `exact` averages -- which is why `exact` needs no `+ constant`.
+        X = enumerate_bitstrings(qubo.num_vars).astype(float)
+        self.energies = np.einsum("bi,ij,bj->b", X, qubo.Q, X) + qubo.offset
         self.evaluations = 0
 
     def shot(self, params) -> float:
@@ -97,14 +108,25 @@ class Objective:
         result = self.estimator.run([(self.isa, self.isa_hamiltonian, params)]).result()
         return float(result[0].data.evs) + self.constant
 
+    def _probabilities(self, params) -> np.ndarray:
+        """Exact QAOA distribution via NumPy, NOT `Statevector(QAOAAnsatz(...))`.
+
+        The Qiskit path matrix-exponentiates the un-decomposed cost layer and
+        dies with MemoryError from m=14 up. This study is pinned to m=6 by
+        `build_instance`, so it never hit that ceiling -- but the ceiling is the
+        reason the shared NumPy path exists, and there is no reason to keep a
+        second implementation below it. A constant shift of the diagonal is a
+        global phase, so the QUBO energies serve as the cost diagonal directly.
+        See quantum_solar.statevector.
+        """
+        return qaoa_probabilities(self.energies, params, self.reps)
+
     def exact(self, params) -> float:
         self.evaluations += 1
-        state = Statevector(self.ansatz.assign_parameters(list(params)))
-        return float(state.expectation_value(self.hamiltonian).real) + self.constant
+        return float(self._probabilities(params) @ self.energies)
 
     def mass(self, params, mask) -> float:
-        state = Statevector(self.ansatz.assign_parameters(list(params)))
-        return float(state.probabilities()[mask].sum())
+        return float(self._probabilities(params)[mask].sum())
 
 
 def spsa(cost, x0, rng, n_iter=SPSA_ITERS, a=0.2, c=0.1, alpha=0.602, gamma=0.101):
@@ -193,7 +215,15 @@ def main() -> None:
 
     print(f"bar = {BAR:.6f} (5x uniform, m=6)   tuning seeds = {list(TUNING_SEEDS)}")
     print(f"reliable = clears on >= {int(RELIABLE_FRACTION * len(TUNING_SEEDS))}/"
-          f"{len(TUNING_SEEDS)} seeds\n", flush=True)
+          f"{len(TUNING_SEEDS)} seeds", flush=True)
+
+    # Every mass and <H> below comes from the NumPy statevector; check it against
+    # Qiskit's own before reporting anything from it.
+    _ref_h, _ = qubo_to_ising(build_instance(PRIMARY_INSTANCE, ALPHAS[0])[1])
+    _rng = np.random.default_rng(0)
+    _worst = max(assert_matches_qiskit(_ref_h, _rng.uniform(0.0, np.pi, 2 * r), r)
+                 for r in (1, 2))
+    print(f"statevector self-check: NumPy vs Qiskit agree to {_worst:.1e}\n", flush=True)
 
     for instance_seed in [int(s) for s in args.instance_seeds.split(",")]:
         role = "PRIMARY" if instance_seed == PRIMARY_INSTANCE else "robustness"
