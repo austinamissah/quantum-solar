@@ -25,10 +25,17 @@ Caption suggestion (for the blog post):
   One real summer weekday for a Colorado home in Golden, CO. Top: the time-of-use
   electricity price (red), the household's electricity use (blue), and its rooftop
   solar output (orange). Bottom: the cost-optimal battery plan our solver found,
-  charging (green) when power is cheap or solar is plentiful and discharging (red)
-  into the shaded 5-9pm peak-price window, with the resulting battery level
-  overlaid. Every input is real: NREL PVWatts solar, Xcel Energy's Colorado
-  time-of-use tariff (via URDB), and an NREL ResStock household load profile.
+  charging (green) during cheap off-peak hours and discharging (red) into the
+  shaded 5-9pm peak-price window, with the resulting battery level overlaid. Every
+  input is real: NREL PVWatts solar, Xcel Energy's Colorado time-of-use tariff (via
+  URDB), and an NREL ResStock household load profile.
+
+  (Corrected 2026-08-06: this caption previously read "charging when power is cheap
+  or solar is plentiful". That was wrong twice over. The plan charges at hours 0, 1,
+  2 and 21 -- all after dark, with no solar at all -- and under v1's net metering
+  the optimal plan provably does not depend on solar or load in the first place,
+  only on the price curve. See `_battery_plan_ignores_solar_and_load` in
+  schedule_real_day.json.)
 
   About the lone green bar just after the peak: the plan deliberately drains the
   battery during the 5-9pm peak, selling at $0.381/kWh what it can replace at
@@ -52,7 +59,7 @@ import numpy as np  # noqa: E402
 from matplotlib.patches import Patch  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from quantum_solar import dp_solve  # noqa: E402
+from quantum_solar import dp_solve, optima_census  # noqa: E402
 from quantum_solar.data import load_profile  # noqa: E402
 from quantum_solar.data.calendar import (  # noqa: E402
     day_of_month,
@@ -129,6 +136,44 @@ def build_bucket(snap, day: int):
     return build_instance(generation, load, price,
                           capacity=float(snap["capacity"]),
                           charge_energy=float(snap["charge_energy"]))
+
+
+def summarize_schedule(problem, solution):
+    """The plan itself, what it saves, and how much of it is actually determined.
+
+    The saving is measured against **idling the same battery** (``energy`` with an
+    all-zero action vector), i.e. the same house, same solar, battery present but
+    never moved. So it isolates the battery's contribution and excludes solar's.
+
+    On the freedom fields, see :class:`~quantum_solar.OptimaCensus`: ``dp_solve``
+    returns one schedule out of many that tie, so the specific hours below are only
+    meaningful where ``forced_hours`` says they are.
+    """
+    charge, discharge = problem.decode(solution.x)
+    soc = problem.soc_trajectory(charge, discharge)
+    idle_bill = float(problem.energy(np.zeros(2 * problem.num_slots, dtype=np.int8)))
+    optimal_bill = float(solution.true_energy)
+    census = optima_census(problem)
+    forced = census.forced()
+    free = [j for j, a in enumerate(census.slot_actions) if len(a) > 1]
+    return {
+        "charge_hours": [int(h) for h in np.flatnonzero(charge)],
+        "discharge_hours": [int(h) for h in np.flatnonzero(discharge)],
+        # S_1..S_T: the level at the *end* of each hour. The level before hour 0 is
+        # the bucket's `initial_soc`, and the terminal constraint forces S_T back to
+        # it -- so this list alone never shows the starting level.
+        "soc_end_of_hour": [round(float(v), 6) for v in soc],
+        "optimal_bill": round(optimal_bill, 4),
+        "idle_bill": round(idle_bill, 4),
+        "saving": round(idle_bill - optimal_bill, 4),
+        "n_optima": census.n_optima,
+        "n_minimal_optima": census.n_minimal,
+        "min_actions": census.min_actions,
+        "slot_actions": [list(a) for a in census.slot_actions],
+        "forced_hours": {str(h): a for h, a in sorted(forced.items())},
+        "free_hours": free,
+        "unique": census.n_minimal == 1,
+    }
 
 
 def render(problem, solution, headline, out_path):
@@ -214,6 +259,28 @@ def main():
                    "docs/figures/annual_golden_co.json and the committed ResStock "
                    "profiles. Season, day type, price month, and load bucket all "
                    "derive from the same day index (see data/calendar.py, AMY 2018).",
+        "_reading_the_schedule": (
+            "charge_hours/discharge_hours are ONE tied-optimal schedule, not the "
+            "answer: dp_solve breaks ties arbitrarily. Read forced_hours for the "
+            "part that is actually determined -- every minimal-cost plan agrees "
+            "there -- and free_hours for the part that is not. n_minimal_optima "
+            "counts the tied plans that also use the fewest battery actions; "
+            "n_optima counts all tied plans, which in a lossless model includes "
+            "unlimited cost-free cycling and is therefore much larger and much "
+            "less informative (on a flat-price day it counts every feasible "
+            "schedule)."
+        ),
+        "_battery_plan_ignores_solar_and_load": (
+            "MODEL PROPERTY, NOT A REAL-WORLD RULE. Under v1's net metering the "
+            "buy and sell price are equal, so the bill separates into a household "
+            "term price@(load-generation) and a battery term price@e*(c-d). The "
+            "first does not involve the battery, so the optimal plan depends only "
+            "on the PRICE curve -- it is provably unchanged by zero solar, 3x "
+            "solar, flat load or random load (only the bill moves). Real batteries "
+            "have round-trip losses and real tariffs pay less for export than they "
+            "charge for import; both couple the plan back to solar and load. Do "
+            "not publish this as advice."
+        ),
         "location": snap["location"], "system_kw": snap["system_kw"],
         "capacity": snap["capacity"], "charge_energy": snap["charge_energy"],
         "buckets": {},
@@ -233,9 +300,15 @@ def main():
             "initial_soc": float(problem.initial_soc),
             "net_bill": round(float(solution.true_energy), 4),
             "feasible": bool(solution.feasible),
+            **summarize_schedule(problem, solution),
         }
+        s = record["buckets"][name]
         print(f"wrote {out.name:<38} day={day:>3} ({day_type(day):>7}) "
               f"net bill ${solution.true_energy:>6.2f}  feasible={solution.feasible}")
+        print(f"     saves ${s['saving']:>5.2f} vs idle  "
+              f"charge={s['charge_hours']} discharge={s['discharge_hours']}  "
+              f"{s['n_minimal_optima']:,} minimal optima "
+              f"({s['min_actions']} actions, {len(s['forced_hours'])} forced hours)")
     DATA.write_text(json.dumps(record, indent=1) + "\n")
     print(f"wrote {DATA.name} with {len(record['buckets'])} buckets")
 

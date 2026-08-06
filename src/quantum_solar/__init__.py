@@ -21,7 +21,7 @@ from importlib import import_module
 
 from .annual import AnnualResult, DayResult, annual_savings
 from .brute_force import brute_force_solve
-from .dynamic_programming import dp_solve
+from .dynamic_programming import OptimaCensus, dp_solve, optima_census
 from .encodings import Encoding, SoCEncoding, max_sound_spacing
 from .problem import BatteryProblem, synthetic_instance
 from .qubo import QUBO, PenaltyWeights, build_qubo, default_weights, num_vars
@@ -61,6 +61,8 @@ __all__ = [
     "qubo_to_ising",
     "brute_force_solve",
     "dp_solve",
+    "optima_census",
+    "OptimaCensus",
     "QAOASolver",
     "QAOAResult",
     "Solution",

@@ -39,6 +39,16 @@ domain-agnostic over "a QUBO + a problem exposing `energy(x)`/`is_feasible(x)`".
 - `dynamic_programming.py` — `dp_solve`: exact, `O(T·K·3)` DP over the discrete
   SoC grid. The **scalable** ground truth; enforces SoC bounds structurally (no
   slack). Use it, not brute force, for any non-tiny `T`.
+  `optima_census` runs the same recurrence forward *and* backward to answer "how
+  much of that schedule is actually determined?" — because **`dp_solve`'s returned
+  hours are largely arbitrary**. Every hour at the same price is interchangeable,
+  so on the real Xcel RE-TOU weekday 2,448 minimal-cost plans tie and only the four
+  peak discharge hours are forced. Report `forced()` and `n_minimal`, never the raw
+  hour list, whenever the audience might read it as *the* answer. Note `n_optima`
+  (all ties) is a much larger and near-useless number: v1 is lossless, so a charge
+  and discharge at one price cancel and it counts unbounded free cycling — on a
+  flat-price day it counts every feasible schedule (~1.5e10). Validated against
+  exhaustive enumeration in `tests/test_optima_census.py`.
 - `ising.py` — `qubo_to_ising` maps the QUBO to a `SparsePauliOp` via
   `x_i = (1 − z_i)/2`. Invariant: `⟨x|H|x⟩ + constant == qubo.energy(x)`.
 - `qaoa.py` — `QAOASolver`, hand-rolled from `QAOAAnsatz` + Aer
@@ -93,6 +103,15 @@ Gotchas:
   objective linear) and a lossless battery with `charge_energy == discharge_energy`
   (keeps SoC on a uniform grid, required by both the slack encoding and the DP
   grid). Asymmetric prices / losses are deferred.
+- **Consequence: the optimal battery plan ignores solar and load entirely.** With
+  one buy=sell price the bill separates into `price @ (load − generation)` plus
+  `price @ e·(c − d)`, and the battery appears only in the second term — so the
+  plan depends on the **price curve alone**. Verified: identical schedule under
+  zero solar, 3× solar, flat load and random load; only the bill moves. This is a
+  property of the v1 assumptions, not of batteries. Round-trip losses or export
+  paid below import both couple the plan back to solar and load. **Never present
+  it as real-world guidance**, and don't "fix" a caption by asserting the battery
+  charges on surplus solar — it does not.
 - `Solution.true_energy` is **cost** here (lower better) — the sign flips vs a
   yield-style objective.
 - QAOA transpiles for an `AerSimulator` with **no coupling map** (trivial layout,
