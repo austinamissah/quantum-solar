@@ -34,10 +34,22 @@ class BatteryProblem:
         load: ``(T,)`` household demand per slot (kWh).
         price: ``(T,)`` electricity price per slot ($/kWh, net-metered).
         capacity: usable battery capacity ``Q`` (kWh).
-        charge_energy: energy added in a charging slot (kWh); v1: == discharge.
-        discharge_energy: energy removed in a discharging slot (kWh).
+        charge_energy: energy added **to the store** in a charging slot (kWh);
+            must equal ``discharge_energy`` so SoC stays on a uniform grid.
+        discharge_energy: energy removed **from the store** in a discharging slot.
         initial_soc: starting state of charge ``S_0`` (kWh), a multiple of the
             energy quantum within ``[0, capacity]``.
+        charge_efficiency: fraction of drawn grid energy that reaches the store,
+            so a charging slot imports ``charge_energy / charge_efficiency``.
+        discharge_efficiency: fraction of removed store energy that reaches the
+            house, so a discharging slot offsets ``discharge_energy *
+            discharge_efficiency``.
+
+    **Losses live in the price, not in the state of charge.** The two energy
+    quanta are *store-side* and stay equal, which is what keeps SoC on the uniform
+    grid the DP and the slack encoding both need; the efficiencies convert to
+    *grid-side* energy inside the objective only. Both default to ``1.0``, which
+    reproduces the lossless v1 model exactly.
     """
 
     generation: np.ndarray
@@ -47,6 +59,32 @@ class BatteryProblem:
     charge_energy: float
     discharge_energy: float
     initial_soc: float
+    charge_efficiency: float = 1.0
+    discharge_efficiency: float = 1.0
+
+    @property
+    def grid_charge_energy(self) -> float:
+        """kWh imported to add ``charge_energy`` to the store (``>= charge_energy``)."""
+        return self.charge_energy / self.charge_efficiency
+
+    @property
+    def grid_discharge_energy(self) -> float:
+        """kWh delivered by removing ``discharge_energy`` (``<= discharge_energy``)."""
+        return self.discharge_energy * self.discharge_efficiency
+
+    @property
+    def round_trip_efficiency(self) -> float:
+        """Delivered energy per unit imported, ``charge_eff * discharge_eff``."""
+        return self.charge_efficiency * self.discharge_efficiency
+
+    @property
+    def breakeven_price_ratio(self) -> float:
+        """Peak/off-peak price ratio below which arbitrage stops paying.
+
+        A cycle earns ``p_hi * e * eta_d`` and costs ``p_lo * e / eta_c``, so it is
+        profitable exactly when ``p_hi / p_lo > 1 / round_trip_efficiency``.
+        """
+        return 1.0 / self.round_trip_efficiency
 
     @property
     def num_slots(self) -> int:
@@ -68,10 +106,17 @@ class BatteryProblem:
         return self.initial_soc + np.cumsum(delta)
 
     def grid_cost(self, c: np.ndarray, d: np.ndarray) -> float:
-        """Net-metered electricity cost of a schedule (lower is better)."""
+        """Net-metered electricity cost of a schedule (lower is better).
+
+        Uses the **grid-side** quanta, so round-trip losses are charged here: a
+        charging slot imports more than it stores and a discharging slot delivers
+        less than it removes. At the default efficiencies of 1 both collapse to
+        the store-side quanta and this is the original lossless expression.
+        """
         c = np.asarray(c, dtype=float)
         d = np.asarray(d, dtype=float)
-        net = self.load - self.generation + self.charge_energy * c - self.discharge_energy * d
+        net = (self.load - self.generation
+               + self.grid_charge_energy * c - self.grid_discharge_energy * d)
         return float(self.price @ net)
 
     def energy(self, x: np.ndarray) -> float:

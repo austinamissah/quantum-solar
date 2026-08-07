@@ -30,6 +30,11 @@ saving = min(capacity_kWh, rate_kW × peak_hours) × price_spread
 which reproduces all thirteen solved points to the cent — here
 `min(10, 2×4) × $0.24183 = $1.9346`.
 
+Those figures are for a **lossless** battery. Round-trip losses replace
+`price_spread` with an effective spread `p_peak·η_d − p_off/η_c` and change
+nothing else — **the knee stays put**, so every sizing conclusion below holds
+either way. Only the dollar amounts shrink (see Caveats).
+
 ## Why: this is the forced-discharge result in another form
 
 The optimum census on this same day
@@ -82,45 +87,70 @@ tariff:
 
 | upgrade from 10 kWh / 2 kW | annual battery savings | gain |
 |---|---:|---:|
-| baseline | $455.72/yr | — |
-| rating 2 kW → **2.5 kW** | $569.65/yr | **+$113.93/yr** |
-| capacity 10 kWh → **20 kWh** | $455.72/yr | **+$0.00/yr** |
+| baseline | $404.28/yr | — |
+| rating 2 kW → **2.5 kW** | $505.35/yr | **+$101.07/yr** |
+| capacity 10 kWh → **20 kWh** | $404.28/yr | **+$0.00/yr** |
+
+*(At the 0.90 round trip. Losslessly these were $455.72, $569.65 and +$113.93; the
+asymmetry is unchanged, only scaled.)*
 
 Doubling the pack earns nothing. A 25% larger inverter earns 25% more. **If
 someone is buying anyway, rate is the axis that pays.**
 
-(The per-day gap is $0.48 on a summer weekday, but annualizing that would
-overstate it: winter's spread is $0.207 against summer's $0.242, so the winter
-weekdays contribute less and the true annual gain is $113.93, not the ~$126 a
-summer-only extrapolation gives.)
+(Don't annualize the per-day gap. Winter's spread is $0.207 against summer's
+$0.242, so winter weekdays contribute less; extrapolating the summer weekday alone
+overstates the gain by about 11%. Both figures above come from the full 365-day
+DP via `annual_from_inputs`.)
 
 ## Payback: the arithmetic a buyer actually needs
 
-At $455.72/yr against a swept installed cost, with a warranty of **10 years** for
-this class of system:
+**Round-trip losses are now priced** (they were assumed away when this section was
+first written — see the retraction below). A residential Li-ion system with its
+inverter is typically specified around a **0.90 AC round trip**, which is the
+headline used here; the loss is split evenly across the two legs.
+
+Losses cost about **11% of the annual saving**, and the payback moves with it:
+
+| round trip | annual saving | vs lossless | payback @ $11,500 |
+|---:|---:|---:|---:|
+| 1.00 *(old model)* | $455.72 | — | 25.2 yr |
+| 0.95 | $430.53 | −5.5% | 26.7 yr |
+| **0.90** | **$404.28** | **−11.3%** | **28.4 yr** |
+| 0.85 | $376.85 | −17.3% | 30.5 yr |
+| 0.80 | $348.10 | −23.6% | 33.0 yr |
+
+At the 0.90 headline, against a warranty of **10 years** for this class of system:
 
 | installed cost | payback @ 2 kW | payback @ 2.5 kW | within warranty? |
 |---:|---:|---:|:--:|
-| $5,000 | 11.0 yr | 8.8 yr | only at 2.5 kW |
-| $7,000 | 15.4 yr | 12.3 yr | no |
-| $9,000 | 19.7 yr | 15.8 yr | no |
-| $11,500 | 25.2 yr | 20.2 yr | no |
-| $14,000 | 30.7 yr | 24.6 yr | no |
+| $5,000 | 12.4 yr | 9.9 yr | only at 2.5 kW, barely |
+| $7,000 | 17.3 yr | 13.9 yr | no |
+| $9,000 | 22.3 yr | 17.8 yr | no |
+| $11,500 | **28.4 yr** | 22.8 yr | no |
+| $14,000 | 34.6 yr | 27.7 yr | no |
 
-**These are upper bounds on the savings, so lower bounds on the payback.** The
-model is lossless and assumes buy = sell; round-trip losses cut both the delivered
-energy and the effective spread, and export credited below import lowers the
-ceiling. Real payback is *longer* than every number above.
+**One optimistic assumption remains, so these are still lower bounds on payback.**
+The model assumes buy = sell net metering; a real export credit below the import
+price reduces what each discharge earns. That is one assumption now, not two.
 
 ### The honest conclusion
 
 **On a two-tier tariff, arbitrage alone does not pay for the hardware within its
 warranted life.** At a typical ~$11,500 installed cost the battery pays back in
-about 25 years against a 10-year warranty — it needs to outlive its guarantee
-roughly two and a half times over, on savings figures that are already optimistic.
-Only the cheapest configuration in the table (a $5,000 install with a 2.5 kW
-inverter, at 8.8 years) clears the warranty at all, and it does so on the
-optimistic side of assumptions that all point the same way.
+about **28 years** against a 10-year warranty — it must outlive its guarantee
+nearly three times over. Nothing in a plausible cost range clears the warranty at
+2 kW. The single case that does, a $5,000 install with a 2.5 kW inverter at **9.9
+years**, clears it by six weeks, on the optimistic side of the one assumption
+still standing. That is not a margin anyone should buy on.
+
+> **Retraction, 2026-08-07.** This section originally reported $455.72/yr and a
+> ~25-year payback from a **lossless** battery, flagged as an upper bound but not
+> quantified. Losses are now modelled and the true figures are $404.28/yr and
+> ~28 years. The direction was right and the magnitude was understated: the
+> lossless model overstates the saving by 11%. The old $5,000-at-2.5 kW case
+> (8.8 yr, comfortably inside warranty) becomes 9.9 yr, i.e. marginal. Left here
+> rather than silently updated, because "flagged as an upper bound" is weaker than
+> "measured" and the gap between them is the whole point.
 
 This is a statement about **arbitrage**, not about batteries. Home batteries are
 also bought for backup power and resilience during outages, and that value is real
@@ -131,16 +161,27 @@ arithmetic is the *savings* pitch.
 
 ## Caveats
 
-**The v1 caveats apply, and they cut in opposite directions.** The model is
-lossless with a single buy = sell price
+**Losses are modelled; one optimistic assumption remains**
 (see [`../ARCHITECTURE.md`](../ARCHITECTURE.md)):
 
-- **Round-trip losses would reduce both terms.** Less energy arrives than was
-  stored, so both the delivered kWh and the effective spread shrink; every number
-  above is an upper bound.
-- **Export paid below import would lower the ceiling.** The spread that a
-  discharge actually earns is set by what the utility credits, not by the import
-  price, so `price_spread` here is the optimistic case.
+- **Round-trip losses change the multiplier, not the knee.** With efficiencies the
+  rule becomes
+  `saving = min(capacity, rate × peak_hours) × (p_peak·η_d − p_off/η_c)` — the
+  bracket is an *effective* spread ($0.2148 at a 0.90 round trip, against $0.2418
+  lossless). Verified: at round trips of 1.0, 0.9 and 0.8 the knee stays at 8 kWh
+  and only the ceiling moves ($1.93 / $1.72 / $1.48). **So every sizing conclusion
+  on this page is unaffected by losses** — buy for `rate × window` regardless.
+- **Where the loss sits matters, not just the round trip.** Arbitrage buys cheap
+  and sells dear, so energy lost charging is wasted at the off-peak price and
+  energy lost discharging at the peak price. Same round trip, different bill.
+  Only the break-even ratio depends on the product alone.
+- **Losses introduce a break-even the lossless model had no notion of.** A cycle
+  pays only where `p_peak/p_off > 1/round_trip`. Xcel's summer ratio is **2.74**
+  against a threshold of **1.11** at a 0.90 round trip, so arbitrage stays firmly
+  profitable here — it would not on a tariff with a spread under ~11%.
+- **Export paid below import would lower the ceiling.** This is the assumption
+  still standing. The spread a discharge actually earns is set by what the utility
+  credits, not by the import price, so `price_spread` remains optimistic.
 - The **saving is measured against idling the same battery**, so it is the
   battery's contribution alone and excludes solar's.
 

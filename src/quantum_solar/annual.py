@@ -102,6 +102,8 @@ def annual_savings(
     capacity: float = 10.0,
     charge_energy: float = 2.0,
     discharge_energy: float | None = None,
+    charge_efficiency: float = 1.0,
+    discharge_efficiency: float = 1.0,
     initial_soc: float | None = None,
     system_kw: float = 5.0,
     rate_label: str = XCEL_CO_RETOU_LABEL,
@@ -133,6 +135,8 @@ def annual_savings(
         capacity=capacity,
         charge_energy=charge_energy,
         discharge_energy=discharge_energy,
+        charge_efficiency=charge_efficiency,
+        discharge_efficiency=discharge_efficiency,
         initial_soc=initial_soc,
     )
 
@@ -146,6 +150,8 @@ def annual_from_inputs(
     capacity: float = 10.0,
     charge_energy: float = 2.0,
     discharge_energy: float | None = None,
+    charge_efficiency: float = 1.0,
+    discharge_efficiency: float = 1.0,
     initial_soc: float | None = None,
     solver: Callable[[BatteryProblem], Solution] = dp_solve,
 ) -> AnnualResult:
@@ -185,6 +191,8 @@ def annual_from_inputs(
             capacity=capacity,
             charge_energy=charge_energy,
             discharge_energy=discharge_energy,
+            charge_efficiency=charge_efficiency,
+            discharge_efficiency=discharge_efficiency,
             initial_soc=initial_soc,
         )
         zero = np.zeros(_NUM_SLOTS, dtype=np.int8)

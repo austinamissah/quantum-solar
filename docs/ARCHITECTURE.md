@@ -45,10 +45,12 @@ domain-agnostic over "a QUBO + a problem exposing `energy(x)`/`is_feasible(x)`".
   so on the real Xcel RE-TOU weekday 2,448 minimal-cost plans tie and only the four
   peak discharge hours are forced. Report `forced()` and `n_minimal`, never the raw
   hour list, whenever the audience might read it as *the* answer. Note `n_optima`
-  (all ties) is a much larger and near-useless number: v1 is lossless, so a charge
-  and discharge at one price cancel and it counts unbounded free cycling — on a
-  flat-price day it counts every feasible schedule (~1.5e10). Validated against
-  exhaustive enumeration in `tests/test_optima_census.py`.
+  (all ties) is a much larger and near-useless number **at the lossless default**:
+  a charge and discharge at one price then cancel, so it counts unbounded free
+  cycling — on a flat-price day, every feasible schedule (~1.5e10). Set a round
+  trip below 1 and that degeneracy vanishes (the pair now loses money), so
+  `n_optima` becomes meaningful and small. Validated against exhaustive
+  enumeration in `tests/test_optima_census.py`.
   The **sizing rule follows from that same fact**: if every optimum discharges
   across the whole peak window and nothing else is forced, the only energy that
   earns is what the rating can deliver inside it, so
@@ -105,18 +107,39 @@ Gotchas:
   why brute force / QAOA stay small-`T` and `dp_solve` exists. The terminal
   `S_T = S_0` is a slack-free `(S_T − S_0)²` penalty.
 - **v1 modeling assumptions:** net metering (single buy=sell price, keeps the
-  objective linear) and a lossless battery with `charge_energy == discharge_energy`
-  (keeps SoC on a uniform grid, required by both the slack encoding and the DP
-  grid). Asymmetric prices / losses are deferred.
+  objective linear) and `charge_energy == discharge_energy` (keeps SoC on a
+  uniform grid, required by both the slack encoding and the DP grid). Asymmetric
+  buy/sell prices are still deferred.
+- **Round-trip losses are modelled** (`charge_efficiency`, `discharge_efficiency`,
+  both defaulting to `1.0` = the original lossless model). The design rule is
+  **losses live in the price, not in the state of charge**: the two energy quanta
+  stay store-side and equal so the SoC grid is untouched, and the efficiencies
+  convert to grid-side energy inside the objective only — a charging slot imports
+  `charge_energy / charge_efficiency`, a discharging slot offsets
+  `discharge_energy * discharge_efficiency`. Every cost site must use
+  `grid_charge_energy`/`grid_discharge_energy`; every SoC/penalty/encoding site
+  must use the store-side quanta. `tests/test_efficiency.py` re-runs the
+  DP-vs-brute-force-vs-QUBO cross-checks with losses on, which is what catches a
+  coefficient applied in one place and not another.
+- **Where the loss sits matters, not just the round trip.** Arbitrage buys cheap
+  and sells dear, so energy lost on the charge leg is wasted at the off-peak price
+  and energy lost on the discharge leg at the peak price. Same round trip, three
+  different bills. Only `breakeven_price_ratio` depends on the product alone: a
+  cycle pays iff `p_hi/p_lo > 1/round_trip`.
 - **Consequence: the optimal battery plan ignores solar and load entirely.** With
   one buy=sell price the bill separates into `price @ (load − generation)` plus
-  `price @ e·(c − d)`, and the battery appears only in the second term — so the
-  plan depends on the **price curve alone**. Verified: identical schedule under
-  zero solar, 3× solar, flat load and random load; only the bill moves. This is a
-  property of the v1 assumptions, not of batteries. Round-trip losses or export
-  paid below import both couple the plan back to solar and load. **Never present
+  the battery's own term, and the battery appears only in the second — so the plan
+  depends on the **price curve alone**. Verified: identical schedule under zero
+  solar, 3× solar, flat load and random load; only the bill moves. **Never present
   it as real-world guidance**, and don't "fix" a caption by asserting the battery
   charges on surplus solar — it does not.
+  > *Corrected 2026-08-07.* This previously read "round-trip losses or export paid
+  > below import both couple the plan back to solar and load". The losses half was
+  > wrong, and is now testable rather than assumed: losses only rescale the battery
+  > term's coefficients, leaving the split — and the schedule — intact. Re-verified
+  > at a 0.90 round trip, identical plan under all four perturbations. **Only
+  > asymmetric buy/sell prices break the separation**, because then which price
+  > applies depends on the sign of `load − generation + battery`.
 - `Solution.true_energy` is **cost** here (lower better) — the sign flips vs a
   yield-style objective.
 - QAOA transpiles for an `AerSimulator` with **no coupling map** (trivial layout,

@@ -52,6 +52,15 @@ RATE, CAPACITY = 2.0, 10.0
 INSTALLED_COSTS = (5000, 7000, 9000, 11500, 14000)
 WARRANTY_YEARS = 10
 
+# AC round-trip efficiencies to price the payback at. 1.0 is the old lossless
+# model, kept so the change is visible; 0.90 is the headline, being what a
+# residential Li-ion system with its inverter is typically specified at, and the
+# rest bracket it. Split evenly across the two legs as sqrt(round_trip) -- see
+# `docs/results/capacity-rate-sensitivity.md` on why the split, not just the
+# product, moves the bill.
+ROUND_TRIPS = (1.0, 0.95, 0.90, 0.85, 0.80)
+HEADLINE_ROUND_TRIP = 0.90
+
 
 def synthetic_day(peak_hours: int) -> np.ndarray:
     """A 24-hour two-tier tariff with ``peak_hours`` on-peak, spread held fixed.
@@ -105,14 +114,17 @@ def sweep(peak_hours: int) -> dict:
     }
 
 
-def annual_savings_for(snapshot, capacity: float, rate: float) -> float:
+def annual_savings_for(snapshot, capacity: float, rate: float,
+                       round_trip: float = 1.0) -> float:
     """Battery-alone savings over the full year, the same call the README quotes."""
     generation = np.array(snapshot["generation"], dtype=float)
     weekday = np.array(snapshot["price_weekday"], dtype=float)
     weekend = np.array(snapshot["price_weekend"], dtype=float)
+    leg = float(np.sqrt(round_trip))
     result = annual_from_inputs(
         generation, lambda m, w: weekend[m] if w else weekday[m], load_profile,
         capacity=capacity, charge_energy=rate, discharge_energy=rate,
+        charge_efficiency=leg, discharge_efficiency=leg,
     )
     return float(result.battery_savings)
 
@@ -121,8 +133,20 @@ def main() -> None:
     snapshot = json.loads(SNAP.read_text())
     windows = [sweep(h) for h in PEAK_HOURS]
 
-    baseline = annual_savings_for(snapshot, CAPACITY, RATE)
-    upgraded = annual_savings_for(snapshot, CAPACITY, 2.5)
+    by_round_trip = {}
+    for rt in ROUND_TRIPS:
+        savings = annual_savings_for(snapshot, CAPACITY, RATE, rt)
+        by_round_trip[rt] = {
+            "round_trip": rt,
+            "battery_savings": round(savings, 2),
+            "payback_years": {str(c): round(c / savings, 1) for c in INSTALLED_COSTS},
+            "cheapest_within_warranty": next(
+                (c for c in INSTALLED_COSTS if c / savings <= WARRANTY_YEARS), None),
+        }
+
+    lossless = by_round_trip[1.0]["battery_savings"]
+    baseline = annual_savings_for(snapshot, CAPACITY, RATE, HEADLINE_ROUND_TRIP)
+    upgraded = annual_savings_for(snapshot, CAPACITY, 2.5, HEADLINE_ROUND_TRIP)
     payback = [
         {"installed_cost": c,
          "years_at_2kw": round(c / baseline, 1),
@@ -137,12 +161,12 @@ def main() -> None:
                    "and payback use the committed snapshot "
                    "docs/figures/annual_golden_co.json via the same 365-day DP the "
                    "README quotes. Exact DP throughout, no network.",
-        "_upper_bounds": "Every saving here is an UPPER BOUND, so every payback is a "
-                         "LOWER bound. v1 is lossless and assumes buy == sell: "
-                         "round-trip losses would cut both the delivered energy and "
-                         "the effective spread, and an export price below the import "
-                         "price would lower the ceiling. Real payback is longer than "
-                         "the table says.",
+        "_bounds": "Round-trip losses are now PRICED (see annual.by_round_trip); the "
+                   "headline payback uses a 0.90 AC round trip rather than the "
+                   "lossless model. One optimistic assumption remains: buy == sell "
+                   "net metering. An export price below the import price would "
+                   "reduce what a discharge earns, so these paybacks are still lower "
+                   "bounds -- but by one assumption now, not two.",
         "price_spread": SPREAD,
         "off_peak_price": OFF_PEAK,
         "rule": "saving = min(capacity_kWh, rate_kW * peak_hours) * price_spread",
@@ -150,13 +174,16 @@ def main() -> None:
         "swept_at_capacity_kwh": CAPACITY,
         "windows": windows,
         "annual": {
+            "round_trip_efficiency": HEADLINE_ROUND_TRIP,
+            "battery_savings_lossless": round(lossless, 2),
             "battery_savings_2kw": round(baseline, 2),
             "battery_savings_2p5kw": round(upgraded, 2),
             "rate_upgrade_gain": round(upgraded - baseline, 2),
             "capacity_upgrade_gain": round(
-                annual_savings_for(snapshot, 20.0, RATE) - baseline, 2),
+                annual_savings_for(snapshot, 20.0, RATE, HEADLINE_ROUND_TRIP) - baseline, 2),
             "warranty_years": WARRANTY_YEARS,
             "payback": payback,
+            "by_round_trip": list(by_round_trip.values()),
         },
     }
     OUT.write_text(json.dumps(record, indent=1) + "\n")
@@ -171,7 +198,14 @@ def main() -> None:
               f"{w['saturation_capacity_kwh']:>9} ${w['daily_ceiling']:>8.4f}")
     print(f"  rule mismatches: {mismatches}")
     print()
-    print(f"annual battery savings: ${baseline:.2f}/yr at {RATE} kW, "
+    print(f"annual battery savings by round trip (10 kWh / {RATE} kW):")
+    print(f"  {'round trip':>10} {'$/yr':>9} {'vs lossless':>12}  {'payback $11.5k':>14}")
+    for row in by_round_trip.values():
+        s = row["battery_savings"]
+        print(f"  {row['round_trip']:>10.2f} ${s:>8.2f} {100 * (s / lossless - 1):>11.1f}%"
+              f"  {row['payback_years']['11500']:>13} yr")
+    print()
+    print(f"at round trip {HEADLINE_ROUND_TRIP}: ${baseline:.2f}/yr at {RATE} kW, "
           f"${upgraded:.2f}/yr at 2.5 kW (+${upgraded - baseline:.2f})")
     print(f"  {'installed':>10} {'yrs @2kW':>9} {'yrs @2.5kW':>11} {'<= warranty':>12}")
     for row in payback:

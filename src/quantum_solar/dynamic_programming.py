@@ -44,11 +44,13 @@ def dp_solve(problem: BatteryProblem) -> Solution:
 
     for j in range(t):
         p = problem.price[j]
+        # The SoC step is store-side (one grid level either way); the PRICE is paid
+        # on the grid-side quantum, which is where round-trip losses land.
         idle = cost                                   # k <- k
         charge = np.full(n_max + 1, inf)
-        charge[1:] = cost[:-1] + p * problem.charge_energy      # k <- k-1
+        charge[1:] = cost[:-1] + p * problem.grid_charge_energy      # k <- k-1
         discharge = np.full(n_max + 1, inf)
-        discharge[:-1] = cost[1:] - p * problem.discharge_energy  # k <- k+1
+        discharge[:-1] = cost[1:] - p * problem.grid_discharge_energy  # k <- k+1
 
         stacked = np.vstack([idle, charge, discharge])
         cost = stacked.min(axis=0)
@@ -92,11 +94,15 @@ class OptimaCensus:
     is real.
 
     Attributes:
-        n_optima: every cost-optimal schedule. Read this with care: because v1 is
-            **lossless**, a charge and a discharge at the same price cancel exactly,
-            so this count includes unlimited cost-free cycling that a real battery
-            would pay for in wear. On a flat-price day it counts every feasible
-            schedule and carries no information at all.
+        n_optima: every cost-optimal schedule. Read this with care **when the
+            battery is lossless**: a charge and a discharge at the same price then
+            cancel exactly, so the count includes unlimited cost-free cycling that
+            a real battery would pay for in wear, and on a flat-price day it counts
+            every feasible schedule and carries no information at all. Set a
+            round-trip efficiency below 1 and that degeneracy disappears — the
+            cancelling pair now strictly loses money — so this count becomes
+            meaningful and usually small. The 1.5e10-tie flat day is an artifact of
+            the lossless default, not a property of batteries.
         n_minimal: cost-optimal schedules that also use the fewest battery actions.
             This is the meaningful count — it excludes the cost-free churn above.
         min_actions: battery actions (charges + discharges) in those schedules.
@@ -137,8 +143,15 @@ def optima_census(problem: BatteryProblem, *, atol: float = 1e-9) -> OptimaCensu
     n_max = int(round(problem.capacity / e))
     k0 = int(round(problem.initial_soc / e))
     inf = np.inf
-    # (delta level, delta cost multiplier, delta actions) per action.
-    moves = ((_IDLE, 0, 0.0, 0), (_CHARGE, +1, +1.0, 1), (_DISCHARGE, -1, -1.0, 1))
+    # (delta level, GRID energy signed, delta actions) per action. The level step is
+    # store-side and symmetric; the priced quantity is grid-side and is not, once
+    # efficiencies differ -- so each move carries its own coefficient rather than a
+    # shared +-e.
+    moves = (
+        (_IDLE, 0, 0.0, 0),
+        (_CHARGE, +1, +problem.grid_charge_energy, 1),
+        (_DISCHARGE, -1, -problem.grid_discharge_energy, 1),
+    )
 
     def layer():
         return (np.full(n_max + 1, inf), np.full(n_max + 1, inf),
@@ -156,7 +169,7 @@ def optima_census(problem: BatteryProblem, *, atol: float = 1e-9) -> OptimaCensu
             c2, a2, all2, min2 = layer()
             src = slice(max(0, -dk), n_max + 1 - max(0, dk))
             dst = slice(max(0, dk), n_max + 1 - max(0, -dk))
-            c2[dst] = cost[src] + dc * p * e
+            c2[dst] = cost[src] + dc * p
             a2[dst] = act[src] + da
             all2[dst], min2[dst] = n_all[src], n_min[src]
             cands.append((c2, a2, all2, min2))
@@ -187,7 +200,7 @@ def optima_census(problem: BatteryProblem, *, atol: float = 1e-9) -> OptimaCensu
         for _, dk, dc, da in moves:
             src = slice(max(0, dk), n_max + 1 - max(0, -dk))     # level k+dk
             dst = slice(max(0, -dk), n_max + 1 - max(0, dk))     # level k
-            c2 = cost[src] + dc * p * e
+            c2 = cost[src] + dc * p
             a2 = act[src] + da
             # An unreachable level is inf on both sides, and inf - inf is nan. Mask
             # the subtraction itself (numpy evaluates it before any boolean guard),
@@ -215,7 +228,7 @@ def optima_census(problem: BatteryProblem, *, atol: float = 1e-9) -> OptimaCensu
             if hi < lo:
                 continue
             k = np.arange(lo, hi + 1)
-            total = f_cost[j][k] + dc * p * e + b_cost[j + 1][k + dk]
+            total = f_cost[j][k] + dc * p + b_cost[j + 1][k + dk]
             steps = f_act[j][k] + da + b_act[j + 1][k + dk]
             ok = (np.abs(total - best_cost) <= atol) & (np.abs(steps - best_act) <= atol)
             if bool(ok.any()):

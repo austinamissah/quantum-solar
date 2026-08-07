@@ -351,10 +351,13 @@ def main():
             "term price@(load-generation) and a battery term price@e*(c-d). The "
             "first does not involve the battery, so the optimal plan depends only "
             "on the PRICE curve -- it is provably unchanged by zero solar, 3x "
-            "solar, flat load or random load (only the bill moves). Real batteries "
-            "have round-trip losses and real tariffs pay less for export than they "
-            "charge for import; both couple the plan back to solar and load. Do "
-            "not publish this as advice."
+            "solar, flat load or random load (only the bill moves). Corrected "
+            "2026-08-07: this note used to say round-trip losses would restore the "
+            "coupling. They do not. Losses are now modelled and only rescale the "
+            "battery term's coefficients, so the plan is identical at a 0.90 round "
+            "trip. ONLY an export price below the import price breaks the "
+            "separation, by making which price applies depend on the sign of the "
+            "household's net. Do not publish this as advice."
         ),
         "location": snap["location"], "system_kw": snap["system_kw"],
         "capacity": snap["capacity"], "charge_energy": snap["charge_energy"],

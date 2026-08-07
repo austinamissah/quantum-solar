@@ -90,7 +90,9 @@ def num_vars(problem: BatteryProblem, encoding: SoCEncoding = Encoding.EXACT) ->
 
 def default_weights(problem: BatteryProblem) -> PenaltyWeights:
     """Penalty weights large enough that feasibility dominates the objective."""
-    e = max(problem.charge_energy, problem.discharge_energy)
+    # Grid-side, so the penalties still dominate when charging imports more than it
+    # stores (efficiency < 1 raises the objective's scale, never lowers it).
+    e = max(problem.grid_charge_energy, problem.grid_discharge_energy)
     obj_scale = float(np.sum(np.abs(problem.price)) * e)
     lam = 10.0 * obj_scale / (e * e) + 10.0
     return PenaltyWeights(mutual_exclusion=lam, soc_bounds=lam, terminal=lam)
@@ -111,8 +113,12 @@ def build_qubo(
     require_soc_on_grid(problem)
     encoding.validate(problem)
     t = problem.num_slots
+    # Store-side quanta drive the SoC penalties below; the objective is priced on
+    # the grid-side quanta, which is where round-trip losses enter.
     e_c = problem.charge_energy
     e_d = problem.discharge_energy
+    grid_c = problem.grid_charge_energy
+    grid_d = problem.grid_discharge_energy
 
     aux_base = 2 * t
     m = aux_base + encoding.aux_bits(problem)
@@ -122,8 +128,8 @@ def build_qubo(
 
     # --- Objective: net-metered grid cost (linear) ---
     for j in range(t):
-        Q[j, j] += problem.price[j] * e_c          # charging imports e_c
-        Q[t + j, t + j] += -problem.price[j] * e_d  # discharging exports e_d
+        Q[j, j] += problem.price[j] * grid_c          # charging imports grid_c
+        Q[t + j, t + j] += -problem.price[j] * grid_d  # discharging offsets grid_d
     offset += float(problem.price @ (problem.load - problem.generation))
 
     # --- Mutual exclusion: no charge & discharge in the same slot ---

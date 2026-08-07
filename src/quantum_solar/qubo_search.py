@@ -64,7 +64,7 @@ def qubo_min_exact(
 
     t = problem.num_slots
     e, _, k0 = soc_grid(problem)
-    e_c, e_d = problem.charge_energy, problem.discharge_energy
+    grid_c, grid_d = problem.grid_charge_energy, problem.grid_discharge_energy
 
     # --- State space: every reachable SoC level, plus drift history if needed ---
     levels = np.arange(k0 - t, k0 + t + 1)
@@ -102,7 +102,10 @@ def qubo_min_exact(
         for a, (c, d, dk) in enumerate(_ACTIONS):
             src = slice(max(0, -dk), n_lev - max(0, dk))
             tgt = slice(max(0, dk), n_lev + min(0, dk))
-            step = p * (e_c * c - e_d * d) + (weights.mutual_exclusion if c and d else 0.0)
+            # Priced on the grid-side quanta (round-trip losses); the SoC steps
+            # `dk` above stay store-side.
+            step = (p * (grid_c * c - grid_d * d)
+                    + (weights.mutual_exclusion if c and d else 0.0))
             for h in range(n_hist):
                 total = step
                 if window and j >= window - 1:

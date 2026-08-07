@@ -57,9 +57,11 @@ BatteryProblem ──build_qubo──▶ QUBO ──qubo_to_ising──▶ Ising
    program over the SoC grid that scales to a full day and serves as ground truth
    at larger `T`. Tests assert QAOA recovers the exact optimum.
 
-v1 modeling assumptions: net metering (a single buy=sell price) and a lossless
-battery with equal charge/discharge energy per slot. Asymmetric pricing and
-round-trip losses are on the roadmap.
+v1 modeling assumptions: net metering (a single buy=sell price) and equal
+charge/discharge energy per slot. **Round-trip losses are modelled** via
+`charge_efficiency`/`discharge_efficiency`, which default to `1.0` (lossless) so
+the defaults reproduce the original model exactly. Asymmetric pricing (export
+credited below import) is still on the roadmap.
 
 ## How the simulator works
 
@@ -204,6 +206,11 @@ RE-TOU** tariff (URDB label `69bd927af5cd25efec0e9aad`, snapshot as of **August
 - **Battery savings ≈ $455.72/yr — the battery alone** (solar held fixed across
   the comparison). This figure is comparatively **robust** to the net-metering
   assumption: arbitrage depends on the on/off-peak *spread*, not the export price.
+  It is a **lossless** figure — the table above uses the library defaults, where
+  `charge_efficiency == discharge_efficiency == 1.0`. At a realistic **0.90 AC
+  round trip** it falls ~11% to **$404.28/yr**; pass `charge_efficiency=` and
+  `discharge_efficiency=` to price losses in. See
+  [`docs/results/capacity-rate-sensitivity.md`](docs/results/capacity-rate-sensitivity.md).
 
 The dollar amounts are a tariff snapshot — a **~9.9% Xcel increase filed for
 August 2026** will move the absolute bills (the URDB label pins the version we
@@ -230,14 +237,15 @@ pack behind a 2 kW inverter on a 4-hour peak is an **8 kWh pack** as far as the
 bill is concerned. Consequently **rate is the axis that pays**: 2 kW → 2.5 kW is
 worth **+$113.93/yr**, while 10 kWh → 20 kWh is worth **$0.00/yr**.
 
-**Whether it pays back — it does not.** At $455.72/yr, a ~$11,500 install pays
-back in ~25 years against a ~10-year warranty ($9,000 → 20 yr, $7,000 → 15 yr).
-Those are *upper bounds on savings*, hence lower bounds on payback: losses and
-export-below-import both cut the numerator. **On a two-tier tariff, arbitrage
-alone does not pay for the hardware within its warranted life.** Batteries are
-also bought for backup and resilience, which this model does not price and which
-may well justify a purchase — but the savings pitch does not survive the
-arithmetic.
+**Whether it pays back — it does not.** Priced at a **0.90 AC round trip**
+(losses cost ~11% of the saving, taking $455.72/yr to **$404.28/yr**), a ~$11,500
+install pays back in **~28 years** against a ~10-year warranty ($9,000 → 22 yr,
+$7,000 → 17 yr). Nothing in a plausible cost range clears the warranty at 2 kW.
+**On a two-tier tariff, arbitrage alone does not pay for the hardware within its
+warranted life.** One optimistic assumption remains — buy = sell net metering, so
+a real export credit would push payback further out. Batteries are also bought for
+backup and resilience, which this model does not price and which may well justify
+a purchase — but the savings pitch does not survive the arithmetic.
 
 ## Status
 
