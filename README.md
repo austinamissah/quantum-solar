@@ -157,11 +157,46 @@ above is the supported path and gives you everything.
 ## Run the demo
 
 ```bash
+python -m quantum_solar
+```
+
+One command, **no network, no API key, no notebook** — it runs on data committed
+to this repository (the annual PVWatts/URDB snapshot and the packaged ResStock load
+profiles), and needs nothing beyond numpy. It prints one real Colorado day's optimal
+plan with its forced hours separated from its 2,448 ties, the exact 365-day
+three-way savings split, the sizing rule, and the payback arithmetic:
+
+```
+  hour       0  3  6  9  12 15 18 21
+  price      ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁████▁▁▁   $0.139 … $0.381/kWh
+  plan       CCC··············DDDDC··   C charge · D discharge · · idle
+  level      ▅▇███████████████▇▅▄▂▄▄▄   0 … 10 kWh
+
+  bill $0.36   ·   idle battery $2.29   ·   battery saves $1.93
+```
+
+Turn the knobs that matter — nothing is interpolated or cached, every figure is
+recomputed exactly (~2.5 s for the full run, ~0.1 s with `--day-only`):
+
+```bash
+python -m quantum_solar --round-trip 0.90 --export-ratio 0.25   # realistic, not the defaults
+python -m quantum_solar --capacity 20 --rate 5                  # sizing
+python -m quantum_solar --day 17 --day-only                     # a winter weekday
+python -m quantum_solar --quantum                               # QAOA vs the exact solvers
+```
+
+The dollar figures come from the same `annual_from_inputs` call this README quotes,
+and `tests/test_cli.py` pins them against the table above, so the two cannot drift.
+
+For the quantum half and the plots, the notebook goes further:
+
+```bash
 jupyter lab notebooks/demo.ipynb
 ```
 
-The notebook builds a small instance, solves it with brute force, DP, and QAOA
-(showing they agree), then plots the optimal schedule for a full day.
+It builds a small instance, solves it with brute force, DP, and QAOA (showing they
+agree), then plots the optimal schedule for a full day. Its real-data cells need an
+`NREL_API_KEY`; `python -m quantum_solar` does not.
 
 ## Documentation
 

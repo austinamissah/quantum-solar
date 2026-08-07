@@ -88,6 +88,19 @@ domain-agnostic over "a QUBO + a problem exposing `energy(x)`/`is_feasible(x)`".
   call it at startup and refuse to report if it drifts.
 - All solvers return the shared `Solution` type (`x`, `qubo_energy`,
   `true_energy`, `feasible`).
+- `__main__.py` — `python -m quantum_solar`, the one-command demo. **Runs entirely
+  offline**: the annual snapshot (`docs/figures/annual_golden_co.json`) plus the
+  packaged ResStock profiles, so a fresh clone needs no `NREL_API_KEY` and no warm
+  `data/cache/` — which the notebook's real-data cells do. Numpy-only (text
+  rendering, no matplotlib); `--quantum` is the sole path that imports qiskit, and
+  it degrades to an install hint rather than a traceback. Every dollar figure goes
+  through `annual_from_inputs`, and `tests/test_cli.py` pins the three-way split
+  against the README's table so the two cannot drift. Two rules are enforced in the
+  output rather than left to the reader: the solar and battery legs are never
+  summed, and **the sizing-rule narrative is suppressed unless `export_ratio == 1`**
+  — below-retail export couples the plan to solar and load, the knee stops existing
+  and the rate column stops being monotonic, so narrating the rule there would be a
+  confidently wrong claim.
 
 **Qiskit is an optional dependency of the classical half.** `ising.py` and
 `qaoa.py` are the only modules that import it, and `__init__.py` loads their three
@@ -249,6 +262,9 @@ A virtualenv already exists at `.venv` (Python 3.12).
 source .venv/bin/activate         # activate the environment
 pip install -r requirements.txt   # sync deps (already installed in .venv)
 pip install -e . --no-deps        # make `import quantum_solar` work (src layout)
+
+python -m quantum_solar           # the demo: one day, the year, sizing, payback
+python -m quantum_solar --help    # the knobs (capacity/rate/round-trip/export/day)
 
 python -m pytest                  # full suite (~10s; includes slow QAOA runs)
 python -m pytest -m "not slow"    # fast unit tests only, skip Aer end-to-end
