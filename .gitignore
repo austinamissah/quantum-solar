@@ -222,3 +222,6 @@ data/cache/
 
 # Machine-local editor and tooling configuration is kept in .git/info/exclude
 # rather than here, so this file stays limited to the project's own artifacts.
+
+# Regenerable from basin_study.csv params (bit-exact); a 568K binary in git buys nothing.
+docs/results/basin_distributions*.npz
