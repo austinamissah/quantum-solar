@@ -337,6 +337,38 @@ encoding, the parameters, or the shot budget. It is now the default in
 `cp3` (6 qubits, 46 gates) against `exact` (10 qubits, 106 gates) — same instance,
 same optimum, same depth, same weight, shot-noise floors equalized.
 
+> **"Same weight" — is the encoding result conditional on it? Mostly answered on
+> the simulator, 2026-08-07.** Every hardware run compared the encodings at
+> `α* = 0.021`, so the obvious 2×2 is missing its fourth cell: `cp3 @ default`.
+> Before spending QPU on it, we measured how far the *weight* moves each encoding's
+> optimal circuit at all:
+>
+> | encoding | TVD(ideal @default, ideal @α=0.021) | vs its shot floor |
+> |---|---:|---:|
+> | `exact` | 0.6078 | 14.3× |
+> | `cp3` | 0.1035 | **2.1×** |
+>
+> **The weight barely moves `cp3`'s circuit.** Since the transpiled gate count is
+> weight-invariant too (46 and 106 at both weights; couplings 15 and 29), the two
+> `cp3` cells are the same circuit topology with nearly the same angles, and should
+> degrade nearly identically. So an encoding-by-weight interaction, if any, would
+> be driven almost entirely by the `exact` arm. That is an argument from the ideal
+> distributions, **not a hardware measurement** — it does not license dropping the
+> "at α=0.021" qualifier, but it does say the qualifier is unlikely to be hiding
+> much.
+>
+> **The hardware 2×2 was designed and then not run**, because it cannot resolve
+> what it was for. Tuning `cp3 @ default` is not reproducible — across eight seeds
+> the achieved `<H>` spans 15.80–22.77 and the ideal distribution's TVD to
+> `cp3 @ α=0.021` spans 0.057–0.755 — and the principled rule (lowest `<H>`, what
+> `QAOASolver` already applies) selects a basin at TVD **0.1035**, i.e. one of the
+> cells that barely differs. The basins far enough apart to make the contrast
+> informative are exactly the ones that rule rejects, so a defensible selection
+> rule and an informative contrast are not simultaneously available on this
+> instance. Recorded here rather than as a plan, since the decision was not to run
+> it. Resolving it properly needs an instance where `cp3`'s optimum actually moves
+> with the weight — check that on the simulator first.
+
 | run | normalized gap | job |
 |---|---:|---|
 | 1 | 0.0658 | `d9of01va5u8s73e2ljhg` |
