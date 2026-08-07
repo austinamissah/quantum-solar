@@ -22,14 +22,20 @@ baselines.
 
 ## Example schedule
 
-The optimizer charges when energy is cheap (overnight and midday, when solar is
-abundant) and discharges into the morning and evening price peaks, while keeping
-the state of charge within capacity and returning it to its starting level:
+The optimizer charges when electricity is cheap — overnight, midday, and late —
+and discharges into the morning rise and the evening price peak, keeping the state
+of charge inside the battery's capacity and returning it to its starting level. The
+day nets a small credit, **−$0.06**, and this plan is the **only** optimal one: no
+other schedule ties it, so the picture is *the* answer rather than one of many.
 
 ![Optimal battery schedule](docs/schedule.png)
 
-*(Illustrative synthetic day; regenerate with `python scripts/make_preview.py`. See
-[Real data](#real-data) for using real NREL solar generation.)*
+*(Illustrative synthetic day; regenerate with `python scripts/make_preview.py`. The
+midday charging follows the cheap midday **price**, not the solar peak it happens
+to coincide with — under net metering the optimal plan provably depends on the
+price curve alone, and this schedule is unchanged by zero solar or triple solar.
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for why, and
+[Real data](#real-data) for real NREL solar generation.)*
 
 ## Pipeline
 
