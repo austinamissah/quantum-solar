@@ -39,12 +39,26 @@ domain-agnostic over "a QUBO + a problem exposing `energy(x)`/`is_feasible(x)`".
 - `dynamic_programming.py` — `dp_solve`: exact, `O(T·K·3)` DP over the discrete
   SoC grid. The **scalable** ground truth; enforces SoC bounds structurally (no
   slack). Use it, not brute force, for any non-tiny `T`.
+  **`dp_solve`'s tie-break is specified, and must stay that way.** Selection is
+  lexicographic: minimum cost (within `TIE_ATOL`), then **fewest battery actions**,
+  then a fixed action preference (idle < charge < discharge). The comparison is
+  tolerance-based *on purpose* — an exact `<` is what let the `action_costs()`
+  refactor move costs by ~1e-16, reorder the ties, and silently rewrite all four
+  committed schedule figures (the summer weekday went 8 actions → 10; the
+  flat-price weekends went from an idle line to cost-free churn). No cost moved, so
+  nothing caught it. The minimal-action step also guarantees the returned plan uses
+  exactly `optima_census(...).min_actions`, i.e. it is always a member of the
+  population the census counts — otherwise pairing `dp_solve`'s hours with
+  `forced()` in one figure is incoherent. Pinned by
+  `tests/test_dynamic_programming.py` (minimal-action invariant over a 36-cell
+  sweep, `true_energy == energy(x)`, and a flat-price day returning idle).
   `optima_census` runs the same recurrence forward *and* backward to answer "how
-  much of that schedule is actually determined?" — because **`dp_solve`'s returned
-  hours are largely arbitrary**. Every hour at the same price is interchangeable,
-  so on the real Xcel RE-TOU weekday 2,448 minimal-cost plans tie and only the four
-  peak discharge hours are forced. Report `forced()` and `n_minimal`, never the raw
-  hour list, whenever the audience might read it as *the* answer. Note `n_optima`
+  much of that schedule is actually determined?" — because **the returned hours are
+  still only one of many tied optima**. Every hour at the same price is
+  interchangeable, so on the real Xcel RE-TOU weekday 2,448 minimal-cost plans tie
+  and only the four peak discharge hours are forced. Report `forced()` and
+  `n_minimal`, never the raw hour list, whenever the audience might read it as *the*
+  answer — the tie-break makes the plan reproducible, not canonical. Note `n_optima`
   (all ties) is a much larger and near-useless number **at the lossless default**:
   a charge and discharge at one price then cancel, so it counts unbounded free
   cycling — on a flat-price day, every feasible schedule (~1.5e10). Set a round

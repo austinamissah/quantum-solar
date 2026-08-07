@@ -27,9 +27,42 @@ from .solution import Solution
 _IDLE, _CHARGE, _DISCHARGE = 0, 1, 2
 _ACTION_NAMES = ("idle", "charge", "discharge")
 
+#: Tolerance for calling two costs equal when breaking ties. Same classifier, and
+#: the same reasoning, as :func:`optima_census`: far above float64 accumulation
+#: error over a day (~1e-16) and far below any real price difference (~1e-2).
+TIE_ATOL = 1e-9
 
-def dp_solve(problem: BatteryProblem) -> Solution:
-    """Return the exact cost-minimizing schedule as a :class:`Solution`."""
+
+def dp_solve(problem: BatteryProblem, *, atol: float = TIE_ATOL) -> Solution:
+    """Return the exact cost-minimizing schedule as a :class:`Solution`.
+
+    **Tie-break (specified, not incidental).** The optimum is usually far from
+    unique — every hour at the same price is interchangeable — so *which* optimal
+    schedule comes back has to be pinned or it is not reproducible. Selection is
+    lexicographic:
+
+    1. minimum cost (within ``atol``);
+    2. then the **fewest battery actions** (charges + discharges);
+    3. then a fixed action preference, idle < charge < discharge.
+
+    Step 2 is what makes the returned plan meaningful rather than merely optimal.
+    In a lossless model a charge and a discharge at the same price cancel exactly,
+    so cost alone leaves unlimited free cycling tied for the optimum — on a
+    flat-price day *every* feasible schedule ties (~1.5e10 of them). Without a
+    tie-break on action count the solver may return any of that churn, which reads
+    as a plan and is noise. With it, the flat day comes back idle, as it should.
+
+    The guarantee this buys, asserted in ``tests/test_dynamic_programming.py``:
+    the returned schedule uses exactly ``optima_census(problem).min_actions``
+    actions, so it is always a member of the population ``optima_census``
+    describes. Reporting ``dp_solve``'s hours next to the census's ``forced()``
+    is therefore consistent by construction.
+
+    It is still only *one* of the tied minimal optima (``n_minimal`` of them), so
+    the caller's obligation is unchanged: report ``forced()``, never the raw hour
+    list. What is new is that re-running cannot silently hand back a different
+    plan — which is how four committed figures drifted once already.
+    """
     require_soc_on_grid(problem)
 
     t = problem.num_slots
@@ -42,9 +75,15 @@ def dp_solve(problem: BatteryProblem) -> Solution:
     down = int(round(problem.discharge_energy / e))
     inf = np.inf
 
-    # Forward DP: cost[k] = min cost to reach SoC level k after the processed slots.
+    # Forward DP: cost[k] = min cost to reach SoC level k after the processed slots,
+    # and steps[k] = the fewest actions among the paths achieving that cost. Both
+    # are additive, so tracking them together is an ordinary lexicographic shortest
+    # path: a min-cost min-action path's prefixes are themselves min-cost, and
+    # min-action among those.
     cost = np.full(n_max + 1, inf)
     cost[k0] = 0.0
+    steps = np.full(n_max + 1, inf)
+    steps[k0] = 0.0
     actions = np.zeros((t, n_max + 1), dtype=np.int8)  # chosen action to land on k
 
     # Per-slot cost of each action relative to idling. This is where losses and an
@@ -54,15 +93,32 @@ def dp_solve(problem: BatteryProblem) -> Solution:
     idle_cost, charge_delta, discharge_delta, _ = problem.action_costs()
 
     for j in range(t):
-        idle = cost                                        # k <- k
         charge = np.full(n_max + 1, inf)
         charge[up:] = cost[:n_max + 1 - up] + charge_delta[j]        # k <- k-up
+        charge_steps = np.full(n_max + 1, inf)
+        charge_steps[up:] = steps[:n_max + 1 - up] + 1
         discharge = np.full(n_max + 1, inf)
         discharge[:n_max + 1 - down] = cost[down:] + discharge_delta[j]  # k <- k+down
+        discharge_steps = np.full(n_max + 1, inf)
+        discharge_steps[:n_max + 1 - down] = steps[down:] + 1
 
-        stacked = np.vstack([idle, charge, discharge])
-        cost = stacked.min(axis=0)
-        actions[j] = stacked.argmin(axis=0)
+        # Row order IS the third tie-break level: idle < charge < discharge.
+        cand_cost = np.vstack([cost, charge, discharge])              # idle: k <- k
+        cand_steps = np.vstack([steps, charge_steps, discharge_steps])
+
+        best_cost = cand_cost.min(axis=0)
+        # Compare within atol rather than exactly. An exact `<` is what let a
+        # refactor that moved costs by ~1e-16 silently reorder the ties and rewrite
+        # every committed figure; a tolerance makes the choice depend on the prices,
+        # not on the order the arithmetic happened to be done in.
+        tied = np.isfinite(cand_cost) & (cand_cost <= best_cost + atol)
+        tied_steps = np.where(tied, cand_steps, inf)
+        best_steps = tied_steps.min(axis=0)
+        # argmax on a boolean picks the FIRST True, giving the row-order preference.
+        # Unreachable levels are all-False and fall through to idle, which is never
+        # routed through: reconstruction only visits levels reachable from k0.
+        actions[j] = np.argmax(tied & (tied_steps <= best_steps + atol), axis=0)
+        cost, steps = best_cost, best_steps
 
     # Terminal constraint: must end at the initial SoC level. The accumulated cost
     # is relative to idling, so add the idle bill back.

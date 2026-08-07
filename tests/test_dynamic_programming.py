@@ -106,6 +106,89 @@ def test_saving_follows_the_sizing_rule(capacity, rate, peak_hours):
     assert saving == pytest.approx(min(capacity, rate * peak_hours) * spread)
 
 
+# --- the tie-break: which of the tied optima comes back ----------------------
+#
+# These guard a defect that had already happened. `dp_solve` used to resolve ties
+# with a bare `argmin`, i.e. by whichever candidate the arithmetic happened to
+# order first. The `action_costs()` refactor moved costs by ~1e-16, that reordered
+# the ties, and every committed schedule figure silently changed: the summer
+# weekday went from 8 battery actions to 10, and the flat-price weekend days went
+# from a clean idle line to visible cost-free churn. No cost moved, so no existing
+# test could see it.
+
+
+@pytest.mark.parametrize("num_slots", [2, 3, 4, 6, 12, 24])
+@pytest.mark.parametrize("seed", [0, 1, 2, 3, 4, 5])
+def test_dp_returns_a_minimal_action_optimum(num_slots, seed):
+    """The returned plan uses exactly ``optima_census``'s ``min_actions``.
+
+    This is the contract that makes reporting ``dp_solve``'s hours alongside
+    ``optima_census().forced()`` coherent: without it the solver can hand back a
+    plan that is optimal but is not a member of the population the census counts.
+    """
+    from quantum_solar import optima_census
+
+    problem = synthetic_instance(num_slots=num_slots, seed=seed)
+    solution = dp_solve(problem)
+    c, d = problem.decode(solution.x)
+
+    assert solution.feasible
+    assert int(c.sum() + d.sum()) == optima_census(problem).min_actions
+
+
+@pytest.mark.parametrize("num_slots,seed", [(3, 1), (6, 2), (24, 3)])
+def test_dp_reported_cost_is_the_cost_of_the_schedule_it_returns(num_slots, seed):
+    """``true_energy`` must be the true cost of ``x``, not of some other tied plan.
+
+    The tie-break compares costs within ``TIE_ATOL`` rather than exactly, so this
+    pins that the tolerance only ever absorbs float noise: were it selecting a
+    genuinely worse path, the two would part company by up to ``T * atol``.
+    """
+    problem = synthetic_instance(num_slots=num_slots, seed=seed)
+    solution = dp_solve(problem)
+    assert solution.true_energy == pytest.approx(problem.energy(solution.x), abs=1e-12)
+
+
+def test_dp_does_not_cycle_a_battery_for_nothing():
+    """A flat-price day comes back idle, not churning.
+
+    With one price there is no arbitrage, so the battery should sit still. On cost
+    alone ~1.5e10 schedules tie here — a lossless charge and discharge at the same
+    price cancel exactly — and the old tie-break was free to return any of that
+    churn. It reads as a plan and is noise.
+    """
+    from quantum_solar import BatteryProblem
+
+    problem = BatteryProblem(
+        generation=np.zeros(24), load=np.ones(24), price=np.full(24, 0.139),
+        capacity=10.0, charge_energy=2.0, discharge_energy=2.0, initial_soc=4.0,
+    )
+    c, d = problem.decode(dp_solve(problem).x)
+    assert int(c.sum() + d.sum()) == 0
+
+
+def test_dp_prefers_fewer_actions_among_equal_cost_plans():
+    """The minimal-action rule, isolated on a hand-checkable instance.
+
+    Prices are flat except for one cheap hour and one dear hour, so exactly one
+    charge/discharge pair earns anything. Any number of extra same-price pairs is
+    cost-free and therefore tied; only the two-action plan is minimal.
+    """
+    from quantum_solar import BatteryProblem
+
+    price = np.full(8, 0.20)
+    price[1], price[5] = 0.10, 0.40
+    problem = BatteryProblem(
+        generation=np.zeros(8), load=np.ones(8), price=price,
+        capacity=4.0, charge_energy=2.0, discharge_energy=2.0, initial_soc=2.0,
+    )
+    c, d = problem.decode(dp_solve(problem).x)
+
+    assert int(c.sum() + d.sum()) == 2
+    assert list(np.flatnonzero(c)) == [1]
+    assert list(np.flatnonzero(d)) == [5]
+
+
 def test_all_idle_is_feasible_baseline(small_problem):
     # Doing nothing always returns to S_0; the optimum must be no worse.
     idle = np.zeros(small_problem.num_decision_vars, dtype=np.int8)
