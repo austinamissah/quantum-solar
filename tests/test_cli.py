@@ -18,6 +18,7 @@ import numpy as np
 import pytest
 
 from quantum_solar.__main__ import (
+    WIDTH,
     _annual,
     _bar,
     _forced_runs,
@@ -286,6 +287,25 @@ def test_quantum_section_degrades_gracefully_without_qiskit(monkeypatch, capsys)
     out = capsys.readouterr().out
     assert "pip install -r requirements.txt" in out
     assert "blocked for test" in out   # the real cause is shown, not swallowed
+
+
+@pytest.mark.parametrize("argv", [
+    [],                                                   # the full default run
+    ["--round-trip", "0.90", "--export-ratio", "0.25"],   # the widest prose block
+    ["--day", "194", "--day-only"],                       # the all-forced flat day
+])
+def test_output_fits_a_standard_terminal(argv, capsys):
+    """No line wraps at WIDTH columns, in any section.
+
+    The demo is meant to be read in a terminal and recorded, and one wrapped line
+    ruins both. Two lines used to overflow: the header when the loss/export labels
+    are spelled out, and the forced-hours list on a day where most hours are
+    forced.
+    """
+    main(argv)
+    too_wide = [line for line in capsys.readouterr().out.splitlines()
+                if len(line) > WIDTH]
+    assert not too_wide, too_wide
 
 
 def test_parser_documents_every_knob():

@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import textwrap
 from pathlib import Path
 
 import numpy as np
@@ -55,6 +56,10 @@ SWEEP_CAPACITIES = (2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0)
 SWEEP_RATES = (0.5, 1.0, 2.0, 2.5, 5.0)
 
 BLOCKS = "▁▂▃▄▅▆▇█"
+
+# Every line the demo prints stays inside this. It is meant to be read in a
+# terminal and recorded, and a single wrapped line ruins both.
+WIDTH = 88
 
 
 def _find_snapshot() -> Path:
@@ -197,7 +202,8 @@ def show_day(problem, dtype, day, *, quiet_caveats=False) -> None:
         runs = _forced_runs(forced)
         print(f"\n  Forced   {len(forced)}/{problem.num_slots} hours — every optimal plan "
               f"agrees here:")
-        print(f"           {', '.join(runs)}")
+        print(textwrap.fill(", ".join(runs), width=WIDTH,
+                            initial_indent=" " * 11, subsequent_indent=" " * 11))
     else:
         print("\n  Forced   nothing — no hour's action is determined.")
 
@@ -407,8 +413,9 @@ def main(argv=None) -> int:
     losses = "lossless" if args.round_trip == 1 else f"{args.round_trip:g} round trip"
     export = ("net-metered" if args.export_ratio == 1
               else f"export at {args.export_ratio:g}× retail")
-    print(f"{losses}, {export} · Xcel RE-TOU tariff, snapshot {snap['snapshot_date']} "
-          f"· no network, no API key")
+    print(textwrap.fill(
+        f"{losses}, {export} · Xcel RE-TOU tariff, snapshot "
+        f"{snap['snapshot_date']} · no network, no API key", width=WIDTH))
 
     try:
         problem, dtype = _day_problem(generation, price_for, args.day, **knobs)
