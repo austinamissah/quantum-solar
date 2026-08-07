@@ -337,37 +337,50 @@ encoding, the parameters, or the shot budget. It is now the default in
 `cp3` (6 qubits, 46 gates) against `exact` (10 qubits, 106 gates) — same instance,
 same optimum, same depth, same weight, shot-noise floors equalized.
 
-> **"Same weight" — is the encoding result conditional on it? Mostly answered on
-> the simulator, 2026-08-07.** Every hardware run compared the encodings at
-> `α* = 0.021`, so the obvious 2×2 is missing its fourth cell: `cp3 @ default`.
-> Before spending QPU on it, we measured how far the *weight* moves each encoding's
-> optimal circuit at all:
+> **"Same weight" — is the encoding result conditional on it? Partly answered on
+> the simulator, 2026-08-07 (corrected same day, see below).** Every hardware run
+> compared the encodings at `α* = 0.021`, so the obvious 2×2 is missing its fourth
+> cell: `cp3 @ default`. Before spending QPU, we measured how far the *weight*
+> moves each encoding's optimal circuit:
 >
-> | encoding | TVD(ideal @default, ideal @α=0.021) | vs its shot floor |
+> | encoding | TVD(ideal @default, ideal @α=0.021) | vs expected shot floor |
 > |---|---:|---:|
-> | `exact` | 0.6078 | 14.3× |
-> | `cp3` | 0.1035 | **2.1×** |
+> | `exact` | 0.6078 | 14.4× |
+> | `cp3` | 0.1488 | **3.4×** |
 >
-> **The weight barely moves `cp3`'s circuit.** Since the transpiled gate count is
-> weight-invariant too (46 and 106 at both weights; couplings 15 and 29), the two
-> `cp3` cells are the same circuit topology with nearly the same angles, and should
-> degrade nearly identically. So an encoding-by-weight interaction, if any, would
-> be driven almost entirely by the `exact` arm. That is an argument from the ideal
-> distributions, **not a hardware measurement** — it does not license dropping the
-> "at α=0.021" qualifier, but it does say the qualifier is unlikely to be hiding
-> much.
+> The denominator is the **expected** shot-noise floor — `E[TVD(ideal, sampled)]` =
+> 0.0421 (exact @65,536) and 0.0433 (cp3 @4,096), computed by resampling. It is
+> *not* the 0.0426/0.0497 "floor" column in the result table above: those are single
+> realized Aer draws, and 0.0497 sits 1.3 sd above its own mean, so using it as a
+> denominator imports one draw's noise (±11%).
 >
-> **The hardware 2×2 was designed and then not run**, because it cannot resolve
-> what it was for. Tuning `cp3 @ default` is not reproducible — across eight seeds
-> the achieved `<H>` spans 15.80–22.77 and the ideal distribution's TVD to
-> `cp3 @ α=0.021` spans 0.057–0.755 — and the principled rule (lowest `<H>`, what
-> `QAOASolver` already applies) selects a basin at TVD **0.1035**, i.e. one of the
-> cells that barely differs. The basins far enough apart to make the contrast
-> informative are exactly the ones that rule rejects, so a defensible selection
-> rule and an informative contrast are not simultaneously available on this
-> instance. Recorded here rather than as a plan, since the decision was not to run
-> it. Resolving it properly needs an instance where `cp3`'s optimum actually moves
-> with the weight — check that on the simulator first.
+> `cp3`'s circuit moves about **4× less** than `exact`'s with the weight, and the
+> transpiled gate count does not move at all (46 and 106 at both weights; couplings
+> 15 and 29). So an encoding-by-weight interaction would be driven mostly by the
+> `exact` arm. This is an argument from ideal distributions, **not a hardware
+> measurement**, and it does not license dropping the "at α=0.021" qualifier.
+>
+> **The hardware 2×2 was designed and not run, because the `cp3 @ default` cell is
+> not well defined.** Its tuning is not reproducible: over 20 seeds the ideal
+> distribution's TVD to `cp3 @ α=0.021` spans **0.015–0.755**, and the principled
+> selection rule (lowest achieved `<H>`, what `QAOASolver` already applies) is
+> itself unstable in the seed budget — it picks TVD 0.1466 at N=8 and 0.1488 at
+> N=20, on an `<H>` difference of **0.14%**. Pinning a seed makes the cell
+> reproducible without making it well defined: you would be measuring one
+> arbitrarily-selected basin and generalizing to "cp3 at default weight". Resolving
+> it needs an instance where `cp3`'s optimum moves with the weight, checked on the
+> simulator first — that check costs two minutes.
+>
+> > **Correction, same day.** This note first reported `cp3` at TVD **0.1035** and
+> > **2.1×** the floor, and argued the two `cp3` cells were near-identical so a null
+> > interaction would be near-trivial. Both figures were wrong in the same
+> > direction. 0.1035 came from an 8-seed search over one arbitrary seed set, and
+> > the 2.1× divided it by a single realized draw (0.0497) rather than the expected
+> > floor. Corrected, `cp3` moves 3.4× its floor — a real difference, not a
+> > near-trivial one — so the "uninformative null" argument does **not** hold up.
+> > The decision not to run stands, but on the second reason only: the cell is
+> > ill-defined, not the contrast trivial. The seed-budget dependence this exposed
+> > is what `docs/plans/basin-structure.md` was written to characterize.
 
 | run | normalized gap | job |
 |---|---:|---|
