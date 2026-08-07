@@ -12,13 +12,17 @@ The QUBO variable vector always begins with the ``2T`` decision bits laid out as
 reads only the first ``2T`` entries, so the (domain-agnostic) solvers can pass the
 full vector through unchanged.
 
-v1 assumptions: lossless battery with equal charge/discharge energy per slot
-(``charge_energy == discharge_energy``), which keeps SoC on a uniform grid.
+Round-trip losses, an export credit below the import price, and asymmetric
+charge/discharge energy per slot are all modelled; every one defaults to the
+original v1 behaviour. SoC stays on a uniform grid whose step is the greatest
+common divisor of the two energy quanta (:func:`soc_quantum`).
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
+from fractions import Fraction
 
 import numpy as np
 
@@ -34,9 +38,11 @@ class BatteryProblem:
         load: ``(T,)`` household demand per slot (kWh).
         price: ``(T,)`` electricity price per slot ($/kWh, net-metered).
         capacity: usable battery capacity ``Q`` (kWh).
-        charge_energy: energy added **to the store** in a charging slot (kWh);
-            must equal ``discharge_energy`` so SoC stays on a uniform grid.
+        charge_energy: energy added **to the store** in a charging slot (kWh).
         discharge_energy: energy removed **from the store** in a discharging slot.
+            May differ from ``charge_energy`` — real inverters often charge and
+            discharge at different rates — provided the two are commensurate; the
+            SoC grid step becomes their GCD (:func:`soc_quantum`).
         initial_soc: starting state of charge ``S_0`` (kWh), a multiple of the
             energy quantum within ``[0, capacity]``.
         charge_efficiency: fraction of drawn grid energy that reaches the store,
@@ -45,11 +51,14 @@ class BatteryProblem:
             house, so a discharging slot offsets ``discharge_energy *
             discharge_efficiency``.
 
-    **Losses live in the price, not in the state of charge.** The two energy
-    quanta are *store-side* and stay equal, which is what keeps SoC on the uniform
-    grid the DP and the slack encoding both need; the efficiencies convert to
-    *grid-side* energy inside the objective only. Both default to ``1.0``, which
-    reproduces the lossless v1 model exactly.
+    **Losses live in the price, not in the state of charge.** The two energy quanta
+    are *store-side*; the efficiencies convert to *grid-side* energy inside the
+    objective only. Both default to ``1.0``, reproducing the lossless v1 model.
+
+    SoC stays on a uniform grid of step :func:`soc_quantum` — the GCD of the two
+    quanta, which is just ``charge_energy`` when they are equal. That is what the
+    DP and the slack encoding need; asymmetric rates refine the grid rather than
+    destroying it.
     """
 
     generation: np.ndarray
@@ -187,6 +196,32 @@ class BatteryProblem:
         return bool(abs(soc[-1] - self.initial_soc) <= _TOL)  # return to S_0
 
 
+MAX_SOC_LEVELS = 4096
+"""Ceiling on SoC grid levels, so an awkward charge/discharge ratio fails loudly."""
+
+
+def soc_quantum(problem: "BatteryProblem") -> float:
+    """The SoC grid step: the largest ``g`` dividing both energy quanta exactly.
+
+    Reachable states of charge are ``S_0 + n_c*e_c - n_d*e_d``, which lie on a
+    uniform grid **iff the two quanta are commensurate** — and then the step is
+    their greatest common divisor. With ``e_c == e_d`` (the v1 case) that is just
+    ``e_c`` and nothing changes; asymmetric charge and discharge rates simply
+    refine the grid, e.g. 2.0 kWh in and 1.5 kWh out gives ``g = 0.5`` with
+    charging spanning 4 levels and discharging 3.
+
+    Incommensurate quanta (2.0 and 2.0*sqrt(2)) have no finite grid at all — their
+    reachable set is dense — and show up here as an enormous denominator, which
+    :func:`require_soc_on_grid` rejects via :data:`MAX_SOC_LEVELS` rather than
+    silently building an unusable state space.
+    """
+    charge = Fraction(problem.charge_energy).limit_denominator(10**6)
+    discharge = Fraction(problem.discharge_energy).limit_denominator(10**6)
+    common = math.gcd(charge.numerator * discharge.denominator,
+                      discharge.numerator * charge.denominator)
+    return float(Fraction(common, charge.denominator * discharge.denominator))
+
+
 def require_soc_on_grid(problem: "BatteryProblem") -> None:
     """Raise unless ``initial_soc`` **and** ``capacity`` lie on the SoC grid.
 
@@ -203,15 +238,26 @@ def require_soc_on_grid(problem: "BatteryProblem") -> None:
     silently, because quietly modelling a *different* battery from the one asked
     for is the same class of error.
     """
-    e = problem.charge_energy
+    e = soc_quantum(problem)
     for name, value in (("initial_soc", problem.initial_soc), ("capacity", problem.capacity)):
         ratio = value / e
         if abs(ratio - round(ratio)) > 1e-9:
             raise ValueError(
-                f"{name}={value} is not a multiple of charge_energy={e}; the SoC "
-                f"grid would be misaligned and the schedule can exceed capacity. "
+                f"{name}={value} is not a multiple of the SoC quantum {e} "
+                f"(charge_energy={problem.charge_energy}, "
+                f"discharge_energy={problem.discharge_energy}); the SoC grid would "
+                f"be misaligned and the schedule can exceed capacity. "
                 f"Use an on-grid {name}."
             )
+    levels = round(problem.capacity / e)
+    if levels > MAX_SOC_LEVELS:
+        raise ValueError(
+            f"charge_energy={problem.charge_energy} and "
+            f"discharge_energy={problem.discharge_energy} need an SoC grid of {levels} "
+            f"levels (quantum {e:g}), over the {MAX_SOC_LEVELS} cap. They are "
+            f"near-incommensurate, so no practical uniform grid holds both; round "
+            f"them to a common step."
+        )
 
 
 def synthetic_instance(

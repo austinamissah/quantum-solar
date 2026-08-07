@@ -106,9 +106,30 @@ Gotchas:
   Exact (preserves the brute-force contract) but adds `(T−1)·b` qubits — this is
   why brute force / QAOA stay small-`T` and `dp_solve` exists. The terminal
   `S_T = S_0` is a slack-free `(S_T − S_0)²` penalty.
-- **v1 modeling assumptions:** `charge_energy == discharge_energy` (keeps SoC on a
-  uniform grid, required by both the slack encoding and the DP grid). That is the
-  only one left — round-trip losses and export-below-import are both modelled now.
+- **No v1 modelling assumptions remain.** Round-trip losses, export credited below
+  import, and asymmetric charge/discharge rates are all modelled, and every one
+  defaults to the original behaviour.
+- **Asymmetric charge/discharge energy** is supported. The SoC grid step is
+  `soc_quantum(problem)` — the **GCD** of the two quanta, not either one — because
+  reachable states `S_0 + n_c·e_c − n_d·e_d` form a uniform grid iff the quanta are
+  commensurate. A charge then spans `charge_energy/g` levels and a discharge
+  `discharge_energy/g`; with equal rates `g` *is* that rate and nothing changes.
+  `encodings.soc_grid` is the **single place** this lands — slack width, penalty
+  scaling and the search state space all derive from it, so do not reintroduce
+  `problem.charge_energy` as a grid step anywhere. Three consequences:
+  - **Incommensurate rates are rejected, not approximated.** 2.0 against 2.0√2
+    needs ~9M levels, so `require_soc_on_grid` fails on `MAX_SOC_LEVELS` (4096).
+  - **Asymmetry costs qubits, and only in the slack encoding.** A finer grid needs
+    a wider slack register: at T=6/Q=10, `EXACT` goes 27 → **37** qubits for
+    2.0-in/1.5-out and 42 for 2.0/1.25, while slack-free `checkpoint(3)` stays at
+    **12 regardless**. So asymmetric hardware *widens* the encoding gap that
+    `docs/results/slack-free-encoding.md` measured, in the slack-free encoding's
+    favour.
+  - **`qubo_min_exact` rejects `WindowDrift` + asymmetric rates.** That search packs
+    each SoC step into one base-3 digit (−1/0/+1), which cannot hold the four
+    distinct steps asymmetry produces. Every other encoding has no drift term, so
+    only this combination is affected; it raises rather than returning a quietly
+    wrong optimum.
 - **Asymmetric pricing is modelled** via `sell_price` (default `None` = net
   metering). Exports credit at `export_price`, imports at `buy_price`, so the bill
   becomes **convex piecewise linear** with a kink at `net == 0`. Three consequences

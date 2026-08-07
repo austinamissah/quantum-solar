@@ -49,7 +49,7 @@ from typing import ClassVar, Protocol, runtime_checkable
 
 import numpy as np
 
-from .problem import BatteryProblem
+from .problem import BatteryProblem, soc_quantum
 
 
 def bounded_int_weights(n_max: int) -> list[int]:
@@ -108,9 +108,22 @@ def clamp_dist(k: np.ndarray, lo: int, hi: int) -> np.ndarray:
 
 
 def soc_grid(problem: BatteryProblem) -> tuple[float, int, int]:
-    """``(e, n_max, k_0)``: the SoC quantum, the top grid level, and ``S_0``'s level."""
-    e = problem.charge_energy
+    """``(e, n_max, k_0)``: the SoC quantum, the top grid level, and ``S_0``'s level.
+
+    The quantum is the GCD of the charge and discharge energies, not either one on
+    its own — with asymmetric rates a charge spans ``charge_energy / e`` levels and
+    a discharge ``discharge_energy / e``. Every consumer of this grid (slack width,
+    penalty scaling, the search state space) follows from it, which is why this is
+    the single place the change lands.
+    """
+    e = soc_quantum(problem)
     return e, int(round(problem.capacity / e)), int(round(problem.initial_soc / e))
+
+
+def soc_steps(problem: BatteryProblem) -> tuple[int, int]:
+    """``(charge_levels, discharge_levels)``: grid levels each action moves."""
+    e = soc_quantum(problem)
+    return int(round(problem.charge_energy / e)), int(round(problem.discharge_energy / e))
 
 
 def soc_terms(problem: BatteryProblem, upto: int) -> list[tuple[int, float]]:

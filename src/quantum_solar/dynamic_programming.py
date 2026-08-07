@@ -1,8 +1,11 @@
 """Exact dynamic-programming solver — the scalable classical baseline.
 
-Because the battery has a fixed energy quantum ``e``, the state of charge lives on
-a discrete grid ``{0, e, 2e, …, Q}``. A schedule is a path over that grid, so the
-optimum is found by dynamic programming in ``O(T·K·3)`` time (``K`` SoC levels,
+The state of charge lives on a discrete grid ``{0, g, 2g, …, Q}``, where ``g`` is
+the greatest common divisor of the charge and discharge energies
+(:func:`~quantum_solar.problem.soc_quantum`) — just the shared rate when they are
+equal. A charging slot climbs ``charge_energy/g`` levels and a discharging slot
+falls ``discharge_energy/g``, so a schedule is still a path over a uniform grid and
+the optimum is found by dynamic programming in ``O(T·K·3)`` time (``K`` SoC levels,
 three actions per slot) — linear in ``T``, unlike the ``2^{2T}`` brute-force
 enumeration of the QUBO.
 
@@ -18,7 +21,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .problem import BatteryProblem, require_soc_on_grid
+from .problem import BatteryProblem, require_soc_on_grid, soc_quantum
 from .solution import Solution
 
 _IDLE, _CHARGE, _DISCHARGE = 0, 1, 2
@@ -27,14 +30,16 @@ _ACTION_NAMES = ("idle", "charge", "discharge")
 
 def dp_solve(problem: BatteryProblem) -> Solution:
     """Return the exact cost-minimizing schedule as a :class:`Solution`."""
-    e = problem.charge_energy
-    if not np.isclose(problem.charge_energy, problem.discharge_energy):
-        raise ValueError("DP grid requires charge_energy == discharge_energy (v1)")
     require_soc_on_grid(problem)
 
     t = problem.num_slots
+    e = soc_quantum(problem)
     n_max = int(round(problem.capacity / e))
     k0 = int(round(problem.initial_soc / e))
+    # Levels moved per action. Equal (both 1 after scaling) in the symmetric case;
+    # asymmetric rates simply span different numbers of levels on a finer grid.
+    up = int(round(problem.charge_energy / e))
+    down = int(round(problem.discharge_energy / e))
     inf = np.inf
 
     # Forward DP: cost[k] = min cost to reach SoC level k after the processed slots.
@@ -49,11 +54,11 @@ def dp_solve(problem: BatteryProblem) -> Solution:
     idle_cost, charge_delta, discharge_delta, _ = problem.action_costs()
 
     for j in range(t):
-        idle = cost                                   # k <- k
+        idle = cost                                        # k <- k
         charge = np.full(n_max + 1, inf)
-        charge[1:] = cost[:-1] + charge_delta[j]      # k <- k-1
+        charge[up:] = cost[:n_max + 1 - up] + charge_delta[j]        # k <- k-up
         discharge = np.full(n_max + 1, inf)
-        discharge[:-1] = cost[1:] + discharge_delta[j]  # k <- k+1
+        discharge[:n_max + 1 - down] = cost[down:] + discharge_delta[j]  # k <- k+down
 
         stacked = np.vstack([idle, charge, discharge])
         cost = stacked.min(axis=0)
@@ -71,10 +76,10 @@ def dp_solve(problem: BatteryProblem) -> Solution:
         action = actions[j, k]
         if action == _CHARGE:
             c[j] = 1
-            k -= 1
+            k -= up
         elif action == _DISCHARGE:
             d[j] = 1
-            k += 1
+            k += down
         # _IDLE leaves k unchanged
     assert k == k0
 
@@ -138,14 +143,14 @@ def optima_census(problem: BatteryProblem, *, atol: float = 1e-9) -> OptimaCensu
     near-optimal schedules are absorbed. 1e-9 sits far above float64 accumulation
     error over a day (~1e-16) and far below any real price difference (~1e-2).
     """
-    e = problem.charge_energy
-    if not np.isclose(problem.charge_energy, problem.discharge_energy):
-        raise ValueError("DP grid requires charge_energy == discharge_energy (v1)")
     require_soc_on_grid(problem)
 
     t = problem.num_slots
+    e = soc_quantum(problem)
     n_max = int(round(problem.capacity / e))
     k0 = int(round(problem.initial_soc / e))
+    up = int(round(problem.charge_energy / e))
+    down = int(round(problem.discharge_energy / e))
     inf = np.inf
     # (delta level, PER-SLOT cost array relative to idling, delta actions). The level
     # step is store-side and symmetric; the cost is not, once efficiencies differ or
@@ -154,8 +159,8 @@ def optima_census(problem: BatteryProblem, *, atol: float = 1e-9) -> OptimaCensu
     idle_cost, charge_delta, discharge_delta, _ = problem.action_costs()
     moves = (
         (_IDLE, 0, np.zeros(t), 0),
-        (_CHARGE, +1, charge_delta, 1),
-        (_DISCHARGE, -1, discharge_delta, 1),
+        (_CHARGE, +up, charge_delta, 1),
+        (_DISCHARGE, -down, discharge_delta, 1),
     )
 
     def layer():

@@ -57,11 +57,13 @@ BatteryProblem ──build_qubo──▶ QUBO ──qubo_to_ising──▶ Ising
    program over the SoC grid that scales to a full day and serves as ground truth
    at larger `T`. Tests assert QAOA recovers the exact optimum.
 
-v1 modeling assumption: equal charge/discharge energy per slot (it keeps the SoC
-on a uniform grid). **Round-trip losses** (`charge_efficiency`/
-`discharge_efficiency`) and **export credited below import** (`sell_price`) are
-both modelled, and both default to the lossless, net-metered case so the defaults
-reproduce the original model exactly.
+**Round-trip losses** (`charge_efficiency`/`discharge_efficiency`), **export
+credited below import** (`sell_price`), and **asymmetric charge/discharge rates**
+(`charge_energy != discharge_energy`) are all modelled. Each defaults to the
+simple case — lossless, net-metered, symmetric — so the defaults reproduce the
+original model exactly. Asymmetric rates refine the state-of-charge grid to the
+GCD of the two energy quanta rather than breaking it; incommensurate rates have no
+finite grid and are rejected outright.
 
 ## How the simulator works
 

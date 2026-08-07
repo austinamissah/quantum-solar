@@ -70,6 +70,28 @@ mismatches. So the rule is a property of two-tier tariff structure, not of this
 one tariff: **read your peak-window length off your own bill and multiply by your
 inverter rating** to get the capacity beyond which more kWh earns nothing.
 
+### Which rate? The discharge one
+
+Spec sheets quote a charge rating and a discharge rating, and they are often
+different. Only the **discharge** rating appears in the rule:
+
+```
+saving = min(capacity, DISCHARGE_rate × peak_hours) × effective_spread
+```
+
+Verified across asymmetric pairs at 10 kWh on a 4-hour peak — 1.0-in/2.0-out and
+4.0-in/2.0-out both save $1.93, exactly as 2.0/2.0 does, while 2.0-in/1.0-out saves
+$0.97 and 2.0-in/0.5-out $0.48. The charge rating drops out entirely. That follows
+from the forced-discharge result again: only energy pushed out *during* the peak
+earns, so only the rating that governs pushing it out can matter.
+
+**The one exception is a charge rating too slow to refill.** At 0.5 kW in against
+2.0 kW out the saving falls to **$1.45**, below the $1.93 the rule predicts,
+because the battery cannot be returned to its starting level within the available
+off-peak hours and so cannot empty itself during the peak. So: **buy on the
+discharge rating, and check the charge rating is merely adequate** rather than
+matched.
+
 One construction detail that matters. The window *ends* at hour 20 and grows
 backward as it lengthens, which is how utilities actually widen an evening peak.
 Growing it forward instead would eat the post-peak hours the battery needs to

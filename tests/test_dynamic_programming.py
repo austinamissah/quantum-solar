@@ -49,7 +49,7 @@ def test_dp_rejects_off_grid_initial_soc():
         generation=np.zeros(3), load=np.zeros(3), price=np.array([1.0, 3.0, 1.0]),
         capacity=10.0, charge_energy=2.0, discharge_energy=2.0, initial_soc=5.0,
     )
-    with pytest.raises(ValueError, match="not a multiple of charge_energy"):
+    with pytest.raises(ValueError, match="initial_soc=5.0 is not a multiple"):
         dp_solve(problem)
 
 

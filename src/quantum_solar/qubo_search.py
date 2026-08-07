@@ -15,9 +15,10 @@ turn "solve the problem" into "minimize the surrogate":
    so their penalty can be paid, so the grid runs over every reachable level,
    ``k_0 − T … k_0 + T``.
 2. **Four actions, not three.** The QUBO has ``2T`` free bits, so ``c_t = d_t = 1``
-   is a reachable assignment; it carries the mutual-exclusion penalty and (in v1,
-   where ``e_c == e_d``) leaves SoC unchanged. Including it is what makes this
-   minimize over all ``2^{2T}`` rather than over ``3^T`` schedules.
+   is a reachable assignment; it carries the mutual-exclusion penalty and moves SoC
+   by ``e_c − e_d``, which is zero only when the rates are symmetric. Including it
+   is what makes this minimize over all ``2^{2T}`` rather than over ``3^T``
+   schedules.
 3. **Auxiliary variables minimized out.** Slack bits are unconstrained, so for a
    given path each takes its best value analytically — that is what
    ``SoCEncoding.slot_penalty`` returns. The winning assignment is rebuilt
@@ -36,7 +37,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .encodings import Encoding, SoCEncoding, soc_grid
+from .encodings import Encoding, SoCEncoding, soc_grid, soc_steps
 from .problem import BatteryProblem, require_soc_on_grid
 from .qubo import PenaltyWeights
 from .solution import Solution
@@ -59,19 +60,33 @@ def qubo_min_exact(
     """
     require_soc_on_grid(problem)
     encoding.validate(problem)
-    if not np.isclose(problem.charge_energy, problem.discharge_energy):
-        raise ValueError("qubo_min_exact requires charge_energy == discharge_energy (v1)")
 
     t = problem.num_slots
     e, _, k0 = soc_grid(problem)
+    up, down = soc_steps(problem)
+    # Per-action SoC step in grid levels. Charging and discharging need not be
+    # symmetric, and `c == d == 1` no longer cancels when they are not.
+    actions = ((0, 0, 0), (1, 0, up), (0, 1, -down), (1, 1, up - down))
     idle_cost, charge_delta, discharge_delta, both = problem.action_costs()
 
     # --- State space: every reachable SoC level, plus drift history if needed ---
-    levels = np.arange(k0 - t, k0 + t + 1)
+    # T slots can climb T*up or fall T*down levels from the start.
+    levels = np.arange(k0 - t * down, k0 + t * up + 1)
     n_lev = len(levels)
+    start_index = t * down          # index of k0 in `levels`
     drift = encoding.drift_spec(problem, weights.soc_bounds)
     window, drift_coef = drift if drift else (0, 0.0)
     hist_len = max(0, window - 1)
+    if hist_len and (up != 1 or down != 1):
+        # The history packs each step into one base-3 digit (-1/0/+1), which cannot
+        # represent the four distinct steps asymmetric rates produce. Only
+        # WindowDrift takes this path; every other encoding has no drift term.
+        raise ValueError(
+            "qubo_min_exact cannot combine a drift-window encoding with asymmetric "
+            f"charge/discharge energy (charge_energy={problem.charge_energy}, "
+            f"discharge_energy={problem.discharge_energy}). Use a non-drift encoding "
+            "or equal energies."
+        )
     n_hist = 3**hist_len
 
     # hist packs the last `hist_len` steps, most recent in the least significant
@@ -83,7 +98,7 @@ def qubo_min_exact(
     hist_sum = digits.sum(axis=1) if hist_len else np.zeros(n_hist, dtype=int)
     trans = np.zeros((n_hist, 4), dtype=int)
     for h in range(n_hist):
-        for a, (_, _, dk) in enumerate(_ACTIONS):
+        for a, (_, _, dk) in enumerate(actions):
             trans[h, a] = ((h % 3 ** max(0, hist_len - 1)) * 3 + dk + 1) if hist_len else 0
 
     # --- Level-dependent costs paid on arriving after each slot ---
@@ -92,14 +107,14 @@ def qubo_min_exact(
     arrive = [slot_pen[j] if j < t - 1 else terminal_pen for j in range(t)]
 
     cost = np.full((n_lev, n_hist), np.inf)
-    cost[t, 0] = 0.0  # start at k_0, index t; empty history
+    cost[start_index, 0] = 0.0  # start at k_0; empty history
     bp_action = np.zeros((t, n_lev, n_hist), dtype=np.int8)
     bp_hist = np.zeros((t, n_lev, n_hist), dtype=np.int16)
 
     for j in range(t):
         p = problem.price[j]
         nxt = np.full((n_lev, n_hist), np.inf)
-        for a, (c, d, dk) in enumerate(_ACTIONS):
+        for a, (c, d, dk) in enumerate(actions):
             src = slice(max(0, -dk), n_lev - max(0, dk))
             tgt = slice(max(0, dk), n_lev + min(0, dk))
             # Per-slot action cost (round-trip losses and, when export credits
@@ -129,11 +144,11 @@ def qubo_min_exact(
     path = np.zeros(t, dtype=int)
     for j in range(t - 1, -1, -1):
         a = int(bp_action[j, i, h])
-        c[j], d[j], dk = _ACTIONS[a]
+        c[j], d[j], dk = actions[a]
         path[j] = levels[i]          # SoC level after slot j
         h = int(bp_hist[j, i, h])    # predecessor history, before stepping the level
         i -= dk
-    assert i == t, "backtrack did not return to the initial SoC index"
+    assert i == start_index, "backtrack did not return to the initial SoC index"
     return _finish(problem, encoding, c, d, path, qubo_energy)
 
 

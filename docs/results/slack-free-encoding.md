@@ -40,6 +40,17 @@ genuinely feasible when `⌊k/2⌋ ≤ min(k₀, n_max − k₀)`. Verified exha
 small `T` and by `qubo_min_exact` through T=24. Spacing is pinned and validated,
 never derived.
 
+> **Asymmetric hardware widens this gap (2026-08-07).** Once `charge_energy` and
+> `discharge_energy` may differ, the SoC grid refines to their GCD, and the slack
+> register — which must represent every level — widens with it. At T=6/Q=10 the
+> `EXACT` encoding goes **27 → 37** qubits for a 2.0-in/1.5-out battery and **42**
+> for 2.0/1.25, while `Checkpoint(3)` stays at **12 regardless**, having no slack
+> register to widen. The slack-free encoding's advantage is therefore *understated*
+> by the symmetric-rate comparison below: real inverters commonly charge and
+> discharge at different rates, and every such split costs the exact encoding
+> qubits and costs the slack-free one nothing. See `docs/ARCHITECTURE.md` on
+> `soc_quantum`.
+
 ### Annual dollars (Golden CO, real 365-day instance, battery worth $455.72/yr)
 
 | encoding | qubits | lost $/yr | lost % | infeasible days |
