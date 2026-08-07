@@ -375,6 +375,25 @@ rather than its depth. The full analysis is in
 `notebooks/experiment_hardware.ipynb`, and the run was pre-registered in
 `docs/plans/hardware-run.md`.
 
+Those four circuits also settled which resource actually limits this project — and
+it was not the one the first phase had gone into optimizing:
+
+![Hardware degradation against gate count and against qubit count](docs/figures/web/gates_vs_qubits.png)
+
+Everyone counts qubits, and an encoding phase here cut a 6-slot problem from 22
+qubits to 12. But degradation tracks **two-qubit gate count** monotonically across a
+7.8× range, while **qubit count takes two values and explains nothing** — the two
+circuits sharing 6 qubits differ by 71%, as wide as the whole trend. Gates cost
+because each one is a physical operation with an error rate (~0.3% median on this
+device) and errors compound; an idle qubit costs comparatively little.
+
+That reordered the project. The 6-slot target needs ~269 gates *even with* the
+qubit-saving encoding — worse than circuit D, which had already returned
+essentially no usable signal. **No encoding makes it submittable**, and fifteen
+minutes with data already in hand would have said so. Regenerate with
+`python scripts/make_gates_vs_qubits_figure.py`; the account is
+[`docs/LESSONS.md`](docs/LESSONS.md) §2.
+
 Three further runs followed on August 3, 2026, all on `ibm_fez` and all
 pre-registered: the **slack-free encoding** against the exact encoding with and
 without error mitigation, a **replication** of the encoding gap with a
