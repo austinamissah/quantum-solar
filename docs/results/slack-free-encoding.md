@@ -64,6 +64,14 @@ never derived.
 
 **Halving the qubit count is free; the last four qubits cost $113.93/yr.**
 
+That $113.93 is the same figure the rate upgrade earns in
+[`capacity-rate-sensitivity.md`](capacity-rate-sensitivity.md), to the cent, and it
+is **not** a transcription between the two documents. Annual value is exactly
+linear in delivered peak energy below the knee, at $56.9646/yr per kWh/day, so any
+change worth 2 kWh/day of peak throughput comes to $113.93 — and both of these are.
+`cp5` delivers 6 of the instance's 8 useful kWh/day; a 2 → 2.5 kW inverter takes it
+from 8 to 10. Same constant, opposite signs, different code paths.
+
 Two things the synthetic study could not have shown:
 
 - The real battery (10 kWh @ 2 kWh/slot) has a looser sound ceiling than the

@@ -327,8 +327,20 @@ Verified against the exact DP at every swept point, on the real tariff and on
 synthetic ones at 3–6 peak hours (56 points, no mismatches) — so read your own
 peak-window length off your bill and multiply by your inverter rating. A 10 kWh
 pack behind a 2 kW inverter on a 4-hour peak is an **8 kWh pack** as far as the
-bill is concerned. Consequently **rate is the axis that pays**: 2 kW → 2.5 kW is
-worth **+$113.93/yr**, while 10 kWh → 20 kWh is worth **$0.00/yr**.
+bill is concerned. Consequently **rate is the axis that pays**: at the same 0.90
+round trip the payback below uses, 2 kW → 2.5 kW is worth **+$101.07/yr**, while
+10 kWh → 20 kWh is worth **$0.00/yr**. (Losslessly those are +$113.93 and $0.00 —
+losses scale the multiplier and leave the knee, and the asymmetry, where they are.)
+
+Both of those figures are multiples of a single constant: **$56.96/yr per kWh/day
+of peak-window throughput** (lossless), which is just the year's price spreads
+added up — 86 summer weekdays at $0.242, 175 winter weekdays at $0.207, and 104
+weekends at $0. Annual value is *exactly* linear in delivered peak energy below the
+knee, so a 2 kWh/day step is worth $113.93/yr wherever it comes from. That is why
+the same figure turns up again as the cost of the last four qubits in
+[`docs/results/slack-free-encoding.md`](docs/results/slack-free-encoding.md) — both
+are 2 kWh/day steps, computed by different code paths. It is an identity, not a
+transcription.
 
 **Whether it pays back — it does not.** At a **0.90 AC round trip**, a ~$11,500
 install pays back in **~28 years** against a ~10-year warranty ($9,000 → 22 yr,

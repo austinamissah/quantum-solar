@@ -116,6 +116,38 @@ tariff:
 *(At the 0.90 round trip. Losslessly these were $455.72, $569.65 and +$113.93; the
 asymmetry is unchanged, only scaled.)*
 
+### One constant generates all of these numbers
+
+Below the knee the annual value is **exactly** linear in delivered peak energy, at
+
+```
+$56.9646 /yr per kWh/day of peak-window throughput      (lossless, this tariff)
+```
+
+which is nothing more than the year's price spreads summed: 86 summer weekdays ×
+$0.24183 + 175 winter weekdays × $0.20667 + 104 weekends × $0. Verified to the cent
+at eight (capacity, rate) points spanning both the capacity-bound and rate-bound
+sides of the knee — every one returns the same constant per kWh/day.
+
+So each headline figure is a small multiple of it, and the multiplier is just how
+much daily peak throughput the change adds or removes:
+
+| change | Δ useful kWh/day | annual |
+|---|---:|---:|
+| rating 2 → 2.5 kW (useful 8 → 10 kWh/day) | +2 | **+$113.93** |
+| capacity 10 → 20 kWh (useful stays 8) | 0 | $0.00 |
+| `cp5band` → `cp5`, the last four qubits (`slack-free-encoding.md`) | −2 | **−$113.93** |
+| `cp5` → `cp3` (useful 6 → 2 kWh/day) | −4 | −$227.86 |
+
+**The repeated $113.93 is a real identity, not a transcription.** It reads like a
+copy-paste — the same figure to the cent for a hardware upgrade and for a qubit
+count — and it is worth knowing that it is not. The two are computed by different
+code paths (this study varies `capacity`/`charge_energy` through
+`annual_from_inputs` with the exact DP; the encoding study passes `qubo_min_exact`
+in through the same function's `solver` hook), and they coincide because both
+happen to move 2 kWh/day of peak throughput. Re-derived independently on
+2026-08-07, both to $113.9293.
+
 Doubling the pack earns nothing. A 25% larger inverter earns 25% more. **If
 someone is buying anyway, rate is the axis that pays.**
 

@@ -100,6 +100,42 @@ def test_sizing_knee_is_unmoved_by_losses(snapshot):
     assert knee(0.90) == 8.0
 
 
+@pytest.mark.parametrize("capacity,rate,useful", [
+    (2.0, 2.0, 2.0), (4.0, 2.0, 4.0), (6.0, 2.0, 6.0), (8.0, 2.0, 8.0),
+    (10.0, 2.0, 8.0),    # capacity-bound: the pack is bigger than the window allows
+    (10.0, 0.5, 2.0), (10.0, 1.0, 4.0), (10.0, 2.5, 10.0),   # rate-bound
+])
+def test_annual_value_is_exactly_linear_in_peak_throughput(snapshot, capacity, rate, useful):
+    """$56.9646/yr per kWh/day of peak-window throughput, on both sides of the knee.
+
+    This constant is why $113.93 shows up twice in the docs for unrelated changes —
+    a 2 → 2.5 kW inverter upgrade and the last four qubits of the `cp5band`
+    encoding. Both move 2 kWh/day of peak throughput, so both come to 2 × 56.9646.
+    It reads exactly like a copy-paste and is not one; pinning the constant here
+    keeps it that way. See docs/results/capacity-rate-sensitivity.md.
+    """
+    _snap, generation, price_for = snapshot
+    savings = _annual(generation, price_for, capacity=capacity, rate=rate,
+                      round_trip=1.0, export_ratio=1.0).battery_savings
+    assert savings / useful == pytest.approx(56.9646, abs=1e-4)
+
+
+def test_the_repeated_113_93_is_two_kwh_per_day(snapshot):
+    """The rate upgrade and the four-qubit encoding step are the same 2 kWh/day."""
+    _snap, generation, price_for = snapshot
+
+    def battery(capacity, rate):
+        return _annual(generation, price_for, capacity=capacity, rate=rate,
+                       round_trip=1.0, export_ratio=1.0).battery_savings
+
+    # 2 -> 2.5 kW moves useful throughput 8 -> 10 kWh/day.
+    assert battery(10.0, 2.5) - battery(10.0, 2.0) == pytest.approx(113.93, abs=0.01)
+    # cp5 delivers 6 of 8 useful kWh/day; the shortfall is the same 2 kWh/day.
+    # (The encoding arm itself is priced in scripts/annual_encoding_cost.py, which
+    # runs qubo_min_exact over the year; here we pin only the throughput identity.)
+    assert battery(8.0, 2.0) - battery(6.0, 2.0) == pytest.approx(113.93, abs=0.01)
+
+
 def test_sizing_narrative_is_suppressed_when_the_rule_does_not_apply(capsys):
     """Below-retail export breaks the rule, so the CLI must not narrate it.
 
