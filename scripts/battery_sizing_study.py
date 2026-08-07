@@ -61,6 +61,12 @@ WARRANTY_YEARS = 10
 ROUND_TRIPS = (1.0, 0.95, 0.90, 0.85, 0.80)
 HEADLINE_ROUND_TRIP = 0.90
 
+# Export credit as a fraction of the import price. 1.0 is full-retail net metering
+# (the v1 assumption); real programmes range from near-retail down to avoided cost.
+# Swept rather than pinned because the right value is jurisdiction-specific and
+# cannot be verified from the committed snapshot.
+EXPORT_RATIOS = (1.0, 0.75, 0.50, 0.25, 0.10)
+
 
 def synthetic_day(peak_hours: int) -> np.ndarray:
     """A 24-hour two-tier tariff with ``peak_hours`` on-peak, spread held fixed.
@@ -114,19 +120,25 @@ def sweep(peak_hours: int) -> dict:
     }
 
 
-def annual_savings_for(snapshot, capacity: float, rate: float,
-                       round_trip: float = 1.0) -> float:
-    """Battery-alone savings over the full year, the same call the README quotes."""
+def annual_for(snapshot, capacity: float, rate: float, round_trip: float = 1.0,
+               export_ratio: float = 1.0):
+    """Full three-way annual split, the same call the README quotes."""
     generation = np.array(snapshot["generation"], dtype=float)
     weekday = np.array(snapshot["price_weekday"], dtype=float)
     weekend = np.array(snapshot["price_weekend"], dtype=float)
     leg = float(np.sqrt(round_trip))
-    result = annual_from_inputs(
+    return annual_from_inputs(
         generation, lambda m, w: weekend[m] if w else weekday[m], load_profile,
         capacity=capacity, charge_energy=rate, discharge_energy=rate,
-        charge_efficiency=leg, discharge_efficiency=leg,
+        charge_efficiency=leg, discharge_efficiency=leg, export_ratio=export_ratio,
     )
-    return float(result.battery_savings)
+
+
+def annual_savings_for(snapshot, capacity: float, rate: float,
+                       round_trip: float = 1.0, export_ratio: float = 1.0) -> float:
+    """Battery-alone savings over the full year."""
+    return float(annual_for(snapshot, capacity, rate, round_trip, export_ratio)
+                 .battery_savings)
 
 
 def main() -> None:
@@ -143,6 +155,23 @@ def main() -> None:
             "cheapest_within_warranty": next(
                 (c for c in INSTALLED_COSTS if c / savings <= WARRANTY_YEARS), None),
         }
+
+    # Export credit swept at the headline round trip. Both legs are reported: a
+    # worse credit shrinks the solar leg and GROWS the battery leg (self-consumption
+    # value), so they must not be collapsed into one number.
+    by_export = []
+    for ratio in EXPORT_RATIOS:
+        a = annual_for(snapshot, CAPACITY, RATE, HEADLINE_ROUND_TRIP, ratio)
+        by_export.append({
+            "export_ratio": ratio,
+            "solar_savings": round(float(a.solar_savings), 2),
+            "battery_savings": round(float(a.battery_savings), 2),
+            "payback_years": {str(c): round(c / float(a.battery_savings), 1)
+                              for c in INSTALLED_COSTS},
+            "cheapest_within_warranty": next(
+                (c for c in INSTALLED_COSTS
+                 if c / float(a.battery_savings) <= WARRANTY_YEARS), None),
+        })
 
     lossless = by_round_trip[1.0]["battery_savings"]
     baseline = annual_savings_for(snapshot, CAPACITY, RATE, HEADLINE_ROUND_TRIP)
@@ -161,12 +190,15 @@ def main() -> None:
                    "and payback use the committed snapshot "
                    "docs/figures/annual_golden_co.json via the same 365-day DP the "
                    "README quotes. Exact DP throughout, no network.",
-        "_bounds": "Round-trip losses are now PRICED (see annual.by_round_trip); the "
-                   "headline payback uses a 0.90 AC round trip rather than the "
-                   "lossless model. One optimistic assumption remains: buy == sell "
-                   "net metering. An export price below the import price would "
-                   "reduce what a discharge earns, so these paybacks are still lower "
-                   "bounds -- but by one assumption now, not two.",
+        "_bounds": "Both v1 optimistic assumptions are now PRICED, not assumed away: "
+                   "round-trip losses (annual.by_round_trip) and export credited "
+                   "below import (annual.by_export_ratio). The payback conclusion no "
+                   "longer depends on either -- it is BRACKETED. A worse export "
+                   "credit does NOT lengthen payback as this file previously "
+                   "asserted; it shortens it, because a poor credit creates "
+                   "self-consumption value for the battery that outweighs the lower "
+                   "earnings on exported discharges. The solar leg moves the other "
+                   "way, which is why both legs are reported separately.",
         "price_spread": SPREAD,
         "off_peak_price": OFF_PEAK,
         "rule": "saving = min(capacity_kWh, rate_kW * peak_hours) * price_spread",
@@ -184,6 +216,7 @@ def main() -> None:
             "warranty_years": WARRANTY_YEARS,
             "payback": payback,
             "by_round_trip": list(by_round_trip.values()),
+            "by_export_ratio": by_export,
         },
     }
     OUT.write_text(json.dumps(record, indent=1) + "\n")
@@ -211,6 +244,17 @@ def main() -> None:
     for row in payback:
         print(f"  ${row['installed_cost']:>9,} {row['years_at_2kw']:>9} "
               f"{row['years_at_2p5kw']:>11} {str(row['within_warranty']):>12}")
+    print()
+    print(f"export credit swept at round trip {HEADLINE_ROUND_TRIP} "
+          f"(a worse credit GROWS the battery leg):")
+    print(f"  {'export':>7} {'solar $/yr':>11} {'battery $/yr':>13} {'payback $11.5k':>15}")
+    for row in by_export:
+        print(f"  {row['export_ratio']:>7.2f} ${row['solar_savings']:>10.2f} "
+              f"${row['battery_savings']:>12.2f} {row['payback_years']['11500']:>13} yr")
+    worst = max(r["payback_years"]["11500"] for r in by_export)
+    best = min(r["payback_years"]["11500"] for r in by_export)
+    print(f"  payback at $11,500 is bracketed in [{best}, {worst}] yr across the sweep "
+          f"-- all far beyond the {WARRANTY_YEARS}-year warranty")
     print(f"\nwrote {OUT.relative_to(ROOT)}")
 
 

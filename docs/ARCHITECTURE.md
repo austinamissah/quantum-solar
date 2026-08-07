@@ -106,10 +106,19 @@ Gotchas:
   Exact (preserves the brute-force contract) but adds `(T−1)·b` qubits — this is
   why brute force / QAOA stay small-`T` and `dp_solve` exists. The terminal
   `S_T = S_0` is a slack-free `(S_T − S_0)²` penalty.
-- **v1 modeling assumptions:** net metering (single buy=sell price, keeps the
-  objective linear) and `charge_energy == discharge_energy` (keeps SoC on a
-  uniform grid, required by both the slack encoding and the DP grid). Asymmetric
-  buy/sell prices are still deferred.
+- **v1 modeling assumptions:** `charge_energy == discharge_energy` (keeps SoC on a
+  uniform grid, required by both the slack encoding and the DP grid). That is the
+  only one left — round-trip losses and export-below-import are both modelled now.
+- **Asymmetric pricing is modelled** via `sell_price` (default `None` = net
+  metering). Exports credit at `export_price`, imports at `buy_price`, so the bill
+  becomes **convex piecewise linear** with a kink at `net == 0`. Three consequences
+  worth knowing before touching this: the DP is still valid (the household's net is
+  exogenous, so cost stays per-`(slot, action)` — `problem.action_costs()` is the
+  single source all four solvers use); the QUBO needs a `c_j*d_j` **correction
+  term**, without which the surrogate is right on mutually-exclusive assignments
+  and silently wrong on `c_j == d_j == 1`, breaking the brute-force contract where
+  nothing looks; and the objective **stops separating**, so the plan finally
+  depends on solar and load. `tests/test_export_pricing.py`.
 - **Round-trip losses are modelled** (`charge_efficiency`, `discharge_efficiency`,
   both defaulting to `1.0` = the original lossless model). The design rule is
   **losses live in the price, not in the state of charge**: the two energy quanta
@@ -133,13 +142,17 @@ Gotchas:
   solar, 3× solar, flat load and random load; only the bill moves. **Never present
   it as real-world guidance**, and don't "fix" a caption by asserting the battery
   charges on surplus solar — it does not.
+  This holds **only under net metering**. Set `sell_price` below `price` and the
+  kink at `net == 0` couples the plan to the household, which is the regime where a
+  battery earns self-consumption value rather than pure arbitrage.
   > *Corrected 2026-08-07.* This previously read "round-trip losses or export paid
   > below import both couple the plan back to solar and load". The losses half was
   > wrong, and is now testable rather than assumed: losses only rescale the battery
   > term's coefficients, leaving the split — and the schedule — intact. Re-verified
   > at a 0.90 round trip, identical plan under all four perturbations. **Only
   > asymmetric buy/sell prices break the separation**, because then which price
-  > applies depends on the sign of `load − generation + battery`.
+  > applies depends on the sign of `load − generation + battery` — now confirmed by
+  > `test_export_below_import_couples_the_plan_to_solar`.
 - `Solution.true_energy` is **cost** here (lower better) — the sign flips vs a
   yield-style objective.
 - QAOA transpiles for an `AerSimulator` with **no coupling map** (trivial layout,

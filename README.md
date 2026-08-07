@@ -57,11 +57,11 @@ BatteryProblem ──build_qubo──▶ QUBO ──qubo_to_ising──▶ Ising
    program over the SoC grid that scales to a full day and serves as ground truth
    at larger `T`. Tests assert QAOA recovers the exact optimum.
 
-v1 modeling assumptions: net metering (a single buy=sell price) and equal
-charge/discharge energy per slot. **Round-trip losses are modelled** via
-`charge_efficiency`/`discharge_efficiency`, which default to `1.0` (lossless) so
-the defaults reproduce the original model exactly. Asymmetric pricing (export
-credited below import) is still on the roadmap.
+v1 modeling assumption: equal charge/discharge energy per slot (it keeps the SoC
+on a uniform grid). **Round-trip losses** (`charge_efficiency`/
+`discharge_efficiency`) and **export credited below import** (`sell_price`) are
+both modelled, and both default to the lossless, net-metered case so the defaults
+reproduce the original model exactly.
 
 ## How the simulator works
 
@@ -199,17 +199,20 @@ RE-TOU** tariff (URDB label `69bd927af5cd25efec0e9aad`, snapshot as of **August
 | Solar only (battery idle, `price × (load − generation)`) | **$777.22** |
 | Solar + optimal battery | **$321.50** |
 
-- **Solar savings ≈ $970.61/yr.** *Net-metering caveat (v1):* under a single
-  buy = sell price, every exported kWh credits at **full retail** — which is what
-  makes this figure achievable. Real Colorado export credits sit **below** retail,
-  so this leg would shrink under asymmetric pricing.
+- **Solar savings ≈ $970.61/yr.** *Net-metering caveat:* under a single buy = sell
+  price every exported kWh credits at **full retail**, which is what makes this
+  figure achievable. Real export credits sit **below** retail, and this leg is the
+  one that suffers: pass `export_ratio=` to price it. At a quarter of retail it
+  falls to **$636.05/yr**, and at near avoided-cost to **$569.14/yr** — a ~40% cut.
 - **Battery savings ≈ $455.72/yr — the battery alone** (solar held fixed across
   the comparison). This figure is comparatively **robust** to the net-metering
   assumption: arbitrage depends on the on/off-peak *spread*, not the export price.
-  It is a **lossless** figure — the table above uses the library defaults, where
-  `charge_efficiency == discharge_efficiency == 1.0`. At a realistic **0.90 AC
-  round trip** it falls ~11% to **$404.28/yr**; pass `charge_efficiency=` and
-  `discharge_efficiency=` to price losses in. See
+  It is a **lossless, net-metered** figure — the table above uses the library
+  defaults. At a realistic **0.90 AC round trip** it falls ~11% to **$404.28/yr**.
+  A *worse* export credit moves it the other way, up to **$486.94/yr** near
+  avoided-cost, because a poor credit gives the battery self-consumption value on
+  top of arbitrage. The two legs move in opposite directions, which is exactly why
+  the split reports them separately. See
   [`docs/results/capacity-rate-sensitivity.md`](docs/results/capacity-rate-sensitivity.md).
 
 The dollar amounts are a tariff snapshot — a **~9.9% Xcel increase filed for
@@ -237,15 +240,15 @@ pack behind a 2 kW inverter on a 4-hour peak is an **8 kWh pack** as far as the
 bill is concerned. Consequently **rate is the axis that pays**: 2 kW → 2.5 kW is
 worth **+$113.93/yr**, while 10 kWh → 20 kWh is worth **$0.00/yr**.
 
-**Whether it pays back — it does not.** Priced at a **0.90 AC round trip**
-(losses cost ~11% of the saving, taking $455.72/yr to **$404.28/yr**), a ~$11,500
+**Whether it pays back — it does not.** At a **0.90 AC round trip**, a ~$11,500
 install pays back in **~28 years** against a ~10-year warranty ($9,000 → 22 yr,
-$7,000 → 17 yr). Nothing in a plausible cost range clears the warranty at 2 kW.
-**On a two-tier tariff, arbitrage alone does not pay for the hardware within its
-warranted life.** One optimistic assumption remains — buy = sell net metering, so
-a real export credit would push payback further out. Batteries are also bought for
-backup and resilience, which this model does not price and which may well justify
-a purchase — but the savings pitch does not survive the arithmetic.
+$7,000 → 17 yr). Sweeping the export credit from full retail down to avoided cost
+brackets that at **[23.6, 28.4] years** — a worse credit *helps* the battery, and
+still falls far short. **On a two-tier tariff, arbitrage alone does not pay for the
+hardware within its warranted life**, and that conclusion no longer rests on any
+optimistic assumption: both have been priced and swept. Batteries are also bought
+for backup and resilience, which this model does not price and which may well
+justify a purchase — but the savings pitch does not survive the arithmetic.
 
 ## Status
 

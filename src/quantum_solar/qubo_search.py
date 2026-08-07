@@ -64,7 +64,7 @@ def qubo_min_exact(
 
     t = problem.num_slots
     e, _, k0 = soc_grid(problem)
-    grid_c, grid_d = problem.grid_charge_energy, problem.grid_discharge_energy
+    idle_cost, charge_delta, discharge_delta, both = problem.action_costs()
 
     # --- State space: every reachable SoC level, plus drift history if needed ---
     levels = np.arange(k0 - t, k0 + t + 1)
@@ -102,10 +102,11 @@ def qubo_min_exact(
         for a, (c, d, dk) in enumerate(_ACTIONS):
             src = slice(max(0, -dk), n_lev - max(0, dk))
             tgt = slice(max(0, dk), n_lev + min(0, dk))
-            # Priced on the grid-side quanta (round-trip losses); the SoC steps
-            # `dk` above stay store-side.
-            step = (p * (grid_c * c - grid_d * d)
-                    + (weights.mutual_exclusion if c and d else 0.0))
+            # Per-slot action cost (round-trip losses and, when export credits
+            # below import, a piecewise bill); the SoC steps `dk` stay store-side.
+            step = float(charge_delta[j] * c + discharge_delta[j] * d
+                         + (both[j] if c and d else 0.0)
+                         + (weights.mutual_exclusion if c and d else 0.0))
             for h in range(n_hist):
                 total = step
                 if window and j >= window - 1:
@@ -120,7 +121,7 @@ def qubo_min_exact(
 
     flat = int(np.argmin(cost))
     i, h = divmod(flat, n_hist)
-    qubo_energy = float(cost[i, h] + problem.price @ (problem.load - problem.generation))
+    qubo_energy = float(cost[i, h] + idle_cost.sum())
 
     # --- Walk back for the schedule and its SoC path ---
     c = np.zeros(t, dtype=np.int8)

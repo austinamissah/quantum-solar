@@ -42,22 +42,26 @@ def dp_solve(problem: BatteryProblem) -> Solution:
     cost[k0] = 0.0
     actions = np.zeros((t, n_max + 1), dtype=np.int8)  # chosen action to land on k
 
+    # Per-slot cost of each action relative to idling. This is where losses and an
+    # export price below the import price are priced; the SoC step below stays
+    # store-side. Costs remain per-(slot, action) even when the bill is piecewise,
+    # because the household's net is exogenous — which is why the DP still applies.
+    idle_cost, charge_delta, discharge_delta, _ = problem.action_costs()
+
     for j in range(t):
-        p = problem.price[j]
-        # The SoC step is store-side (one grid level either way); the PRICE is paid
-        # on the grid-side quantum, which is where round-trip losses land.
         idle = cost                                   # k <- k
         charge = np.full(n_max + 1, inf)
-        charge[1:] = cost[:-1] + p * problem.grid_charge_energy      # k <- k-1
+        charge[1:] = cost[:-1] + charge_delta[j]      # k <- k-1
         discharge = np.full(n_max + 1, inf)
-        discharge[:-1] = cost[1:] - p * problem.grid_discharge_energy  # k <- k+1
+        discharge[:-1] = cost[1:] + discharge_delta[j]  # k <- k+1
 
         stacked = np.vstack([idle, charge, discharge])
         cost = stacked.min(axis=0)
         actions[j] = stacked.argmin(axis=0)
 
-    # Terminal constraint: must end at the initial SoC level.
-    total = float(cost[k0] + problem.price @ (problem.load - problem.generation))
+    # Terminal constraint: must end at the initial SoC level. The accumulated cost
+    # is relative to idling, so add the idle bill back.
+    total = float(cost[k0] + idle_cost.sum())
 
     # Reconstruct the schedule backward from k0.
     c = np.zeros(t, dtype=np.int8)
@@ -143,14 +147,15 @@ def optima_census(problem: BatteryProblem, *, atol: float = 1e-9) -> OptimaCensu
     n_max = int(round(problem.capacity / e))
     k0 = int(round(problem.initial_soc / e))
     inf = np.inf
-    # (delta level, GRID energy signed, delta actions) per action. The level step is
-    # store-side and symmetric; the priced quantity is grid-side and is not, once
-    # efficiencies differ -- so each move carries its own coefficient rather than a
-    # shared +-e.
+    # (delta level, PER-SLOT cost array relative to idling, delta actions). The level
+    # step is store-side and symmetric; the cost is not, once efficiencies differ or
+    # export is credited below import -- and it varies by slot, so each move carries
+    # its own (T,) array rather than a shared scalar.
+    idle_cost, charge_delta, discharge_delta, _ = problem.action_costs()
     moves = (
-        (_IDLE, 0, 0.0, 0),
-        (_CHARGE, +1, +problem.grid_charge_energy, 1),
-        (_DISCHARGE, -1, -problem.grid_discharge_energy, 1),
+        (_IDLE, 0, np.zeros(t), 0),
+        (_CHARGE, +1, charge_delta, 1),
+        (_DISCHARGE, -1, discharge_delta, 1),
     )
 
     def layer():
@@ -163,13 +168,12 @@ def optima_census(problem: BatteryProblem, *, atol: float = 1e-9) -> OptimaCensu
     cost[k0], act[k0], n_all[k0], n_min[k0] = 0.0, 0, 1, 1
     for j in range(t):
         f_cost.append(cost); f_act.append(act); f_all.append(n_all); f_min.append(n_min)
-        p = problem.price[j]
         cands = []
         for _, dk, dc, da in moves:
             c2, a2, all2, min2 = layer()
             src = slice(max(0, -dk), n_max + 1 - max(0, dk))
             dst = slice(max(0, dk), n_max + 1 - max(0, -dk))
-            c2[dst] = cost[src] + dc * p
+            c2[dst] = cost[src] + dc[j]
             a2[dst] = act[src] + da
             all2[dst], min2[dst] = n_all[src], n_min[src]
             cands.append((c2, a2, all2, min2))
@@ -195,12 +199,11 @@ def optima_census(problem: BatteryProblem, *, atol: float = 1e-9) -> OptimaCensu
     cost[k0], act[k0] = 0.0, 0
     b_cost[t], b_act[t] = cost, act
     for j in range(t - 1, -1, -1):
-        p = problem.price[j]
         nc, na = np.full(n_max + 1, inf), np.full(n_max + 1, inf)
         for _, dk, dc, da in moves:
             src = slice(max(0, dk), n_max + 1 - max(0, -dk))     # level k+dk
             dst = slice(max(0, -dk), n_max + 1 - max(0, dk))     # level k
-            c2 = cost[src] + dc * p
+            c2 = cost[src] + dc[j]
             a2 = act[src] + da
             # An unreachable level is inf on both sides, and inf - inf is nan. Mask
             # the subtraction itself (numpy evaluates it before any boolean guard),
@@ -221,14 +224,13 @@ def optima_census(problem: BatteryProblem, *, atol: float = 1e-9) -> OptimaCensu
     # --- a (slot, action) is live iff some minimal optimum routes through it ---
     slot_actions = []
     for j in range(t):
-        p = problem.price[j]
         live = []
         for action, dk, dc, da in moves:
             lo, hi = max(0, -dk), n_max - max(0, dk)
             if hi < lo:
                 continue
             k = np.arange(lo, hi + 1)
-            total = f_cost[j][k] + dc * p + b_cost[j + 1][k + dk]
+            total = f_cost[j][k] + dc[j] + b_cost[j + 1][k + dk]
             steps = f_act[j][k] + da + b_act[j + 1][k + dk]
             ok = (np.abs(total - best_cost) <= atol) & (np.abs(steps - best_act) <= atol)
             if bool(ok.any()):

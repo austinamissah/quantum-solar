@@ -61,6 +61,55 @@ class BatteryProblem:
     initial_soc: float
     charge_efficiency: float = 1.0
     discharge_efficiency: float = 1.0
+    sell_price: np.ndarray | None = None
+
+    @property
+    def buy_price(self) -> np.ndarray:
+        """Import price ($/kWh). ``price`` is the import price; this names it."""
+        return self.price
+
+    @property
+    def export_price(self) -> np.ndarray:
+        """Export credit ($/kWh); ``price`` when ``sell_price`` is unset (net metering)."""
+        return self.price if self.sell_price is None else self.sell_price
+
+    @property
+    def is_net_metered(self) -> bool:
+        """Whether export credits at the import price, which keeps the bill linear."""
+        return self.sell_price is None or bool(np.allclose(self.sell_price, self.price))
+
+    def slot_cost(self, net: np.ndarray) -> np.ndarray:
+        """Per-slot bill for a net grid draw, priced piecewise at import/export.
+
+        Imports (``net > 0``) bill at :attr:`buy_price`; exports bill at
+        :attr:`export_price`. With ``buy == sell`` this is just ``price * net`` and
+        the bill is linear; once they differ it is **convex piecewise linear**, and
+        the kink at ``net == 0`` is what couples the battery plan to solar and load.
+        """
+        net = np.asarray(net, dtype=float)
+        return np.where(net > 0.0, self.buy_price, self.export_price) * net
+
+    def action_costs(self) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Per-slot cost of each battery action, relative to leaving it idle.
+
+        Returns ``(idle, charge_delta, discharge_delta, both_correction)``, each
+        ``(T,)``. The household net is exogenous per slot, so a slot's cost depends
+        only on which action is taken there — which is why the DP still applies
+        even though the bill is no longer linear.
+
+        ``both_correction`` is the extra cost of charging *and* discharging in one
+        slot beyond the sum of the two deltas. It is zero under net metering and
+        non-zero otherwise, and carrying it is what keeps the QUBO surrogate exact
+        on **every** bitstring rather than only the mutually-exclusive ones (the
+        brute-force contract, ``docs/ARCHITECTURE.md``).
+        """
+        base = self.load - self.generation
+        idle = self.slot_cost(base)
+        charge = self.slot_cost(base + self.grid_charge_energy) - idle
+        discharge = self.slot_cost(base - self.grid_discharge_energy) - idle
+        both = (self.slot_cost(base + self.grid_charge_energy - self.grid_discharge_energy)
+                - idle - charge - discharge)
+        return idle, charge, discharge, both
 
     @property
     def grid_charge_energy(self) -> float:
@@ -106,18 +155,21 @@ class BatteryProblem:
         return self.initial_soc + np.cumsum(delta)
 
     def grid_cost(self, c: np.ndarray, d: np.ndarray) -> float:
-        """Net-metered electricity cost of a schedule (lower is better).
+        """Electricity cost of a schedule (lower is better).
 
         Uses the **grid-side** quanta, so round-trip losses are charged here: a
         charging slot imports more than it stores and a discharging slot delivers
         less than it removes. At the default efficiencies of 1 both collapse to
         the store-side quanta and this is the original lossless expression.
+
+        Exports credit at :attr:`export_price`, which equals the import price
+        unless ``sell_price`` is set. See :meth:`slot_cost`.
         """
         c = np.asarray(c, dtype=float)
         d = np.asarray(d, dtype=float)
         net = (self.load - self.generation
                + self.grid_charge_energy * c - self.grid_discharge_energy * d)
-        return float(self.price @ net)
+        return float(self.slot_cost(net).sum())
 
     def energy(self, x: np.ndarray) -> float:
         """True objective for a QUBO vector: grid cost of its decision bits."""

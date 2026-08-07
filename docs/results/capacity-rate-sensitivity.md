@@ -129,19 +129,49 @@ At the 0.90 headline, against a warranty of **10 years** for this class of syste
 | $11,500 | **28.4 yr** | 22.8 yr | no |
 | $14,000 | 34.6 yr | 27.7 yr | no |
 
-**One optimistic assumption remains, so these are still lower bounds on payback.**
-The model assumes buy = sell net metering; a real export credit below the import
-price reduces what each discharge earns. That is one assumption now, not two.
+### The export credit, and why it does not rescue the case
+
+Both v1 assumptions are now priced. Sweeping the export credit at the 0.90 round
+trip, reporting **both legs** because they move in opposite directions:
+
+| export credit | solar $/yr | battery $/yr | payback @ $11,500 |
+|---:|---:|---:|---:|
+| 1.00 *(full-retail net metering)* | $970.61 | $404.28 | 28.4 yr |
+| 0.75 | $859.09 | $414.96 | 27.7 yr |
+| 0.50 | $747.57 | $441.52 | 26.0 yr |
+| 0.25 | $636.05 | $469.51 | 24.5 yr |
+| 0.10 *(near avoided-cost)* | $569.14 | **$486.94** | **23.6 yr** |
+
+**A worse export credit makes the battery *more* valuable, not less** — the
+opposite of what this document previously asserted. The intuition that a poor
+credit hurts ("a discharge earns less") covers only discharges that would have
+been exported, and misses the larger effect: a poor credit creates
+**self-consumption** value. A surplus kWh that would have been dumped at the
+export rate can instead be stored and used to avoid buying at retail, and that
+gain grows as the credit falls. The *solar* leg moves the other way, losing ~40%
+between full retail and avoided cost — which is why the three-way split reports
+them separately and why they must never be added into one "system savings".
+
+The consequence for the conclusion is that it **no longer depends on the
+assumption at all**. Payback at $11,500 is bracketed in **[23.6, 28.4] years**
+across the whole plausible range, against a 10-year warranty. Every remaining
+uncertainty has been swept, and none of it reaches the bar.
 
 ### The honest conclusion
 
 **On a two-tier tariff, arbitrage alone does not pay for the hardware within its
 warranted life.** At a typical ~$11,500 installed cost the battery pays back in
-about **28 years** against a 10-year warranty — it must outlive its guarantee
-nearly three times over. Nothing in a plausible cost range clears the warranty at
-2 kW. The single case that does, a $5,000 install with a 2.5 kW inverter at **9.9
-years**, clears it by six weeks, on the optimistic side of the one assumption
-still standing. That is not a margin anyone should buy on.
+**23.6–28.4 years** — across every value of both formerly-optimistic assumptions —
+against a 10-year warranty. It must outlive its guarantee between two and three
+times over. Nothing in a plausible cost range clears the warranty at 2 kW; the
+single case that does, a $5,000 install with a 2.5 kW inverter at **9.9 years**,
+clears it by six weeks. That is not a margin anyone should buy on.
+
+This conclusion is now **bracketed rather than bounded**. It used to rest on
+assumptions that were flagged as optimistic and pointed one way; both have since
+been priced, one of them turned out to point the *other* way, and the conclusion
+survives either way. That is a stronger claim than the original, and it is the
+reason the modelling work was worth doing.
 
 > **Retraction, 2026-08-07.** This section originally reported $455.72/yr and a
 > ~25-year payback from a **lossless** battery, flagged as an upper bound but not
@@ -151,6 +181,14 @@ still standing. That is not a margin anyone should buy on.
 > (8.8 yr, comfortably inside warranty) becomes 9.9 yr, i.e. marginal. Left here
 > rather than silently updated, because "flagged as an upper bound" is weaker than
 > "measured" and the gap between them is the whole point.
+>
+> **Second retraction, same date.** This section also said an export credit below
+> import "reduces what each discharge earns, so these paybacks are still lower
+> bounds". That was wrong in *direction*, not just magnitude: a worse credit raises
+> the battery's saving through self-consumption and shortens payback (28.4 → 23.6
+> years at $11,500). The reasoning missed that avoided imports are worth more when
+> exports are worth less. Both assumptions are now swept rather than argued about,
+> which is the only reason the error surfaced.
 
 This is a statement about **arbitrage**, not about batteries. Home batteries are
 also bought for backup power and resilience during outages, and that value is real
@@ -179,9 +217,16 @@ arithmetic is the *savings* pitch.
   pays only where `p_peak/p_off > 1/round_trip`. Xcel's summer ratio is **2.74**
   against a threshold of **1.11** at a 0.90 round trip, so arbitrage stays firmly
   profitable here — it would not on a tariff with a spread under ~11%.
-- **Export paid below import would lower the ceiling.** This is the assumption
-  still standing. The spread a discharge actually earns is set by what the utility
-  credits, not by the import price, so `price_spread` remains optimistic.
+- **Export paid below import is now modelled, and it helps the battery.** It
+  raises the battery leg (self-consumption) while cutting the solar leg; see the
+  export sweep above. It does change the sizing arithmetic on a solar-bearing day,
+  because whether a slot imports or exports now matters — the daily figures on this
+  page are computed under net metering and are the conservative case for the
+  battery.
+- **The optimal plan stops ignoring solar and load.** Under net metering the bill
+  separates and the plan depends on the price curve alone. An export credit below
+  import puts a kink at `net == 0`, which finally couples the plan to the
+  household — the thing round-trip losses were wrongly expected to do.
 - The **saving is measured against idling the same battery**, so it is the
   battery's contribution alone and excludes solar's.
 

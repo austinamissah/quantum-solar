@@ -221,13 +221,20 @@ def test_losses_do_not_couple_the_plan_to_solar_or_load(eta):
     rng = np.random.default_rng(0)
 
     def plan(generation, load):
+        """The tie-break-independent plan: which actions are optimal in each slot.
+
+        NOT the schedule ``dp_solve`` happens to return. The optimum is massively
+        degenerate (every equal-priced hour is interchangeable), so the returned
+        schedule shifts under float-level changes while the *set* of optimal
+        actions does not. Comparing the raw schedule is the mistake this repo
+        documents under ``optima_census``.
+        """
         problem = BatteryProblem(
             generation=generation, load=load, price=price, capacity=4.0,
             charge_energy=1.0, discharge_energy=1.0, initial_soc=2.0,
             charge_efficiency=eta, discharge_efficiency=eta,
         )
-        charge, discharge = problem.decode(dp_solve(problem).x)
-        return tuple(charge), tuple(discharge)
+        return optima_census(problem).slot_actions
 
     reference = plan(np.zeros(12), np.ones(12))
     assert plan(np.full(12, 3.0), np.ones(12)) == reference           # lots of solar

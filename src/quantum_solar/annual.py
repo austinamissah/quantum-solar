@@ -104,6 +104,7 @@ def annual_savings(
     discharge_energy: float | None = None,
     charge_efficiency: float = 1.0,
     discharge_efficiency: float = 1.0,
+    export_ratio: float = 1.0,
     initial_soc: float | None = None,
     system_kw: float = 5.0,
     rate_label: str = XCEL_CO_RETOU_LABEL,
@@ -137,6 +138,7 @@ def annual_savings(
         discharge_energy=discharge_energy,
         charge_efficiency=charge_efficiency,
         discharge_efficiency=discharge_efficiency,
+        export_ratio=export_ratio,
         initial_soc=initial_soc,
     )
 
@@ -152,6 +154,7 @@ def annual_from_inputs(
     discharge_energy: float | None = None,
     charge_efficiency: float = 1.0,
     discharge_efficiency: float = 1.0,
+    export_ratio: float = 1.0,
     initial_soc: float | None = None,
     solver: Callable[[BatteryProblem], Solution] = dp_solve,
 ) -> AnnualResult:
@@ -193,10 +196,14 @@ def annual_from_inputs(
             discharge_energy=discharge_energy,
             charge_efficiency=charge_efficiency,
             discharge_efficiency=discharge_efficiency,
+            export_ratio=export_ratio,
             initial_soc=initial_soc,
         )
         zero = np.zeros(_NUM_SLOTS, dtype=np.int8)
-        no_system = float(problem.price @ problem.load)   # no solar, no battery
+        # No solar and no battery, so the house only ever imports and the export
+        # price cannot apply. Routed through slot_cost anyway so all three legs are
+        # priced by one function.
+        no_system = float(problem.slot_cost(problem.load).sum())
         solar_only = problem.grid_cost(zero, zero)        # solar, battery idle: price @ (load - gen)
         solution = solver(problem)                        # solar + scheduled battery
         optimized = solution.true_energy

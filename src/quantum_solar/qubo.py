@@ -126,11 +126,19 @@ def build_qubo(
     Q = np.zeros((m, m))
     offset = 0.0
 
-    # --- Objective: net-metered grid cost (linear) ---
+    # --- Objective: grid cost, as the per-slot cost of each action ---
+    # Linear under net metering; once export credits below import the bill is
+    # piecewise, and `both` carries the c_j*d_j correction that keeps this exact on
+    # EVERY bitstring, not only the mutually-exclusive ones. Without it brute force
+    # would disagree with the DP on infeasible vectors and the encoding contract
+    # (`<x|H|x> + constant == qubo.energy(x)`) would quietly break.
+    idle_cost, charge_delta, discharge_delta, both = problem.action_costs()
     for j in range(t):
-        Q[j, j] += problem.price[j] * grid_c          # charging imports grid_c
-        Q[t + j, t + j] += -problem.price[j] * grid_d  # discharging offsets grid_d
-    offset += float(problem.price @ (problem.load - problem.generation))
+        Q[j, j] += charge_delta[j]
+        Q[t + j, t + j] += discharge_delta[j]
+        if both[j]:
+            Q[j, t + j] += both[j]
+    offset += float(idle_cost.sum())
 
     # --- Mutual exclusion: no charge & discharge in the same slot ---
     for j in range(t):

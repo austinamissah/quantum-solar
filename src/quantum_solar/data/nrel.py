@@ -209,6 +209,7 @@ def build_instance(
     discharge_energy: float | None = None,
     charge_efficiency: float = 1.0,
     discharge_efficiency: float = 1.0,
+    export_ratio: float = 1.0,
     initial_soc: float | None = None,
 ) -> BatteryProblem:
     """Assemble a :class:`BatteryProblem` from per-slot arrays, applying v1 defaults.
@@ -232,6 +233,7 @@ def build_instance(
         discharge_energy=discharge_energy,
         charge_efficiency=charge_efficiency,
         discharge_efficiency=discharge_efficiency,
+        sell_price=None if export_ratio == 1.0 else price * export_ratio,
         initial_soc=initial_soc,
     )
 
@@ -247,6 +249,7 @@ def load_nrel_instance(
     discharge_energy: float | None = None,
     charge_efficiency: float = 1.0,
     discharge_efficiency: float = 1.0,
+    export_ratio: float = 1.0,
     initial_soc: float | None = None,
     system_kw: float = 5.0,
     rate_label: str = XCEL_CO_RETOU_LABEL,
@@ -313,5 +316,6 @@ def load_nrel_instance(
         discharge_energy=discharge_energy,
         charge_efficiency=charge_efficiency,
         discharge_efficiency=discharge_efficiency,
+        export_ratio=export_ratio,
         initial_soc=initial_soc,
     )
