@@ -49,6 +49,11 @@ domain-agnostic over "a QUBO + a problem exposing `energy(x)`/`is_feasible(x)`".
   and discharge at one price cancel and it counts unbounded free cycling — on a
   flat-price day it counts every feasible schedule (~1.5e10). Validated against
   exhaustive enumeration in `tests/test_optima_census.py`.
+  The **sizing rule follows from that same fact**: if every optimum discharges
+  across the whole peak window and nothing else is forced, the only energy that
+  earns is what the rating can deliver inside it, so
+  `saving = min(capacity, rate × peak_hours) × price_spread` — linear in capacity,
+  then flat at the knee. `docs/results/capacity-rate-sensitivity.md`.
 - `ising.py` — `qubo_to_ising` maps the QUBO to a `SparsePauliOp` via
   `x_i = (1 − z_i)/2`. Invariant: `⟨x|H|x⟩ + constant == qubo.energy(x)`.
 - `qaoa.py` — `QAOASolver`, hand-rolled from `QAOAAnsatz` + Aer

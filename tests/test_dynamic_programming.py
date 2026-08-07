@@ -53,6 +53,52 @@ def test_dp_rejects_off_grid_initial_soc():
         dp_solve(problem)
 
 
+def test_dp_rejects_off_grid_capacity():
+    """The same failure one axis over, found while sweeping capacity and rate.
+
+    ``n_max = round(capacity / e)`` rounds *up* past a half step, so a 10 kWh
+    battery at 6 kWh/slot got a top grid level of 12 kWh: the DP returned a
+    schedule reaching 12.0 kWh and reported it optimal and feasible.
+    """
+    from quantum_solar import BatteryProblem
+
+    problem = BatteryProblem(
+        generation=np.zeros(8), load=np.ones(8),
+        price=np.array([0.1, 0.1, 0.1, 0.9, 0.9, 0.1, 0.1, 0.1]),
+        capacity=10.0, charge_energy=6.0, discharge_energy=6.0, initial_soc=0.0,
+    )
+    with pytest.raises(ValueError, match="capacity=10.0 is not a multiple"):
+        dp_solve(problem)
+
+
+@pytest.mark.parametrize("capacity,rate", [
+    (2.0, 2.0), (4.0, 2.0), (8.0, 2.0), (10.0, 2.0), (20.0, 2.0),   # capacity sweep
+    (10.0, 0.5), (10.0, 1.0), (10.0, 2.5), (10.0, 5.0),             # rate sweep
+])
+def test_saving_follows_the_sizing_rule(capacity, rate):
+    """saving = min(capacity, rate * peak_hours) * spread.
+
+    The quantitative form of the forced-discharge result: every optimal plan
+    discharges through the whole peak window and nothing else is forced, so the
+    only energy that pays is what the rating can deliver inside that window.
+    Capacity beyond ``rate * peak_hours`` is never discharged at the high price.
+    See docs/results/capacity-rate-sensitivity.md.
+    """
+    from quantum_solar import BatteryProblem
+
+    peak_hours, spread, low = 4, 0.25, 0.10
+    price = np.full(12, low)
+    price[6:6 + peak_hours] = low + spread          # a 4-hour peak, cheap either side
+    problem = BatteryProblem(
+        generation=np.zeros(12), load=np.ones(12), price=price,
+        capacity=capacity, charge_energy=rate, discharge_energy=rate,
+        initial_soc=round((capacity / 2) / rate) * rate,
+    )
+    idle = problem.energy(np.zeros(2 * problem.num_slots, dtype=np.int8))
+    saving = idle - dp_solve(problem).true_energy
+    assert saving == pytest.approx(min(capacity, rate * peak_hours) * spread)
+
+
 def test_all_idle_is_feasible_baseline(small_problem):
     # Doing nothing always returns to S_0; the optimum must be no worse.
     idle = np.zeros(small_problem.num_decision_vars, dtype=np.int8)

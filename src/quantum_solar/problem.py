@@ -91,21 +91,30 @@ class BatteryProblem:
 
 
 def require_soc_on_grid(problem: "BatteryProblem") -> None:
-    """Raise unless ``initial_soc`` lies on the charge-energy SoC grid.
+    """Raise unless ``initial_soc`` **and** ``capacity`` lie on the SoC grid.
 
     The DP and QUBO models both reason about SoC on a grid of step
     ``charge_energy``. An ``initial_soc`` off that grid makes the DP round it
     internally, so the reported schedule can drift off-grid and exceed capacity
     (an infeasible result reported as optimal). Fail loud instead.
+
+    ``capacity`` is the top of that same grid and fails the same way: the DP takes
+    ``n_max = round(capacity / e)``, which *rounds up* when the remainder exceeds
+    half a step. A 10 kWh battery at 6 kWh/slot became ``n_max = 2``, i.e. a top
+    level of 12 kWh — the solver returned a schedule reaching 12 kWh on a 10 kWh
+    battery and reported it optimal and feasible. Checked here rather than floored
+    silently, because quietly modelling a *different* battery from the one asked
+    for is the same class of error.
     """
     e = problem.charge_energy
-    ratio = problem.initial_soc / e
-    if abs(ratio - round(ratio)) > 1e-9:
-        raise ValueError(
-            f"initial_soc={problem.initial_soc} is not a multiple of "
-            f"charge_energy={e}; the SoC grid would be misaligned and the "
-            f"schedule can exceed capacity. Use an on-grid initial state of charge."
-        )
+    for name, value in (("initial_soc", problem.initial_soc), ("capacity", problem.capacity)):
+        ratio = value / e
+        if abs(ratio - round(ratio)) > 1e-9:
+            raise ValueError(
+                f"{name}={value} is not a multiple of charge_energy={e}; the SoC "
+                f"grid would be misaligned and the schedule can exceed capacity. "
+                f"Use an on-grid {name}."
+            )
 
 
 def synthetic_instance(

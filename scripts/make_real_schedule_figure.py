@@ -59,7 +59,7 @@ import numpy as np  # noqa: E402
 from matplotlib.patches import Patch  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from quantum_solar import dp_solve, optima_census  # noqa: E402
+from quantum_solar import BatteryProblem, dp_solve, optima_census  # noqa: E402
 from quantum_solar.data import load_profile  # noqa: E402
 from quantum_solar.data.calendar import (  # noqa: E402
     day_of_month,
@@ -176,6 +176,67 @@ def summarize_schedule(problem, solution):
     }
 
 
+CAPACITY_SWEEP = (2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0)   # kWh, at SWEEP_RATE
+RATE_SWEEP = (0.5, 1.0, 2.0, 2.5, 5.0)                          # kW, at SWEEP_CAPACITY
+SWEEP_RATE, SWEEP_CAPACITY = 2.0, 10.0
+
+
+def sensitivity(problem):
+    """How the saving responds to battery size and power rating.
+
+    The other face of the forced-discharge result: because every optimal plan
+    discharges through all of the peak window and nothing else is forced, the only
+    energy that earns anything is what can be pushed out during that window. So the
+    saving is::
+
+        saving = min(capacity, rate * peak_hours) * price_spread
+
+    which rises linearly in capacity until ``rate * peak_hours`` binds and is flat
+    after. That is the number worth knowing before buying: vendors quote kWh, but
+    the binding quantity is the smaller of kWh and rate x window.
+
+    Every point is re-solved with ``dp_solve``, not evaluated from the formula --
+    the formula is then checked against the solver, so a mismatch is visible rather
+    than assumed away.
+
+    Swept rates are restricted to ones that divide the capacity. Off-grid pairs
+    are rejected outright by ``require_soc_on_grid`` (the SoC grid has step
+    ``rate``, so e.g. 10 kWh at 3 kW has no exact representation), and the
+    quantized points are genuinely non-monotonic -- 10 kWh at 4 kW delivers less
+    than at 2.5 kW. That is a v1 discretization artifact, not a property of
+    batteries, so it is kept out of a figure meant to inform a purchase.
+    """
+    spread = float(problem.price.max() - problem.price.min())
+    peak_hours = int((problem.price > problem.price.min() + 1e-9).sum())
+    idle_x = np.zeros(2 * problem.num_slots, dtype=np.int8)
+
+    def point(capacity, rate):
+        # Start half full, snapped onto the rate grid. The saving is independent of
+        # the starting level except at the extremes -- a battery starting full
+        # cannot charge before the peak and must refill within the 3 post-peak
+        # hours, which binds instead. Half full is clear of that.
+        soc = round((capacity / 2) / rate) * rate
+        p = BatteryProblem(load=problem.load, generation=problem.generation,
+                           price=problem.price, capacity=capacity,
+                           charge_energy=rate, discharge_energy=rate, initial_soc=soc)
+        saving = float(p.energy(idle_x)) - float(dp_solve(p).true_energy)
+        predicted = min(capacity, rate * peak_hours) * spread
+        return {"capacity": capacity, "rate": rate,
+                "saving": round(saving, 4), "predicted": round(predicted, 4),
+                "matches_rule": bool(abs(saving - predicted) < 5e-4)}
+
+    return {
+        "_rule": "saving = min(capacity_kWh, rate_kW * peak_hours) * price_spread",
+        "peak_hours": peak_hours,
+        "price_spread": round(spread, 6),
+        "useful_capacity_kwh": round(SWEEP_RATE * peak_hours, 4),
+        "at_rate_kw": SWEEP_RATE,
+        "by_capacity": [point(c, SWEEP_RATE) for c in CAPACITY_SWEEP],
+        "at_capacity_kwh": SWEEP_CAPACITY,
+        "by_rate": [point(SWEEP_CAPACITY, r) for r in RATE_SWEEP],
+    }
+
+
 def render(problem, solution, headline, out_path):
     charge, _ = problem.decode(solution.x)
     e = problem.charge_energy
@@ -270,6 +331,20 @@ def main():
             "less informative (on a flat-price day it counts every feasible "
             "schedule)."
         ),
+        "_sizing_rule": (
+            "See the `sensitivity` block, computed on the summer weekday. It is "
+            "the other face of forced_hours: every optimal plan discharges through "
+            "the whole 5-9pm window and nothing else is forced, so the only energy "
+            "that earns anything is what the power rating can push out during that "
+            "window. saving = min(capacity_kWh, rate_kW * peak_hours) * spread. "
+            "The tested 10 kWh / 2 kW battery can deliver only 8 kWh across 4 peak "
+            "hours, so 2 kWh of it never moves and the saving is flat above 8 kWh. "
+            "Before buying: vendors quote kWh, but the binding number is the "
+            "smaller of kWh and rate x window. Same v1 caveats as everything else "
+            "here -- round-trip losses would shrink both the delivered energy and "
+            "the effective spread, and an export price below the import price "
+            "would lower the ceiling this rule computes."
+        ),
         "_battery_plan_ignores_solar_and_load": (
             "MODEL PROPERTY, NOT A REAL-WORLD RULE. Under v1's net metering the "
             "buy and sell price are equal, so the bill separates into a household "
@@ -302,6 +377,8 @@ def main():
             "feasible": bool(solution.feasible),
             **summarize_schedule(problem, solution),
         }
+        if name == "summer_weekday":
+            record["sensitivity"] = sensitivity(problem)
         s = record["buckets"][name]
         print(f"wrote {out.name:<38} day={day:>3} ({day_type(day):>7}) "
               f"net bill ${solution.true_energy:>6.2f}  feasible={solution.feasible}")
