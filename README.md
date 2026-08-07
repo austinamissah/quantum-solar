@@ -210,6 +210,35 @@ August 2026** will move the absolute bills (the URDB label pins the version we
 test against). Weekends contribute **$0** battery savings: the RE-TOU weekend
 schedule is flat off-peak, so there is no spread to arbitrage.
 
+### Sizing and payback
+
+[`docs/results/capacity-rate-sensitivity.md`](docs/results/capacity-rate-sensitivity.md)
+turns that annual figure into the two things a buyer needs.
+
+**What size actually earns.** Every optimal schedule discharges through the whole
+peak window and nothing else is forced, so only the energy the inverter can push
+out *inside* that window can pay:
+
+```
+saving = min(capacity_kWh, rate_kW × peak_hours) × price_spread
+```
+
+Verified against the exact DP at every swept point, on the real tariff and on
+synthetic ones at 3–6 peak hours (56 points, no mismatches) — so read your own
+peak-window length off your bill and multiply by your inverter rating. A 10 kWh
+pack behind a 2 kW inverter on a 4-hour peak is an **8 kWh pack** as far as the
+bill is concerned. Consequently **rate is the axis that pays**: 2 kW → 2.5 kW is
+worth **+$113.93/yr**, while 10 kWh → 20 kWh is worth **$0.00/yr**.
+
+**Whether it pays back — it does not.** At $455.72/yr, a ~$11,500 install pays
+back in ~25 years against a ~10-year warranty ($9,000 → 20 yr, $7,000 → 15 yr).
+Those are *upper bounds on savings*, hence lower bounds on payback: losses and
+export-below-import both cut the numerator. **On a two-tier tariff, arbitrage
+alone does not pay for the hardware within its warranted life.** Batteries are
+also bought for backup and resilience, which this model does not price and which
+may well justify a purchase — but the savings pitch does not survive the
+arithmetic.
+
 ## Status
 
 The pipeline runs end to end: problem model, exact QUBO encoding, Ising mapping,

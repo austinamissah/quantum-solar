@@ -71,26 +71,33 @@ def test_dp_rejects_off_grid_capacity():
         dp_solve(problem)
 
 
+@pytest.mark.parametrize("peak_hours", [3, 4, 5, 6])
 @pytest.mark.parametrize("capacity,rate", [
     (2.0, 2.0), (4.0, 2.0), (8.0, 2.0), (10.0, 2.0), (20.0, 2.0),   # capacity sweep
     (10.0, 0.5), (10.0, 1.0), (10.0, 2.5), (10.0, 5.0),             # rate sweep
 ])
-def test_saving_follows_the_sizing_rule(capacity, rate):
-    """saving = min(capacity, rate * peak_hours) * spread.
+def test_saving_follows_the_sizing_rule(capacity, rate, peak_hours):
+    """saving = min(capacity, rate * peak_hours) * spread, at any window length.
 
     The quantitative form of the forced-discharge result: every optimal plan
     discharges through the whole peak window and nothing else is forced, so the
     only energy that pays is what the rating can deliver inside that window.
     Capacity beyond ``rate * peak_hours`` is never discharged at the high price.
+
+    ``peak_hours`` is swept because the whole rule turns on it, and it is the one
+    quantity a reader has to supply from their own tariff.
     See docs/results/capacity-rate-sensitivity.md.
     """
     from quantum_solar import BatteryProblem
 
-    peak_hours, spread, low = 4, 0.25, 0.10
-    price = np.full(12, low)
-    price[6:6 + peak_hours] = low + spread          # a 4-hour peak, cheap either side
+    spread, low, slots = 0.25, 0.10, 24
+    # The peak ENDS at a fixed hour and grows backward, leaving the post-peak
+    # refill window intact; otherwise that constraint binds instead of the rule.
+    end = 20
+    price = np.full(slots, low)
+    price[end - peak_hours + 1:end + 1] = low + spread
     problem = BatteryProblem(
-        generation=np.zeros(12), load=np.ones(12), price=price,
+        generation=np.zeros(slots), load=np.ones(slots), price=price,
         capacity=capacity, charge_energy=rate, discharge_energy=rate,
         initial_soc=round((capacity / 2) / rate) * rate,
     )
