@@ -246,9 +246,14 @@ def show_year(result, *, capacity, rate, round_trip, export_ratio) -> None:
               f"within its warranted life.\n           (Backup and resilience are real value this "
               f"model does not price.)")
         if round_trip == 1.0:
-            print(f"           These are the library's LOSSLESS defaults. A realistic 0.90 "
-                  f"round trip\n           costs ~11% of the battery leg: try "
-                  f"--round-trip 0.90.")
+            # Signpost, because a reader arrives here holding a different number.
+            # The defaults are lossless and this figure is right for them, but the
+            # README and the write-ups lead with the loss-adjusted one, and landing
+            # on 25 after reading 28 looks like a discrepancy unless it is named.
+            print(f"           These are the library's LOSSLESS defaults. Elsewhere the "
+                  f"headline is the\n           loss-adjusted figure — ~28 years at a 0.90 "
+                  f"round trip, bracketed [23.6, 28.4]\n           across the export credit. "
+                  f"Reproduce it with --round-trip 0.90.")
 
 
 def show_sizing(generation, price_for, *, capacity, rate, round_trip, export_ratio) -> None:

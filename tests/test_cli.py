@@ -289,6 +289,27 @@ def test_quantum_section_degrades_gracefully_without_qiskit(monkeypatch, capsys)
     assert "blocked for test" in out   # the real cause is shown, not swallowed
 
 
+def test_lossless_payback_signposts_the_loss_adjusted_headline(capsys):
+    """The default is lossless, but readers arrive holding the 0.90 figure.
+
+    The demo's defaults give ~25 years and the README and write-ups lead with ~28,
+    bracketed [23.6, 28.4]. Both are correct for their own regime, so the default
+    run has to name the other one or the difference reads as a discrepancy. The
+    flag it points at must actually produce the number it quotes.
+    """
+    main([])
+    out = capsys.readouterr().out
+    assert "= 25 years" in out
+    assert "~28 years at a 0.90 round trip" in out
+    assert "[23.6, 28.4]" in out
+    assert "--round-trip 0.90" in out
+
+    main(["--round-trip", "0.90"])
+    out = capsys.readouterr().out
+    assert "= 28 years" in out          # the signpost's promise, kept
+    assert "Elsewhere the headline" not in out   # and withdrawn once it is moot
+
+
 @pytest.mark.parametrize("argv", [
     [],                                                   # the full default run
     ["--round-trip", "0.90", "--export-ratio", "0.25"],   # the widest prose block
