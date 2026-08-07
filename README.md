@@ -22,20 +22,31 @@ baselines.
 
 ## Example schedule
 
-The optimizer charges when electricity is cheap — overnight, midday, and late —
-and discharges into the morning rise and the evening price peak, keeping the state
-of charge inside the battery's capacity and returning it to its starting level. The
-day nets a small credit, **−$0.06**, and this plan is the **only** optimal one: no
-other schedule ties it, so the picture is *the* answer rather than one of many.
+One real summer weekday for a 5 kW PV + 10 kWh battery home in Golden, Colorado.
+Every input is real and season-coherent: NREL PVWatts solar, Xcel's Colorado RE-TOU
+time-of-use price, and an NREL ResStock household load profile (see
+[Real data](#real-data)). The battery drains through the whole 5–9pm peak, selling
+at $0.381/kWh what it buys back at $0.139/kWh, and returns to its starting level by
+midnight. The day's bill is **$0.36 against $2.29** with the battery sitting idle —
+**$1.93 saved**.
 
-![Optimal battery schedule](docs/schedule.png)
+![Cost-optimal battery schedule for a real Colorado summer weekday](docs/figures/web/schedule_real_day.png)
 
-*(Illustrative synthetic day; regenerate with `python scripts/make_preview.py`. The
-midday charging follows the cheap midday **price**, not the solar peak it happens
-to coincide with — under net metering the optimal plan provably depends on the
-price curve alone, and this schedule is unchanged by zero solar or triple solar.
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for why, and
-[Real data](#real-data) for real NREL solar generation.)*
+**Read the peak window, not the individual bars.** Only the four discharge hours are
+forced: **2,448 minimal-cost plans tie** on this day, and every one of them
+discharges across the whole 5–9pm window. The specific charging hours drawn here are
+one arbitrary pick among those ties — `dp_solve` breaks ties arbitrarily, so report
+`optima_census().forced()`, never the raw hour list. The lone green bar just after
+the peak is forced in kind but not in placement: the day must end where it started,
+so a refill must happen, and every post-peak hour is priced the same.
+
+**Charging follows the price, not the solar.** Under net metering the optimal plan
+provably depends on the price curve alone — it is unchanged by zero solar, triple
+solar, flat load, or random load; only the bill moves. Do not read this as advice to
+"charge on surplus solar". See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the
+derivation and the one assumption that breaks it.
+
+*Regenerate with `python scripts/make_real_schedule_figure.py`.*
 
 ## Pipeline
 
@@ -90,6 +101,42 @@ Qiskit and Aer are IBM's open-source quantum framework, a C++ simulation core wi
 a Python interface under active development, which is also why the hardware script
 uses a saved account rather than the legacy `channel="ibm_quantum"` retired in the
 2025 platform migration (see the Hardware section).
+
+## The finding: one number decides whether any of this works
+
+The penalty weight — how hard the QUBO pushes the optimizer to respect the
+battery's physical limits — is usually set by a rule of thumb, ~10× the objective's
+scale. That is fine for a classical solver, where any infeasible answer simply
+loses. It is not fine for QAOA, which minimizes an *expectation* over everything the
+quantum state contains: at ~46–48× the span of the actual electricity cost on these
+instances, the cost we care about is a rounding error inside `⟨H⟩`, and the
+optimizer does exactly what we asked and nothing we wanted.
+
+![QAOA output distribution at both penalty weights](docs/figures/web/penalty_weight.png)
+
+Same problem, same encoding, same circuit, same optimizer, same seed — only the
+penalty scale differs. At the rule-of-thumb weight the single most likely output is
+a plan that **charges and discharges in the same hour**, which no battery can do.
+Rescaled to `α*`, the best schedule becomes the most likely output instead: **80×
+more probability** on it (**131×** on the exact minimum-energy state, the metric
+reported elsewhere here).
+
+The threshold is derivable before running anything:
+
+> **α\* = (objective span across feasible solutions) / (penalty scale)**
+
+It is per-instance: 0.3095 / 14.81 = **0.0209** on the instance
+[`docs/LESSONS.md`](docs/LESSONS.md) §1 works through, 0.0217 on the one drawn
+above. It is a **boundary, not a safe midpoint** — the
+usable window is `0.010 ≤ α ≤ 0.021`, and 1.4× above it the tuned landscape's basin
+count already doubles ([`docs/results/basin-structure.md`](docs/results/basin-structure.md)).
+
+This is not a claim of quantum advantage — `dp_solve` returns the exact optimum for
+these instances in microseconds. It is a claim about a trap that applies to any
+constrained problem handed to a variational quantum algorithm, and it is the finding
+that generalizes past this project. Regenerate with
+`python scripts/make_penalty_weight_figure.py`; the full account is
+[`docs/LESSONS.md`](docs/LESSONS.md) §1.
 
 ## Installation
 
