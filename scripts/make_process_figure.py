@@ -157,6 +157,13 @@ def gather():
         raise SystemExit(
             "REFUSING TO DRAW: LESSONS.md no longer records the declined run.")
 
+    basin = " ".join((RESULTS / "basin-structure.md").read_text().split())
+    if "U-shape with a strict minimum" not in basin:
+        raise SystemExit(
+            "REFUSING TO DRAW: basin-structure.md no longer states the registered "
+            "prediction as a U-shape with a strict minimum, which is what this "
+            "figure paraphrases.")
+
     return {"plans": len(plans), "writeups": len(writeups),
             "jobs": int(totals.group(1)), "circuits": int(totals.group(2)),
             "qpu": int(totals.group(4))}
@@ -169,7 +176,7 @@ def main() -> None:
 
     fig, ax = plt.subplots(figsize=(15.2, 7.6))
     ax.set_xlim(-1.5, n - 0.22)
-    ax.set_ylim(-1.75, 1.75)
+    ax.set_ylim(-2.15, 1.75)
     ax.axis("off")
 
     ax.add_patch(FancyArrowPatch((-0.5, 0), (n - 0.34, 0), arrowstyle="-|>",
@@ -188,17 +195,21 @@ def main() -> None:
     ax.text(-1.45, -0.32, "checked by", fontsize=9.5, color=CHECK, style="italic",
             va="top")
 
-    # The two decisions worth attaching to a stage rather than to a date.
-    ax.text(3, -1.16, f"{d['jobs']} jobs, {d['circuits']} circuits, {d['qpu']} "
+    # The two decisions worth attaching to a stage rather than to a date. Naming
+    # the prediction matters: "a prediction was falsified" is a claim about
+    # temperament, and only the actual prediction makes it checkable.
+    ax.text(3, -1.14, f"{d['jobs']} jobs, {d['circuits']} circuits, {d['qpu']} "
             f"seconds\nof quantum processor time in all.\nA 4th experiment was "
             f"designed,\ncosted, and then not run.",
-            ha="center", va="top", fontsize=9.3, color=HARDWARE)
-    ax.text(7, -1.16, "The prediction here was\nFALSIFIED, and published\nas such.",
-            ha="center", va="top", fontsize=9.3, color=ACCENT, weight="bold")
+            ha="center", va="top", fontsize=10.5, color=HARDWARE)
+    ax.text(7, -1.14, "Predicted: the tuner would converge\nless reliably at penalty "
+            "weights on\nBOTH sides of the derived one.\nBelow it, reliability never "
+            "drops.\nFALSIFIED, and published as such.",
+            ha="center", va="top", fontsize=10.5, color=ACCENT, weight="bold")
 
     fig.suptitle("What I built, in the order I built it, and what checked each step",
                  fontsize=15.5, y=0.955)
-    fig.subplots_adjust(left=0.02, right=0.98, top=0.90, bottom=0.22)
+    fig.subplots_adjust(left=0.02, right=0.98, top=0.90, bottom=0.20)
 
     fig.text(
         0.5, 0.125,
