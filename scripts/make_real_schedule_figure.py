@@ -245,11 +245,31 @@ def render(problem, solution, headline, out_path):
     fig = plot_schedule(problem, solution)  # reuse the plotting module
     ax_top, ax_bot, ax_energy, ax_soc = fig.axes[0], fig.axes[1], fig.axes[2], fig.axes[3]
 
-    # Plain-language titles and labels (no em-dashes).
-    ax_top.set_title(f"{headline} for a Colorado home (Golden, CO)", fontsize=16, pad=10)
-    ax_bot.set_title(
-        f"The cost-optimal battery plan (net bill ${solution.true_energy:.2f} for the day)",
-        fontsize=15, pad=10)
+    # State the problem, then the answer. The old top title named the day but never
+    # said what was being decided or why anyone would care.
+    zero = np.zeros(problem.num_slots, dtype=np.int8)
+    idle_bill = float(problem.grid_cost(zero, zero))
+    ratio = float(problem.price.max() / problem.price.min())
+
+    fig.suptitle("When should a home battery charge and discharge?",
+                 fontsize=17, y=0.995)
+    if has_peak:
+        ax_top.set_title(
+            f"Electricity costs {ratio:.1f}x more from 5pm to 9pm than overnight. "
+            f"{headline}, Golden CO.", fontsize=13, pad=10)
+        ax_bot.set_title(
+            # Escaped: two bare dollar signs in one string make matplotlib read
+            # everything between them as mathtext and italicise it.
+            f"Buy cheap, sell into the peak: bill \\${solution.true_energy:.2f} "
+            f"for the day instead of \\${idle_bill:.2f}",
+            fontsize=14, pad=10)
+    else:
+        ax_top.set_title(
+            f"One flat price all day, so there is nothing to arbitrage. "
+            f"{headline}, Golden CO.", fontsize=13, pad=10)
+        ax_bot.set_title(
+            f"Doing nothing is optimal: bill ${solution.true_energy:.2f} either way",
+            fontsize=14, pad=10)
     ax_top.set_ylabel("electricity price ($/kWh)", fontsize=12, color="C3")
     ax_energy.set_ylabel("energy (kWh)", fontsize=12)
     ax_bot.set_ylabel("battery action (kWh)", fontsize=12)
@@ -305,8 +325,8 @@ def render(problem, solution, headline, out_path):
             text.set_fontsize(10)
 
     # Explicit margins so nothing clips at the committed pixel size (no bbox_inches).
-    fig.set_size_inches(9.6, 6.4)
-    fig.subplots_adjust(left=0.10, right=0.90, top=0.92, bottom=0.09, hspace=0.34)
+    fig.set_size_inches(9.6, 6.9)
+    fig.subplots_adjust(left=0.10, right=0.90, top=0.86, bottom=0.09, hspace=0.40)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, dpi=119)  # 9.6 * 119 = 1142 px wide
 

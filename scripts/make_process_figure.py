@@ -198,21 +198,21 @@ def main() -> None:
 
     fig.suptitle("What I built, in the order I built it, and what checked each step",
                  fontsize=15.5, y=0.955)
-    fig.subplots_adjust(left=0.02, right=0.98, top=0.90, bottom=0.19)
+    fig.subplots_adjust(left=0.02, right=0.98, top=0.90, bottom=0.22)
 
     fig.text(
-        0.5, 0.112,
+        0.5, 0.125,
         f"Each stage rests on the one before it, and none was trusted on its own. "
         f"{d['plans']} predictions were registered before the runs they describe, and "
         f"{d['writeups']} of {d['writeups']} write-ups carry a correction or a "
         f"retraction:\nbeing wrong was the normal case, not the exception.",
         ha="center", va="center", fontsize=10.5, color=INK,
         bbox=dict(boxstyle="round,pad=0.5", facecolor=BOX, edgecolor="#C6D3E4"))
-    fig.text(0.5, 0.026,
+    fig.text(0.5, 0.032,
              "The stage order is checked against the repository: the script refuses "
              "to draw unless each stage's modules first appear no earlier than the "
              "previous stage's. Within a stage, the order is dependency order.",
-             ha="center", fontsize=8.5, color="0.5")
+             ha="center", fontsize=10, color="0.35")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT, dpi=140, bbox_inches="tight")

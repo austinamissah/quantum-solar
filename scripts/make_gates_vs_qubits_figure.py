@@ -186,7 +186,7 @@ def main() -> None:
 
     fig.suptitle("We spent a phase optimizing the resource that wasn't the constraint",
                  fontsize=15, y=0.985)
-    fig.tight_layout(rect=(0, 0.195, 1, 0.945))
+    fig.tight_layout(rect=(0, 0.215, 1, 0.945))
 
     # The consequence, in the figure rather than under it: this is the reason the
     # result mattered, and an attachment gets read without its surrounding text.
@@ -195,7 +195,7 @@ def main() -> None:
     # actually used. Comparing 269 against 290 mixes transpiler settings and makes
     # a true claim look false. Like for like it is 348 vs 290, or 269 vs 237.
     fig.text(
-        0.5, 0.105,
+        0.5, 0.125,
         "What it changed: the 6-slot problem we were building toward needs ~348 gates "
         "even with the encoding we designed to save qubits,\ncompiled the same way as "
         "the circuits above. That is more than the worst of them, which returned no "
@@ -205,11 +205,11 @@ def main() -> None:
         bbox=dict(boxstyle="round,pad=0.6", facecolor="#EEF2F8", edgecolor="#C6D3E4"),
     )
     fig.text(
-        0.5, 0.018,
+        0.5, 0.030,
         "Four QAOA circuits on IBM's ibm_fez, 11 July 2026, 4,096 shots each "
         "(job d994b5cqp3as739tkvp0); vertical axis is total-variation distance "
         "from the ideal simulation.",
-        ha="center", fontsize=8.5, color="0.45",
+        ha="center", fontsize=10, color="0.35",
     )
 
     OUT.parent.mkdir(parents=True, exist_ok=True)

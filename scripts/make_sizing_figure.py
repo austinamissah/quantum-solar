@@ -202,7 +202,7 @@ def main() -> None:
 
     fig.suptitle("Vendors sell kWh. kWh is the wrong number to buy on.",
                  fontsize=15.5, y=0.975)
-    fig.tight_layout(rect=(0, 0.175, 1, 0.945))
+    fig.tight_layout(rect=(0, 0.205, 1, 0.945))
 
     fig.text(
         0.5, 0.108,
@@ -212,7 +212,7 @@ def main() -> None:
                   edgecolor="#C6D3E4"),
     )
     fig.text(
-        0.5, 0.055,
+        0.5, 0.082,
         f"The binding term is the smaller of the two, and on most installed systems "
         f"it is the inverter. A {FIXED_CAPACITY:g} kWh pack behind a {FIXED_RATE:g} kW "
         f"inverter on a {PEAK_HOURS}-hour peak is a {knee_capacity:g} kWh pack as far "
@@ -220,13 +220,13 @@ def main() -> None:
         f"${constant:.4f}/yr per kWh/day, which is just the year's price spreads "
         f"summed. Read your own peak-window length off your bill and multiply by your "
         f"inverter rating.",
-        ha="center", va="center", fontsize=9.5, color="0.35",
+        ha="center", va="center", fontsize=10, color="0.3",
     )
-    fig.text(0.5, 0.006,
+    fig.text(0.5, 0.022,
              "Golden CO, Xcel RE-TOU, lossless. Verified against the exact DP at 56 "
              "swept points with no mismatches; at a 0.90 round trip the multiplier "
              "scales but the knee does not move.",
-             ha="center", fontsize=8.5, color="0.5")
+             ha="center", fontsize=10, color="0.35")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT, dpi=140, bbox_inches="tight")

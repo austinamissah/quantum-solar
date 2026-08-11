@@ -120,7 +120,7 @@ def main() -> None:
     ax.axhline(warranty, color=ACCENT, lw=2.2, zorder=4)
     ax.text(-1.12, warranty + 0.9, f"~{warranty}-year\nwarranty", color=ACCENT,
             fontsize=11, weight="bold", va="bottom", ha="left")
-    ax.text(-1.12, (warranty + lo) / 2,
+    ax.text(-1.12, lo - 3.0,
             f"the shortest\npayback is\n{lo / warranty:.1f}x this",
             color=ACCENT, fontsize=9.5, va="center", ha="left")
 
@@ -159,21 +159,21 @@ def main() -> None:
     ax.set_title(f"10 kWh battery at 2 kW, {EXPECTED_ROUND_TRIP:g} AC round trip, "
                  f"Xcel RE-TOU. Arbitrage alone, which is all this model prices.",
                  fontsize=10.5, color="0.4", pad=12)
-    fig.tight_layout(rect=(0, 0.135, 1, 0.945))
+    fig.tight_layout(rect=(0, 0.165, 1, 0.945))
 
     fig.text(
-        0.5, 0.062,
+        0.5, 0.088,
         f"The cheapest install the study prices, ${CHEAPEST:,}, misses the warranty "
         f"too: {cheapest.min():.1f} to {cheapest.max():.1f} years across the same "
         f"sweep. Batteries are also bought for backup and resilience,\nwhich this "
         f"model does not price and which may well justify a purchase. The savings "
         f"pitch is what does not survive the arithmetic.",
-        ha="center", va="center", fontsize=9.5, color="0.35",
+        ha="center", va="center", fontsize=10, color="0.3",
     )
-    fig.text(0.5, 0.012,
+    fig.text(0.5, 0.024,
              "Exact 365-day dynamic-programming solve per point; numbers read from "
              "docs/results/capacity_rate_sensitivity.json.",
-             ha="center", fontsize=8.5, color="0.5")
+             ha="center", fontsize=10, color="0.35")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT, dpi=140, bbox_inches="tight")

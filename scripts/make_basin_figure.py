@@ -207,9 +207,9 @@ def main() -> None:
 
     fig.suptitle("alpha* is a boundary, not a safe midpoint",
                  fontsize=15.5, y=0.975)
-    fig.tight_layout(rect=(0, 0.085, 1, 0.945))
+    fig.tight_layout(rect=(0, 0.175, 1, 0.945))
     fig.text(
-        0.5, 0.042,
+        0.5, 0.092,
         "The prediction was falsified and the replacement is more useful: below "
         "0.010 the encoding breaks, above 0.021 reproducibility breaks, and the "
         "a-priori alpha* rule lands on the upper edge of what is left.",
@@ -217,12 +217,11 @@ def main() -> None:
         bbox=dict(boxstyle="round,pad=0.5", facecolor="#EEF2F8",
                   edgecolor="#C6D3E4"),
     )
-    fig.text(0.5, 0.008,
-             f"Primary instance (T=3, seed 0, checkpoint(3), 1 QAOA layer), "
-             f"{n_seeds} restarts per point, 1,200 tunings in all. Basins are "
-             f"complete-linkage clusters of the exact output distributions at the "
-             f"pre-registered cutoff tau = {tau:.4f}.",
-             ha="center", fontsize=8.5, color="0.5")
+    fig.text(0.5, 0.026,
+             f"{n_seeds} restarts at each of 10 penalty weights, 1,200 tunings in "
+             f"all. A basin is a cluster of the tuned output distributions, at a "
+             f"cutoff fixed in advance (tau = {tau:.4f}).",
+             ha="center", fontsize=10, color="0.35")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT, dpi=140, bbox_inches="tight")

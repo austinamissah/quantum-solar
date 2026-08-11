@@ -276,7 +276,7 @@ def main() -> None:
         loc="lower center", ncol=3, fontsize=9.5, frameon=False,
         bbox_to_anchor=(0.5, 0.085),
     )
-    fig.tight_layout(rect=(0, 0.155, 1, 0.955))
+    fig.tight_layout(rect=(0, 0.185, 1, 0.955))
 
     note = (
         f"Battery scheduling over {T} time slots, encoded as a QUBO on {m} qubits and "
@@ -290,7 +290,7 @@ def main() -> None:
         f"optimum in microseconds. It shows a standard penalty-weight heuristic stopping "
         f"the circuit concentrating on the answer at all."
     )
-    fig.text(0.5, 0.012, note, ha="center", fontsize=8.5, color="0.4")
+    fig.text(0.5, 0.030, note, ha="center", fontsize=10, color="0.35")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT, dpi=140, bbox_inches="tight")

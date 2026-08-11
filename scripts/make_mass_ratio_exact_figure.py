@@ -135,14 +135,14 @@ def main() -> None:
 
     fig.suptitle("Does the quantum optimizer beat random guessing?",
                  fontsize=14, y=0.995)
-    fig.tight_layout(rect=(0, 0.075, 1, 0.97))
+    fig.tight_layout(rect=(0, 0.115, 1, 0.97))
     note = ("△ = the classical optimizer hit its evaluation budget, so the point "
             "is a lower bound.\n"
             "'Better than random' is a low bar: the exact classical solver "
             "returns the optimum for every instance here in microseconds. "
             "This measures whether the quantum state concentrates on good "
             "answers at all, not advantage over classical methods.")
-    fig.text(0.5, 0.008, note, ha="center", fontsize=9, color="0.35")
+    fig.text(0.5, 0.030, note, ha="center", fontsize=10, color="0.35")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT, dpi=140, bbox_inches="tight")
     print(f"wrote {OUT}  (censored points marked: {censored_any})")

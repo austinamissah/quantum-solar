@@ -86,12 +86,12 @@ def main() -> None:
         ax.legend(fontsize=9)
 
     fig.suptitle("The same 36 runs, measured two ways", fontsize=13.5, y=0.99)
-    fig.tight_layout(rect=(0, 0.035, 1, 0.98))
-    fig.text(0.5, 0.005,
+    fig.tight_layout(rect=(0, 0.075, 1, 0.98))
+    fig.text(0.5, 0.024,
              "Identical data, seeds and problem sizes; the only difference is "
              "sampling the simulator vs. reading the exact probability off it. "
              "Cost: one extra computation.",
-             ha="center", fontsize=9, color="0.35")
+             ha="center", fontsize=10, color="0.35")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT, dpi=140, bbox_inches="tight")
     print(f"wrote {OUT}  ({n_zero}/{len(rows)} sampled cells are exactly zero; "

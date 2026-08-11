@@ -279,7 +279,7 @@ def main() -> None:
 
     fig.suptitle("Where the qubits go, and how the slack-free encoding removes them",
                  fontsize=15, y=0.985)
-    fig.tight_layout(rect=(0, 0.055, 1, 0.955))
+    fig.tight_layout(rect=(0, 0.095, 1, 0.955))
     note = (
         f"Real Golden CO instance: {t} hours, {problem.capacity:g} kWh at "
         f"{problem.charge_energy:g} kWh/slot, so the SoC grid has {n_max + 1} levels "
@@ -288,7 +288,7 @@ def main() -> None:
         f"assignment is genuinely feasible, so its optimum can be suboptimal but "
         f"never infeasible. On this instance it gives up nothing."
     )
-    fig.text(0.5, 0.012, note, ha="center", fontsize=9, color="0.4")
+    fig.text(0.5, 0.030, note, ha="center", fontsize=10, color="0.35")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT, dpi=140, bbox_inches="tight")
