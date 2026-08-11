@@ -161,7 +161,7 @@ def main() -> None:
     by_capacity, by_rate, knee_capacity, knee_rate, constant = sweeps()
     ymax = max(by_capacity.max(), by_rate.max())
 
-    fig, (ax_c, ax_r) = plt.subplots(1, 2, figsize=(13.2, 6.6), sharey=True)
+    fig, (ax_c, ax_r) = plt.subplots(1, 2, figsize=(13.2, 7.2), sharey=True)
 
     for ax, xs, ys, knee, fixed_label, xlabel, binds in (
         (ax_c, CAPACITIES, by_capacity, knee_capacity,
@@ -202,17 +202,17 @@ def main() -> None:
 
     fig.suptitle("Vendors sell kWh. kWh is the wrong number to buy on.",
                  fontsize=15.5, y=0.975)
-    fig.tight_layout(rect=(0, 0.205, 1, 0.945))
+    fig.tight_layout(rect=(0, 0.265, 1, 0.945))
 
     fig.text(
-        0.5, 0.108,
+        0.5, 0.150,
         "saving = min(capacity_kWh, rate_kW × peak_hours) × price_spread",
         ha="center", va="center", fontsize=13, color=INK, family="monospace",
         bbox=dict(boxstyle="round,pad=0.55", facecolor="#EEF2F8",
                   edgecolor="#C6D3E4"),
     )
     fig.text(
-        0.5, 0.082,
+        0.5, 0.075,
         f"The binding term is the smaller of the two, and on most installed systems "
         f"it is the inverter. A {FIXED_CAPACITY:g} kWh pack behind a {FIXED_RATE:g} kW "
         f"inverter on a {PEAK_HOURS}-hour peak is a {knee_capacity:g} kWh pack as far "
@@ -222,7 +222,7 @@ def main() -> None:
         f"inverter rating.",
         ha="center", va="center", fontsize=10, color="0.3",
     )
-    fig.text(0.5, 0.022,
+    fig.text(0.5, 0.018,
              "Golden CO, Xcel RE-TOU, lossless. Verified against the exact DP at 56 "
              "swept points with no mismatches; at a 0.90 round trip the multiplier "
              "scales but the knee does not move.",
