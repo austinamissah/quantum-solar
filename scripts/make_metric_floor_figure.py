@@ -55,7 +55,7 @@ def main() -> None:
         ax0.fill_between(Ts, lo[rp], hi[rp], alpha=0.15, color=line.get_color())
     ax0.set_ylim(-0.02, 1.02)
     ax0.set_ylabel(f"prob. mass on optimal bitstrings ({shots} shots)")
-    ax0.set_title("What we plotted\nsampled — reads exactly 0 in "
+    ax0.set_title("What we plotted\nsampled: reads exactly 0 in "
                   f"{n_zero} of {len(rows)} cells", fontsize=11)
     ax0.annotate("the 'trend' is the metric\nhitting its floor",
                  xy=(Ts[-1], 0.0), xytext=(Ts[1] + 0.35, 0.34),
@@ -72,7 +72,7 @@ def main() -> None:
     ax1.axhline(1.0 / shots, color="crimson", ls=":", lw=1.3)
     # Label goes in the empty bottom-left, not against the line: at the line the
     # text lands on top of the reps=1/reps=2 curves and is unreadable.
-    ax1.annotate(f"1/{shots} shot floor —\neverything below reads 0 on the left",
+    ax1.annotate(f"1/{shots} shot floor:\neverything below reads 0 on the left",
                  xy=(Ts[0] + 0.06, 1.0 / shots), xytext=(Ts[0] + 0.06, 3e-11),
                  arrowprops=dict(arrowstyle="->", color="crimson", lw=1.2),
                  color="crimson", fontsize=9.5, va="bottom", ha="left")
@@ -88,7 +88,7 @@ def main() -> None:
     fig.suptitle("The same 36 runs, measured two ways", fontsize=13.5, y=0.99)
     fig.tight_layout(rect=(0, 0.035, 1, 0.98))
     fig.text(0.5, 0.005,
-             "Identical data, seeds and problem sizes — the only difference is "
+             "Identical data, seeds and problem sizes; the only difference is "
              "sampling the simulator vs. reading the exact probability off it. "
              "Cost: one extra computation.",
              ha="center", fontsize=9, color="0.35")

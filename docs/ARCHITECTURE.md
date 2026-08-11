@@ -342,6 +342,13 @@ do:
   **lazily** so stages (a)/(c) and the tests run without it installed. Hardware
   auth is a saved account (`~/.qiskit`) via a bare `QiskitRuntimeService()` — no
   legacy `channel="ibm_quantum"` (sunset in the 2025 migration).
+- **No em-dashes in anything a figure draws.** Titles, axis labels, annotations,
+  captions: use a colon, a comma, a semicolon, or a second sentence. En-dashes are
+  fine and are the right character for a range (`5–9pm`, `T=2–5`); the rule is
+  about the em-dash specifically. Docstrings and `print` output are exempt, since
+  neither reaches the canvas. Enforced by `tests/test_figure_conventions.py`, which
+  parses every script that calls `savefig` rather than relying on anyone
+  remembering.
 - Commits carry no attribution or co-author trailers. Keep it that way.
 - Editor and local tooling configuration stays out of the repository; add it to
   `.gitignore` rather than committing machine-local settings.

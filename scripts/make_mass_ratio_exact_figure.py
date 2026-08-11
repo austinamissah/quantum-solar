@@ -127,7 +127,7 @@ def main() -> None:
         ax.legend(fontsize=9, loc="lower left")
 
     axes[0].set_ylabel("how much better than random guessing\n(exact, "
-                       "statevector — no sampling floor)")
+                       "statevector: no sampling floor)")
     # Label the parity line in the right panel: the band just above it is empty
     # there, whereas in the left panel it lands on top of the T=2 points.
     axes[1].text(2.04, 1.12, "parity with random guessing", color="0.35",
@@ -141,7 +141,7 @@ def main() -> None:
             "'Better than random' is a low bar: the exact classical solver "
             "returns the optimum for every instance here in microseconds. "
             "This measures whether the quantum state concentrates on good "
-            "answers at all — not advantage over classical methods.")
+            "answers at all, not advantage over classical methods.")
     fig.text(0.5, 0.008, note, ha="center", fontsize=9, color="0.35")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT, dpi=140, bbox_inches="tight")

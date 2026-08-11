@@ -210,7 +210,7 @@ def main() -> None:
 
     draw_schedule(
         ax_exact, problem, trajectory(problem, exact_solution),
-        title=f"Exact — a slack register at every interior hour"
+        title=f"Exact: a slack register at every interior hour"
               f"\n{totals['exact']} qubits",
         marks=exact_slots, mark_label=f"{len(exact_slots)} interior hours",
         band=(0.0, problem.capacity), bits_each=exact_bits_each,
@@ -219,12 +219,12 @@ def main() -> None:
 
     draw_schedule(
         ax_cp, problem, trajectory(problem, cp_solution),
-        title=f"Checkpoint({SPACING}, banded) — pinned every {SPACING}th hour"
+        title=f"Checkpoint({SPACING}, banded): pinned every {SPACING}th hour"
               f"\n{totals['cp5band']} qubits, and the same ${cp_solution.true_energy:.2f} bill",
         marks=cp_slots, mark_label=f"every {SPACING}th hour",
         band=(half * e, problem.capacity - half * e), bits_each=cp_bits_each,
         band_note=f"pinned inside the tightened band [{half * e:g}, "
-                  f"{problem.capacity - half * e:g}] kWh — and free in between",
+                  f"{problem.capacity - half * e:g}] kWh, and free in between",
     )
 
     # --- soundness: the excursion envelope between two pinned slots ------------
@@ -253,7 +253,7 @@ def main() -> None:
                   ha="center", va="bottom", fontsize=9.5, color=AUX)
     ax_sound.text(SPACING / 2, -headroom - 0.62,
                   f"sound iff ⌊k/2⌋ ≤ min(k₀, n_max−k₀):  {half} ≤ {headroom} ✓"
-                  f"   (k={SPACING} is the ceiling — no margin)",
+                  f"   (k={SPACING} is the ceiling, no margin)",
                   ha="center", va="top", fontsize=9.5, color=AUX, weight="bold")
 
     # --- the accounting -------------------------------------------------------

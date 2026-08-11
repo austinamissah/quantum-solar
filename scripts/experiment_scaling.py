@@ -460,7 +460,7 @@ def plot_optimal_mass(rows):
         ax.set_ylabel("prob. mass on optimal bitstrings (exact, statevector)")
         floor = 1.0 / rows[0]["shots"]
         ax.axhline(floor, color="crimson", ls=":", lw=1.2)
-        ax.text(Ts[0], floor * 1.15, f"1/{rows[0]['shots']} shots — sampling would "
+        ax.text(Ts[0], floor * 1.15, f"1/{rows[0]['shots']} shots: sampling would "
                 "read 0 below here", color="crimson", va="bottom", fontsize=8)
     else:
         ax.set_ylim(-0.02, 1.02)

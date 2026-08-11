@@ -280,10 +280,10 @@ def main() -> None:
 
     note = (
         f"Battery scheduling over {T} time slots, encoded as a QUBO on {m} qubits and "
-        f"solved with {REPS}-layer QAOA. Exact statevector probabilities — no shot noise, "
+        f"solved with {REPS}-layer QAOA. Exact statevector probabilities: no shot noise, "
         f"no sampling floor. The panels share every input except the penalty scale.\n"
         f"Bars sum probability over the encoding's internal slack bits. Requiring those "
-        f"to be set consistently too — the metric reported elsewhere in this repo — the "
+        f"to be set consistently too (the metric reported elsewhere in this repo), the "
         f"same comparison is {arms[0][3]:.4f} → {arms[1][3]:.4f}, a factor of "
         f"{arms[1][3] / arms[0][3]:.0f}.\n"
         f"Not a claim of quantum advantage: the exact classical solver returns this "

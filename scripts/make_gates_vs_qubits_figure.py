@@ -137,7 +137,7 @@ def main() -> None:
                       ha="center", fontsize=10, color=INK)
     ax_g.set_xlabel("two-qubit gates in the circuit that actually ran")
     ax_g.set_xlim(0, 330)
-    ax_g.set_title("Against gate count — it tracks, across a 7.8× range",
+    ax_g.set_title("Against gate count: it tracks, across a 7.8× range",
                    fontsize=12.5)
     ax_g.text(
         18, 0.605,
@@ -163,14 +163,14 @@ def main() -> None:
     # Room to the right for the explanation, and the emptiness is itself the
     # message rather than wasted space.
     ax_q.set_xlim(4.4, 14.0)
-    ax_q.set_title("Against qubit count — it cannot tell them apart",
+    ax_q.set_title("Against qubit count: it cannot tell them apart",
                    fontsize=12.5)
     # Say what the emptiness means, so the panel reads as the argument rather
     # than as a chart that failed to render.
     ax_q.text(
         11.4, 0.335,
         "Only two values on this axis.\n"
-        f"The two 6-qubit circuits differ by {spread:.0f}% —\n"
+        f"The two 6-qubit circuits differ by {spread:.0f}%,\n"
         "as much as the entire range on the left.\n"
         "Qubit count cannot explain the damage;\n"
         "the sparseness here is the finding.",
@@ -198,8 +198,9 @@ def main() -> None:
         0.5, 0.105,
         "What it changed: the 6-slot problem we were building toward needs ~348 gates "
         "even with the encoding we designed to save qubits,\ncompiled the same way as "
-        "the circuits above — more than the worst of them, which returned no usable "
-        "signal. No encoding makes it\nsubmittable. We had spent a phase on the wrong axis.",
+        "the circuits above. That is more than the worst of them, which returned no "
+        "usable signal.\nNo encoding makes it submittable. We had spent a phase on the "
+        "wrong axis.",
         ha="center", va="center", fontsize=10.5, color=INK,
         bbox=dict(boxstyle="round,pad=0.6", facecolor="#EEF2F8", edgecolor="#C6D3E4"),
     )
