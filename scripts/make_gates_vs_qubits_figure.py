@@ -17,11 +17,20 @@ rate (~0.3% median on this device, recorded at submission) and errors compound
 multiplicatively. An idle qubit costs comparatively little; a gate costs every
 time it runs.
 
-What it changed: the 6-slot target needs ~269 gates even with the better encoding,
-worse than the worst circuit here, which had already produced essentially no usable
-signal. **No encoding makes it submittable.** A phase had gone into optimizing a
-resource that was not the binding constraint, and fifteen minutes with data already
-in hand would have reordered the project.
+What it changed: the 6-slot target needs ~348 gates even with the better encoding,
+more than the worst circuit here (290), which had already produced essentially no
+usable signal. **No encoding makes it submittable.** A phase had gone into
+optimizing a resource that was not the binding constraint, and fifteen minutes with
+data already in hand would have reordered the project.
+
+COMPILE THE COMPARISON THE SAME WAY. LESSONS.md section 2 used to put ~269 gates
+against circuit D's 290, which reads as *fewer* and makes a true claim look false.
+Those are different transpiler settings: 269 is the 6-slot circuit at
+`optimization_level=3`, while 290 -- and this figure's whole x-axis -- is level 1,
+which is what the run actually used. Like for like it is 348 vs 290 at level 1, or
+269 vs 237 at level 3; the gap holds at either, and only the mixed pairing was
+wrong. Both columns are committed in `docs/results/slack-free-encoding.md`. If you
+ever change which level this axis carries, change the 348 with it.
 
 DATA PROVENANCE, all committed, nothing re-run:
   * degradation -- TVD(ideal-sim, hardware), rebuilt here from the raw device
@@ -62,10 +71,10 @@ OUT = ROOT / "docs" / "figures" / "web" / "gates_vs_qubits.png"
 # (slack-free-encoding.md, "Transpiler optimization level"); `published` is
 # LESSONS.md section 2's degradation column, which this script must reproduce.
 CIRCUITS = [
-    {"T": 2, "reps": 1, "qubits": 6, "gates": 37, "published": 0.119, "tag": "A"},
-    {"T": 2, "reps": 2, "qubits": 6, "gates": 77, "published": 0.203, "tag": "B"},
-    {"T": 3, "reps": 1, "qubits": 10, "gates": 124, "published": 0.383, "tag": "C"},
-    {"T": 3, "reps": 2, "qubits": 10, "gates": 290, "published": 0.459, "tag": "D"},
+    {"T": 2, "reps": 1, "qubits": 6, "gates": 37, "published": 0.119},
+    {"T": 2, "reps": 2, "qubits": 6, "gates": 77, "published": 0.203},
+    {"T": 3, "reps": 1, "qubits": 10, "gates": 124, "published": 0.383},
+    {"T": 3, "reps": 2, "qubits": 10, "gates": 290, "published": 0.459},
 ]
 PUBLISHED_ATOL = 5e-4   # the published table is quoted to three decimals
 
@@ -93,92 +102,124 @@ def measured_degradation() -> list[float]:
 
         if abs(tvd - circuit["published"]) > PUBLISHED_ATOL:
             raise SystemExit(
-                f"REFUSING TO DRAW: circuit {circuit['tag']} (T={circuit['T']}, "
-                f"reps={circuit['reps']}) rebuilds to TVD(sim,hw)={tvd:.4f}, but "
-                f"LESSONS.md §2 publishes {circuit['published']:.3f} "
-                f"(tolerance {PUBLISHED_ATOL:g}). The figure and the write-up have "
-                f"diverged; fix that before drawing either."
+                f"REFUSING TO DRAW: the T={circuit['T']}, reps={circuit['reps']} "
+                f"circuit rebuilds to TVD(sim,hw)={tvd:.4f}, but LESSONS.md §2 "
+                f"publishes {circuit['published']:.3f} (tolerance "
+                f"{PUBLISHED_ATOL:g}). The figure and the write-up have diverged; "
+                f"fix that before drawing either."
             )
         out.append(tvd)
     return out
+
+
+def _describe(circuit) -> str:
+    """What a point actually is, in words rather than a letter."""
+    return (f"{circuit['T']} slots · {circuit['reps']} "
+            f"layer{'s' if circuit['reps'] > 1 else ''}")
 
 
 def main() -> None:
     degradation = measured_degradation()
     gates = np.array([c["gates"] for c in CIRCUITS], dtype=float)
     qubits = np.array([c["qubits"] for c in CIRCUITS], dtype=float)
-    tags = [c["tag"] for c in CIRCUITS]
+    labels = [_describe(c) for c in CIRCUITS]
     y = np.array(degradation)
+    spread = 100 * (y[1] / y[0] - 1)
 
-    fig, (ax_g, ax_q) = plt.subplots(1, 2, figsize=(12.8, 5.4), sharey=True)
+    fig, (ax_g, ax_q) = plt.subplots(1, 2, figsize=(13.2, 6.2), sharey=True)
 
     # --- left: against the resource that explains it -------------------------
-    ax_g.plot(gates, y, "-o", color=INK, lw=1.8, ms=9, zorder=3)
-    for x, yy, tag in zip(gates, y, tags):
-        ax_g.annotate(f"  {tag}", (x, yy), fontsize=11, weight="bold", color=INK,
-                      va="center")
-    ax_g.set_xlabel("two-qubit gates in the transpiled circuit")
-    ax_g.set_title("Against gate count\nmonotonic across a 7.8× range", fontsize=12.5)
-    ax_g.annotate(
-        f"{gates.min():.0f} → {gates.max():.0f} gates\n{y.min():.2f} → {y.max():.2f} degradation",
-        xy=(gates[-1], y[-1]), xytext=(gates[-1] - 15, y[-1] - 0.19),
-        ha="right", fontsize=10, color=INK,
-        arrowprops=dict(arrowstyle="->", color=INK, lw=1.3,
-                        connectionstyle="arc3,rad=-0.25"),
+    # No connecting line. These are four discrete circuits, not a sampled curve,
+    # and a line implies a continuum that was never measured.
+    ax_g.scatter(gates, y, s=110, color=INK, zorder=3)
+    for x, yy, label in zip(gates, y, labels):
+        ax_g.annotate(label, (x, yy), xytext=(0, 13), textcoords="offset points",
+                      ha="center", fontsize=10, color=INK)
+    ax_g.set_xlabel("two-qubit gates in the circuit that actually ran")
+    ax_g.set_xlim(0, 330)
+    ax_g.set_title("Against gate count — it tracks, across a 7.8× range",
+                   fontsize=12.5)
+    ax_g.text(
+        18, 0.605,
+        "Every two-qubit gate is a physical operation that can fail\n"
+        "(~0.3% of the time on this machine), and the errors compound.\n"
+        "Gates cost you every time one runs; an idle qubit costs little.",
+        fontsize=9.5, color="0.35", va="top",
     )
 
     # --- right: against the resource everybody counts -------------------------
-    ax_q.scatter(qubits, y, s=95, color=INK, zorder=3)
-    # Tags to the LEFT here: the right side of x=6 carries the spread arrow.
-    for x, yy, tag in zip(qubits, y, tags):
-        ax_q.annotate(f"{tag}  ", (x, yy), fontsize=11, weight="bold", color=INK,
-                      va="center", ha="right")
+    ax_q.scatter(qubits, y, s=110, color=INK, zorder=3)
+    for x, yy, label in zip(qubits, y, labels):
+        ax_q.annotate(label, (x, yy), xytext=(-11, 0), textcoords="offset points",
+                      ha="right", va="center", fontsize=10, color=INK)
     # The pair that shares a qubit count is the whole point: same x, 71% apart.
-    ax_q.annotate(
-        "", xy=(6, y[0]), xytext=(6, y[1]),
-        arrowprops=dict(arrowstyle="<->", color=ACCENT, lw=2.0),
-    )
-    ax_q.text(6.12, (y[0] + y[1]) / 2,
-              f"same qubit count,\n{100 * (y[1] / y[0] - 1):.0f}% apart",
+    ax_q.annotate("", xy=(6, y[0]), xytext=(6, y[1]),
+                  arrowprops=dict(arrowstyle="<->", color=ACCENT, lw=2.0))
+    ax_q.text(6.18, (y[0] + y[1]) / 2,
+              f"same qubit count,\n{spread:.0f}% apart",
               color=ACCENT, fontsize=10.5, weight="bold", va="center")
     ax_q.set_xlabel("qubits")
     ax_q.set_xticks([6, 10])
-    ax_q.set_xlim(4.6, 11.4)
-    ax_q.set_title("Against qubit count\ntwo values, and they explain nothing",
+    # Room to the right for the explanation, and the emptiness is itself the
+    # message rather than wasted space.
+    ax_q.set_xlim(4.4, 14.0)
+    ax_q.set_title("Against qubit count — it cannot tell them apart",
                    fontsize=12.5)
+    # Say what the emptiness means, so the panel reads as the argument rather
+    # than as a chart that failed to render.
+    ax_q.text(
+        11.4, 0.335,
+        "Only two values on this axis.\n"
+        f"The two 6-qubit circuits differ by {spread:.0f}% —\n"
+        "as much as the entire range on the left.\n"
+        "Qubit count cannot explain the damage;\n"
+        "the sparseness here is the finding.",
+        fontsize=9.5, color="0.35", va="top", ha="center",
+    )
 
-    ax_g.set_ylabel("degradation on real hardware\nTVD(ideal simulation, ibm_fez)")
+    ax_g.set_ylabel("how far the real machine's output landed from\n"
+                    "the perfect simulated answer   (0 = identical)")
     for ax in (ax_g, ax_q):
-        ax.set_ylim(0, 0.55)
+        ax.set_ylim(0, 0.62)
         ax.grid(alpha=0.25, lw=0.7)
         ax.set_axisbelow(True)
 
     fig.suptitle("We spent a phase optimizing the resource that wasn't the constraint",
-                 fontsize=14.5, y=0.98)
-    fig.tight_layout(rect=(0, 0.115, 1, 0.94))
+                 fontsize=15, y=0.985)
+    fig.tight_layout(rect=(0, 0.195, 1, 0.945))
 
-    note = (
-        "Four QAOA circuits on ibm_fez, 2026-07-11, 4096 shots each (job "
-        "d994b5cqp3as739tkvp0). A–D are 2 and 3 time slots at 1 and 2 QAOA layers.\n"
-        "Each two-qubit gate is a physical operation with an error rate (~0.3% median "
-        "on this device) and errors compound, so gates cost every time; an idle qubit "
-        "costs little.\n"
-        "What it changed: the 6-slot target needs ~269 gates even with the encoding we "
-        "built to save qubits — worse than D, which returned essentially no signal. No "
-        "encoding makes it submittable."
+    # The consequence, in the figure rather than under it: this is the reason the
+    # result mattered, and an attachment gets read without its surrounding text.
+    # 348, not the 269 quoted in LESSONS.md §2: that is the same circuit compiled
+    # at optimization_level=3, while this axis carries the level-1 counts the run
+    # actually used. Comparing 269 against 290 mixes transpiler settings and makes
+    # a true claim look false. Like for like it is 348 vs 290, or 269 vs 237.
+    fig.text(
+        0.5, 0.105,
+        "What it changed: the 6-slot problem we were building toward needs ~348 gates "
+        "even with the encoding we designed to save qubits,\ncompiled the same way as "
+        "the circuits above — more than the worst of them, which returned no usable "
+        "signal. No encoding makes it\nsubmittable. We had spent a phase on the wrong axis.",
+        ha="center", va="center", fontsize=10.5, color=INK,
+        bbox=dict(boxstyle="round,pad=0.6", facecolor="#EEF2F8", edgecolor="#C6D3E4"),
     )
-    fig.text(0.5, 0.012, note, ha="center", fontsize=8.7, color="0.4")
+    fig.text(
+        0.5, 0.018,
+        "Four QAOA circuits on IBM's ibm_fez, 11 July 2026, 4,096 shots each "
+        "(job d994b5cqp3as739tkvp0); vertical axis is total-variation distance "
+        "from the ideal simulation.",
+        ha="center", fontsize=8.5, color="0.45",
+    )
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(OUT, dpi=140, bbox_inches="tight")
     print(f"wrote {OUT}")
     for circuit, tvd in zip(CIRCUITS, degradation):
-        print(f"  {circuit['tag']}  T={circuit['T']} reps={circuit['reps']}  "
-              f"{circuit['qubits']:>2} qubits  {circuit['gates']:>3} gates  "
-              f"TVD(sim,hw) = {tvd:.4f}  [reproduces LESSONS §2's "
-              f"{circuit['published']:.3f}]")
+        print(f"  {_describe(circuit):<18} {circuit['qubits']:>2} qubits  "
+              f"{circuit['gates']:>3} gates  TVD(sim,hw) = {tvd:.4f}  "
+              f"[reproduces LESSONS §2's {circuit['published']:.3f}]")
     print(f"  gate count spans {gates.max() / gates.min():.1f}×; "
-          f"the two 6-qubit circuits differ by {100 * (y[1] / y[0] - 1):.0f}%")
+          f"the two 6-qubit circuits differ by {spread:.0f}%")
 
 
 if __name__ == "__main__":

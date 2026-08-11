@@ -98,10 +98,19 @@ Gates matter because each two-qubit gate is a physical operation with an error
 rate (~0.3–1% on current hardware), and errors compound multiplicatively. A qubit
 that sits idle costs you comparatively little; a gate costs you every time.
 
-**What this changed.** The 6-slot problem we had been targeting needs ~269 gates
+**What this changed.** The 6-slot problem we had been targeting needs **348 gates**
 even with the improved encoding — worse than circuit D above, which had produced
 essentially no usable signal. **No encoding makes it submittable.** We had spent a
 phase optimizing a resource that was not the binding constraint.
+
+*Compile the comparison the same way.* This paragraph used to quote **269** gates
+against circuit D's **290**, which reads as *fewer* and makes the claim look false.
+The two came from different transpiler settings: 269 is the 6-slot circuit at
+`optimization_level=3`, while the table above is at level 1, which is what the run
+actually used. Like for like it is **348 vs 290** at level 1, or **269 vs 237** at
+level 3 — the gap holds at either setting, and the mixed pairing was the only thing
+wrong. That is this document's own §6 rule ("make comparisons differ in exactly one
+thing") failing on the document itself.
 
 **Lesson: find out what actually limits you before optimizing anything.** Fifteen
 minutes with the existing data would have reordered the whole project.

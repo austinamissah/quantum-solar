@@ -387,10 +387,13 @@ circuits sharing 6 qubits differ by 71%, as wide as the whole trend. Gates cost
 because each one is a physical operation with an error rate (~0.3% median on this
 device) and errors compound; an idle qubit costs comparatively little.
 
-That reordered the project. The 6-slot target needs ~269 gates *even with* the
-qubit-saving encoding — worse than circuit D, which had already returned
-essentially no usable signal. **No encoding makes it submittable**, and fifteen
-minutes with data already in hand would have said so. Regenerate with
+That reordered the project. The 6-slot target needs ~348 gates *even with* the
+qubit-saving encoding, compiled the way those circuits were — more than the worst
+of them (3 slots, 2 layers, 290 gates), which had already returned essentially no
+usable signal. (At the more aggressive `optimization_level=3` the pair is 269
+against 237; the gap holds either way, but the two settings must not be mixed.)
+**No encoding makes it submittable**, and fifteen minutes with data already in hand
+would have said so. Regenerate with
 `python scripts/make_gates_vs_qubits_figure.py`; the account is
 [`docs/LESSONS.md`](docs/LESSONS.md) §2.
 
