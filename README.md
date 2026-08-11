@@ -323,6 +323,15 @@ out *inside* that window can pay:
 saving = min(capacity_kWh, rate_kW × peak_hours) × price_spread
 ```
 
+![Annual saving against capacity and against inverter rating, with both knees](docs/figures/web/sizing.png)
+
+Sweep the capacity behind a fixed 2 kW inverter and the curve goes flat at 8 kWh:
+past that the inverter cannot push the extra energy out inside the peak window, so
+it is never discharged at the high price. Sweep the rating behind a fixed 10 kWh
+pack and it goes flat at 2.5 kW, where `2.5 × 4 h` finally equals the pack and the
+capacity binds instead. The line is the rule; the points are exact 365-day solves.
+Regenerate with `python scripts/make_sizing_figure.py`.
+
 Verified against the exact DP at every swept point, on the real tariff and on
 synthetic ones at 3–6 peak hours (56 points, no mismatches) — so read your own
 peak-window length off your bill and multiply by your inverter rating. A 10 kWh
