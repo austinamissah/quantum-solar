@@ -127,9 +127,21 @@ The threshold is derivable before running anything:
 
 It is per-instance: 0.3095 / 14.81 = **0.0209** on the instance
 [`docs/LESSONS.md`](docs/LESSONS.md) §1 works through, 0.0217 on the one drawn
-above. It is a **boundary, not a safe midpoint** — the
-usable window is `0.010 ≤ α ≤ 0.021`, and 1.4× above it the tuned landscape's basin
-count already doubles ([`docs/results/basin-structure.md`](docs/results/basin-structure.md)).
+above. And it is a **boundary, not a safe midpoint**:
+
+![Basin count against penalty weight, with the usable window and where the encoding breaks](docs/figures/web/basin.png)
+
+That study was **pre-registered and its prediction was falsified**. It predicted a
+U-shape in basin count with a strict minimum at α\*; there is no lower branch, and
+the count is 1 at α\* and 1 at every α below. The mechanism posited for the lower
+branch is real but invisible to this metric — below α\* the tuner converges *just as
+reproducibly*, to a single **wrong** basin, because the QUBO's own minimum is
+infeasible there. What replaced the prediction is more useful than it would have
+been: the usable window is `0.010 ≤ α ≤ 0.021`, α\* sits at its **upper edge**, and
+1.4× above it the basin count already doubles. Read basin count without the
+exactness column and the left half of that plot looks fine. Regenerate with
+`python scripts/make_basin_figure.py`; full account in
+[`docs/results/basin-structure.md`](docs/results/basin-structure.md).
 
 This is not a claim of quantum advantage — `dp_solve` returns the exact optimum for
 these instances in microseconds. It is a claim about a trap that applies to any
