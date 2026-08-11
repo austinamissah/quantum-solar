@@ -222,15 +222,16 @@ agree), then plots the optimal schedule for a full day. Its real-data cells need
 
 ![Timeline of pre-registrations, reported results, hardware runs and commit activity](docs/figures/web/process.png)
 
-How that worked in practice. Eight predictions were registered before the runs they
-describe; four of the six paired studies have the plan as a separate, earlier commit
-than their own result, and the other two shipped in one commit, so their order is
-documented but not independently timestamped. Every claim-making write-up carries a
-correction or a retraction, one prediction was falsified and published as such, and
-the hollow star is a fourth hardware experiment that was designed, costed, and then
-not run. Regenerate with `python scripts/make_process_figure.py` — unlike the other
-figures it is built from the repository's own history, so it moves as the history
-does.
+The build order, and what was put in place to catch each stage being wrong. Each
+stage rests on the one before it and none was trusted on its own: the classical
+solver is checked against brute-force enumeration, QAOA against the exact optimum,
+the encodings against brute force again, the fast statevector against Qiskit, the
+sizing rule at all 56 swept points. Eight predictions were registered before the runs
+they describe, one was falsified and published as such, and a fourth hardware
+experiment was designed, costed, and then not run. The stage order is not asserted:
+`scripts/make_process_figure.py` refuses to draw unless each stage's modules first
+appear in the repository no earlier than the previous stage's, so a tidier story
+than the one that happened fails instead of printing.
 
 ## Hardware (IBM Quantum)
 
