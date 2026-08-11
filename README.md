@@ -429,6 +429,24 @@ nine zeros — see `docs/LESSONS.md`.
   limit on QAOA concentration; the a-priori fix is **alpha* = span/penalty =
   0.0209**. See `docs/results/slack-free-encoding.md`.
 
+  ![Where the qubits go: exact slack against checkpointing](docs/figures/web/encoding.png)
+
+  Where those qubits go: a QUBO expresses equalities natively but not
+  inequalities, so the exact encoding buys each `0 ≤ S_t ≤ Q` with a bounded
+  binary slack register at **every interior hour** — 23 hours × 3 bits = 69
+  auxiliary qubits on top of the 48 decision bits. Checkpointing pins the state of
+  charge only every 5th hour, inside a *tightened* band, and lets the path do what
+  it likes in between: 4 checkpoints × 1 bit = **4** auxiliary qubits, for the same
+  daily bill by a different route. It is **sound** — between two slots pinned `k`
+  apart the trajectory rises at most `j` steps and must fall within the remaining
+  `k−j`, so the excursion is bounded by `⌊k/2⌋`, and pinning every `k`-th slot
+  keeps the whole path in band whenever `⌊k/2⌋ ≤ min(k₀, n_max−k₀)`. Here that is
+  `2 ≤ 2`: `k=5` is exactly `max_sound_spacing` on this instance, with no margin.
+  Every zero-penalty assignment is therefore genuinely feasible, so this encoding's
+  optimum can be suboptimal but never *infeasible* — which the unsound alternatives
+  in `encodings.py` cannot promise. Regenerate with
+  `python scripts/make_encoding_figure.py`.
+
   Measured exactly rather than by sampling, that fix is worth **4–20x uniform
   random at every size tested (T=2..5), with no decay as the problem grows** —
   against roughly parity, collapsing at T=5, at the default weight. An earlier
