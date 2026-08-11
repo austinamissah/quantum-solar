@@ -352,6 +352,17 @@ optimistic assumption: both have been priced and swept. Batteries are also bough
 for backup and resilience, which this model does not price and which may well
 justify a purchase — but the savings pitch does not survive the arithmetic.
 
+![Payback against the export credit assumption, against a 10-year warranty](docs/figures/web/payback.png)
+
+The export credit is the one input a reader is most likely to argue with — it is
+jurisdiction-specific and cannot be verified from the committed snapshot — so it is
+swept end to end rather than assumed. Every point on that sweep clears the warranty
+line, so **the conclusion does not depend on which assumption you believe**. Note
+the direction: the *pessimistic* end gives the *shorter* payback, because a worse
+export credit hands the battery self-consumption value on top of arbitrage. That is
+why this is a bracket rather than a point estimate, and why the solar and battery
+legs must never be summed. Regenerate with `python scripts/make_payback_figure.py`.
+
 ## Status
 
 The pipeline runs end to end: problem model, exact QUBO encoding, Ising mapping,
