@@ -220,6 +220,18 @@ agree), then plots the optimal schedule for a full day. Its real-data cells need
 - `docs/plans/` — pre-registrations, written before the runs they describe.
   `docs/results/` — the corresponding write-ups, including the retractions.
 
+![Timeline of pre-registrations, reported results, hardware runs and commit activity](docs/figures/web/process.png)
+
+How that worked in practice. Eight predictions were registered before the runs they
+describe; four of the six paired studies have the plan as a separate, earlier commit
+than their own result, and the other two shipped in one commit, so their order is
+documented but not independently timestamped. Every claim-making write-up carries a
+correction or a retraction, one prediction was falsified and published as such, and
+the hollow star is a fourth hardware experiment that was designed, costed, and then
+not run. Regenerate with `python scripts/make_process_figure.py` — unlike the other
+figures it is built from the repository's own history, so it moves as the history
+does.
+
 ## Hardware (IBM Quantum)
 
 Running the tuned QAOA circuits on real hardware uses an extra dependency, kept
