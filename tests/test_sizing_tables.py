@@ -36,6 +36,21 @@ from pathlib import Path
 
 import pytest
 
+from _markdown import (
+    EN_DASH,
+    MINUS,
+    TIMES,
+    flatten,
+    markdown_table as _markdown_table,
+    money,
+    numbers,
+    signed_int,
+    signed_money,
+    signed_percent,
+    to_the_cent,
+    to_the_tenth,
+)
+
 ROOT = Path(__file__).resolve().parent.parent
 DOC = ROOT / "docs" / "results" / "capacity-rate-sensitivity.md"
 DATA = ROOT / "docs" / "results" / "capacity_rate_sensitivity.json"
@@ -47,87 +62,16 @@ STUDY = json.loads(DATA.read_text())
 #: phrase in the rendered document can be split across a source line, and "all **56**
 #: swept points" is in fact wrapped after "swept". Tables are matched line by line
 #: against ``TEXT``, since a markdown row cannot wrap.
-FLAT = " ".join(TEXT.split())
+FLAT = flatten(TEXT)
 
-#: A dollar amount as the document prints it, e.g. ``**$1.93**`` or ``$2.42 (flat)``.
-MONEY = re.compile(r"\$(\d+\.\d{2})\b")
-NUMBER = re.compile(r"\d+(?:\.\d+)?")
 
-#: The document sets these properly; matching a plain hyphen would silently fail.
-MINUS = "−"
-EN_DASH = "–"
-TIMES = "×"
+def markdown_table(header_contains: str):
+    """This document's table by a fragment of its header."""
+    return _markdown_table(TEXT, header_contains)
+
 
 #: Counts the document spells out in words rather than digits.
 NUMBER_WORDS = {13: "thirteen"}
-
-
-def markdown_table(header_contains: str) -> tuple[list[str], list[list[str]]]:
-    """The header cells and body rows of the first table whose header matches.
-
-    Cells are returned raw, still carrying ``**bold**`` and parentheticals like
-    ``(flat)``; callers pull out the part they mean. The alignment row is skipped
-    and the table ends at the first line that is not a row.
-    """
-    lines = TEXT.splitlines()
-    for i, line in enumerate(lines):
-        if line.startswith("|") and header_contains in line:
-            header = [c.strip() for c in line.strip("|").split("|")]
-            rows = []
-            for row in lines[i + 2 :]:
-                if not row.startswith("|"):
-                    break
-                rows.append([c.strip() for c in row.strip("|").split("|")])
-            return header, rows
-    raise AssertionError(f"no table whose header contains {header_contains!r} in {DOC}")
-
-
-def numbers(cell: str) -> list[float]:
-    """Every number in a cell, with thousands separators removed first.
-
-    The separator is stripped only between a digit and three following digits, so
-    ``$11,500`` reads as one number while a comma-separated list of capacities
-    (``10, 12, 16, 20``) still reads as four.
-    """
-    return [float(n) for n in NUMBER.findall(re.sub(r"(?<=\d),(?=\d{3}\b)", "", cell))]
-
-
-def signed_money(cell: str) -> float | None:
-    """A dollar amount carrying its sign, e.g. ``**−$113.93**`` or ``+$0.00/yr``.
-
-    ``None`` where the document prints an em-dash, which it uses for "nothing to
-    compare against" rather than for zero -- the two are different claims and the
-    distinction is checked by the callers.
-    """
-    match = re.search(r"([-+]?)\$(\d+\.\d{2})", cell.replace(MINUS, "-"))
-    return None if match is None else float(match.group(2)) * (
-        -1 if match.group(1) == "-" else 1
-    )
-
-
-def signed_int(cell: str) -> int:
-    return int(re.search(r"([-+]?\d+)", cell.replace(MINUS, "-")).group(1))
-
-
-def signed_percent(cell: str) -> float | None:
-    """A percentage as printed, or ``None`` where the document prints an em-dash.
-
-    The document uses a real minus sign (U+2212), not a hyphen, so the sign is
-    normalized before parsing rather than assumed.
-    """
-    match = re.search(r"(-?\d+(?:\.\d+)?)%", cell.replace(MINUS, "-"))
-    return None if match is None else float(match.group(1))
-
-
-def money(cell: str) -> str:
-    """The dollar figure in a cell, as printed, without the ``$``."""
-    found = MONEY.findall(cell)
-    assert len(found) == 1, f"expected exactly one dollar figure in {cell!r}"
-    return found[0]
-
-
-def to_the_cent(value: float) -> str:
-    return f"{value:.2f}"
 
 
 # --- constants, taken from the document and the study rather than retyped --------
