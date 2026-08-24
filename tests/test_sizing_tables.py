@@ -12,6 +12,12 @@ The sentence under that table claims the rule "reproduces all thirteen solved po
 to the cent", which is exactly the property tested here, so a failure here means the
 document is contradicting itself.
 
+The payback and export-credit tables are covered too. Those carry the document's
+actual conclusion, and two of their claims have already been retracted once -- the
+lossless figures, and the *direction* in which a poor export credit moves the battery
+leg. So the direction is pinned as a direction, not merely as digits: a retracted
+claim quietly drifting back is the failure this half exists to catch.
+
 Nothing is retyped into this file. Every quantity comes from the document's own prose
 or from the generated JSON, because retyping a number is the defect being guarded
 against and a test that retypes it can agree with a wrong table.
@@ -42,6 +48,10 @@ FLAT = " ".join(TEXT.split())
 MONEY = re.compile(r"\$(\d+\.\d{2})\b")
 NUMBER = re.compile(r"\d+(?:\.\d+)?")
 
+#: The document sets these properly; matching a plain hyphen would silently fail.
+MINUS = "−"
+EN_DASH = "–"
+
 #: Counts the document spells out in words rather than digits.
 NUMBER_WORDS = {13: "thirteen"}
 
@@ -67,7 +77,23 @@ def markdown_table(header_contains: str) -> tuple[list[str], list[list[str]]]:
 
 
 def numbers(cell: str) -> list[float]:
-    return [float(n) for n in NUMBER.findall(cell)]
+    """Every number in a cell, with thousands separators removed first.
+
+    The separator is stripped only between a digit and three following digits, so
+    ``$11,500`` reads as one number while a comma-separated list of capacities
+    (``10, 12, 16, 20``) still reads as four.
+    """
+    return [float(n) for n in NUMBER.findall(re.sub(r"(?<=\d),(?=\d{3}\b)", "", cell))]
+
+
+def signed_percent(cell: str) -> float | None:
+    """A percentage as printed, or ``None`` where the document prints an em-dash.
+
+    The document uses a real minus sign (U+2212), not a hyphen, so the sign is
+    normalized before parsing rather than assumed.
+    """
+    match = re.search(r"(-?\d+(?:\.\d+)?)%", cell.replace(MINUS, "-"))
+    return None if match is None else float(match.group(1))
 
 
 def money(cell: str) -> str:
@@ -200,3 +226,192 @@ def test_the_swept_point_count_matches_the_claim():
     """"all **56** swept points" is the study's own point count."""
     swept = sum(len(w["by_capacity"]) + len(w["by_rate"]) for w in STUDY["windows"])
     assert f"**{swept}** swept points" in FLAT
+
+
+# --- payback and the export credit ----------------------------------------------
+#
+# These tables carry the document's actual conclusion, and two of its claims have
+# already been retracted once (see the retraction block in the document itself): the
+# lossless figures, and the *direction* in which a poor export credit moves the
+# battery leg. A retracted claim that drifts back is the failure mode worth gating,
+# so the direction is pinned here and not merely the digits.
+
+ANNUAL = STUDY["annual"]
+WARRANTY = ANNUAL["warranty_years"]
+
+
+def to_the_tenth(value: float) -> str:
+    return f"{value:.1f}"
+
+
+def payback_years(cost: float, savings: float) -> float:
+    """Payback as the study computes it: cost over the annual saving, nothing else."""
+    return cost / savings
+
+
+def headline_cost(header_cell: str) -> float:
+    """The install cost a "payback @ $11,500" column header names."""
+    return numbers(header_cell)[-1]
+
+
+def round_trip_rows() -> list[tuple[float, list[str], float]]:
+    header, rows = markdown_table("| round trip |")
+    return [(numbers(r[0])[0], r, headline_cost(header[3])) for r in rows]
+
+
+ROUND_TRIP_ROWS = round_trip_rows()
+
+
+@pytest.mark.parametrize(
+    "round_trip,row,cost",
+    ROUND_TRIP_ROWS,
+    ids=[f"rt{rt:g}" for rt, _, _ in ROUND_TRIP_ROWS],
+)
+def test_round_trip_table_row(round_trip, row, cost):
+    """Every column of the round-trip table, against the study and its own formula.
+
+    The "vs lossless" column is recomputed rather than compared, because it is the
+    one column with no counterpart in the JSON -- it is arithmetic the author did by
+    hand, which is exactly where the sweep table went wrong.
+    """
+    point = next(p for p in ANNUAL["by_round_trip"] if p["round_trip"] == round_trip)
+    savings = point["battery_savings"]
+
+    assert money(row[1]) == to_the_cent(savings)
+
+    lossless = ANNUAL["battery_savings_lossless"]
+    printed_delta = signed_percent(row[2])
+    if printed_delta is None:
+        # The em-dash row is the lossless baseline, which has nothing to compare to.
+        assert savings == lossless, "only the lossless row may print a dash"
+    else:
+        expected = (savings - lossless) / lossless * 100
+        assert to_the_tenth(printed_delta) == to_the_tenth(expected)
+
+    printed_payback = numbers(row[3])[0]
+    assert to_the_tenth(printed_payback) == to_the_tenth(point["payback_years"][str(int(cost))])
+    assert to_the_tenth(printed_payback) == to_the_tenth(payback_years(cost, savings))
+
+
+def test_the_bolded_round_trip_row_is_the_headline():
+    """The bolded row is the one the rest of the document quotes, not a stray."""
+    bolded = [rt for rt, row, _ in ROUND_TRIP_ROWS if "**" in row[0]]
+    assert bolded == [ANNUAL["round_trip_efficiency"]]
+    assert f"**{WARRANTY} years**" in FLAT
+
+
+def installed_cost_rows() -> list[tuple[float, list[str]]]:
+    _, rows = markdown_table("| installed cost |")
+    return [(numbers(r[0])[0], r) for r in rows]
+
+
+INSTALLED_COST_ROWS = installed_cost_rows()
+
+
+@pytest.mark.parametrize(
+    "cost,row",
+    INSTALLED_COST_ROWS,
+    ids=[f"${c:g}" for c, _ in INSTALLED_COST_ROWS],
+)
+def test_installed_cost_table_row(cost, row):
+    """Both payback columns, against the study and recomputed from the two savings.
+
+    The 2 kW and 2.5 kW columns come from different annual savings, so recomputing
+    them separately catches a column swap that matching the JSON alone would not.
+    """
+    point = next(p for p in ANNUAL["payback"] if p["installed_cost"] == cost)
+
+    at_2kw, at_2p5kw = numbers(row[1])[0], numbers(row[2])[0]
+    assert to_the_tenth(at_2kw) == to_the_tenth(point["years_at_2kw"])
+    assert to_the_tenth(at_2p5kw) == to_the_tenth(point["years_at_2p5kw"])
+    assert to_the_tenth(at_2kw) == to_the_tenth(
+        payback_years(cost, ANNUAL["battery_savings_2kw"])
+    )
+    assert to_the_tenth(at_2p5kw) == to_the_tenth(
+        payback_years(cost, ANNUAL["battery_savings_2p5kw"])
+    )
+
+    # The JSON's own within_warranty flag is about the 2 kW baseline; the table's
+    # column is about either rating. Both are pinned, since the $5,000 row differs
+    # between them and that row is the document's one interesting case.
+    assert point["within_warranty"] == (point["years_at_2kw"] <= WARRANTY)
+    either_clears = at_2kw <= WARRANTY or at_2p5kw <= WARRANTY
+    assert either_clears == (row[3].strip().lower() != "no")
+
+
+def test_only_one_install_clears_the_warranty():
+    """"the single case that does" -- checked, not asserted."""
+    clears = [
+        (c, row)
+        for c, row in INSTALLED_COST_ROWS
+        if numbers(row[1])[0] <= WARRANTY or numbers(row[2])[0] <= WARRANTY
+    ]
+    assert len(clears) == 1, "the document claims exactly one install clears warranty"
+    assert "the single case that does" in FLAT
+    assert f"**{to_the_tenth(numbers(clears[0][1][2])[0])} years**" in FLAT
+
+
+def export_rows() -> list[tuple[float, list[str], float]]:
+    header, rows = markdown_table("| export credit |")
+    return [(numbers(r[0])[0], r, headline_cost(header[3])) for r in rows]
+
+
+EXPORT_ROWS = export_rows()
+
+
+@pytest.mark.parametrize(
+    "ratio,row,cost",
+    EXPORT_ROWS,
+    ids=[f"x{r:g}" for r, _, _ in EXPORT_ROWS],
+)
+def test_export_credit_table_row(ratio, row, cost):
+    """Both legs and the payback, against the study and its own formula.
+
+    Both legs are reported because they move in opposite directions and must never be
+    summed; pinning them together keeps that pairing honest.
+    """
+    point = next(p for p in ANNUAL["by_export_ratio"] if p["export_ratio"] == ratio)
+
+    assert money(row[1]) == to_the_cent(point["solar_savings"])
+    assert money(row[2]) == to_the_cent(point["battery_savings"])
+
+    printed_payback = numbers(row[3])[0]
+    assert to_the_tenth(printed_payback) == to_the_tenth(point["payback_years"][str(int(cost))])
+    assert to_the_tenth(printed_payback) == to_the_tenth(
+        payback_years(cost, point["battery_savings"])
+    )
+
+
+def test_the_two_legs_move_in_opposite_directions():
+    """The retracted claim, pinned as a direction rather than as digits.
+
+    The document originally asserted that a worse export credit lengthens payback. It
+    shortens it: a poor credit creates self-consumption value for the battery. That
+    correction is the reason this section exists, so it is worth a gate that fails if
+    the numbers ever drift back to telling the original story.
+    """
+    by_credit = sorted(ANNUAL["by_export_ratio"], key=lambda p: -p["export_ratio"])
+    battery = [p["battery_savings"] for p in by_credit]
+    solar = [p["solar_savings"] for p in by_credit]
+
+    assert battery == sorted(battery), "a worse export credit must raise the battery leg"
+    assert solar == sorted(solar, reverse=True), "and must lower the solar leg"
+
+
+def test_the_payback_bracket_matches_the_export_sweep():
+    """"[23.6, 28.4] years" is the range the sweep actually spans."""
+    cost = EXPORT_ROWS[0][2]
+    spans = [p["payback_years"][str(int(cost))] for p in ANNUAL["by_export_ratio"]]
+    low, high = to_the_tenth(min(spans)), to_the_tenth(max(spans))
+
+    assert f"**[{low}, {high}] years**" in FLAT
+    assert f"**{low}{EN_DASH}{high} years**" in FLAT
+
+
+def test_nothing_in_either_sweep_clears_the_warranty():
+    """"none of it reaches the bar", cross-checked against the study's own flag."""
+    for key in ("by_round_trip", "by_export_ratio"):
+        for point in ANNUAL[key]:
+            reached = [c for c, y in point["payback_years"].items() if y <= WARRANTY]
+            assert not reached, f"{key} at {point} clears the warranty at {reached}"
+            assert point["cheapest_within_warranty"] is None
