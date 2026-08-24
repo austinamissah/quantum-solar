@@ -428,3 +428,28 @@ def test_the_refusal_ceilings_architecture_quotes(relative, name):
     # The opening backtick is dropped from the match: one of the two is written
     # ``> MAX_ENUMERATION_SITES`` inside the quoted span, the other bare.
     assert f"{name}` ({value})" in ARCHITECTURE
+
+
+def test_the_pre_registered_mass_move_threshold():
+    """`eval_censoring.MASS_MOVE_THRESHOLD` is a threshold fixed before the data.
+
+    Its comment names the plan it comes from, and the plan states it as a percentage
+    while the code holds a fraction. That mismatch is why an earlier sweep of this
+    repo recorded it as "nothing to check against": string-matching 0.10 never finds
+    "10%". It is checkable, and being pre-registered it is one of the values that most
+    needs to be -- a threshold that drifts after the fact is the failure the whole
+    pre-registration discipline exists to prevent.
+    """
+    text = source("scripts/eval_censoring.py")
+    fraction = module_constants("scripts/eval_censoring.py")["MASS_MOVE_THRESHOLD"]
+
+    plan_path = re.search(r"Pre-registered threshold \((docs/plans/[\w-]+\.md)\)", text).group(1)
+    plan = (ROOT / plan_path).read_text()
+    assert plan, f"{plan_path} is named by the script but is empty or missing"
+
+    # The plan writes the pipes escaped, inside a markdown table cell.
+    stated = {int(p) for p in re.findall(r"Δideal_opt_mass\\?\| [≤>] (\d+)% relative", plan)}
+    assert stated, "the plan no longer states the threshold as a percentage"
+    assert stated == {round(fraction * 100)}, (
+        f"code holds {fraction} ({fraction * 100:g}%); the plan registers {stated}"
+    )

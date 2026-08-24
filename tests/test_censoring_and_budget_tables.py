@@ -40,7 +40,17 @@ BUDGET_FLAT = flatten(BUDGET)
 #: The pre-registered concentration bar, as `slack-free-encoding.md` defines it.
 BAR = 5 / 2**6
 
-CAP = 1000  # the maxiter=200 x n_starts=5 evaluation cap these sweeps ran under
+
+def evaluation_cap(rows: list[dict]) -> int:
+    """The eval ceiling implied by the rows' own recorded settings.
+
+    Derived, not typed. `scripts/eval_censoring.py` computes it exactly this way and
+    refuses to pool rows that disagree; hardcoding 1000 here would have let a test
+    keep counting against a ceiling the sweep no longer ran under.
+    """
+    caps = {int(r["n_starts"]) * int(r["maxiter"]) for r in rows}
+    assert len(caps) == 1, f"rows mix eval caps {caps}"
+    return caps.pop()
 
 
 def load(name: str) -> list[dict]:
@@ -57,6 +67,8 @@ ALPHA_STAR_ARM = by_cell(load("qaoa_scaling_alphastar_T5.csv"))
 DEFAULT_ARM = by_cell(load("qaoa_scaling_T5.csv"))
 ALPHA_STAR_LIFTED = by_cell(load("qaoa_scaling_alphastar_T5_maxiter1000.csv"))
 
+CAP = evaluation_cap(list(ALPHA_STAR_ARM.values()) + list(DEFAULT_ARM.values()))
+
 ARMS = {"alpha_star": ALPHA_STAR_ARM, "default": DEFAULT_ARM}
 
 
@@ -69,7 +81,9 @@ def arm_key(label: str) -> str:
 
 
 def census_rows() -> list[tuple[str, list[str]]]:
-    _, rows = _markdown_table(CENSORING, "| cells at exactly 1000 evals |")
+    header, rows = _markdown_table(CENSORING, "cells at exactly")
+    # The header states the cap as a number; it must be the one the sweep ran under.
+    assert int(numbers(header[0])[0]) == CAP, "the census header names a different cap"
     return [(arm_key(r[0]), r) for r in rows]
 
 
