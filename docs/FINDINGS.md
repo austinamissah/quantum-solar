@@ -39,7 +39,7 @@ computes. This is a *proved* property of the encoding, not a bias.
 
 **Why that is the part worth having.** Removing slack variables is a crowded field —
 unbalanced penalization, exponential and Heaviside custom penalties, Lagrangian and
-augmented-Lagrangian duals, and in this exact application domain a
+augmented-Lagrangian duals, and in this application domain a
 Powell–Hestenes–Rockafellar formulation for stochastic unit commitment. **All of them
 bias the search toward feasibility. None of them guarantees that the minimum-energy
 assignment is feasible.** A 2026 survey of quantum computing for unit commitment —
@@ -60,8 +60,8 @@ the standard metric cannot tell:
 > — [`results/basin-structure-reps2.md`](results/basin-structure-reps2.md)
 
 Read the clearing column without the exactness column and weak penalties look like
-the best setting on the page. That is the failure mode a soundness guarantee removes,
-and it is why this leg is first.
+the best setting on the page. That is the failure mode a soundness guarantee
+removes.
 
 **Where the evidence is.** Three tests, covering three different strengths of the
 claim, all in `tests/test_qubo_search.py`:
@@ -90,8 +90,8 @@ enforced, not that it is necessary.
 
 **The competing approach a reader will raise.** Feasibility-preserving mixers (the
 quantum alternating operator ansatz, XY mixers) guarantee feasibility *by
-construction* by never leaving the feasible subspace. That is a genuine alternative
-and it is not addressed here. The relevant differences: XY mixers conserve excitation
+construction* by never leaving the feasible subspace. That is an alternative and it
+is not addressed here. The relevant differences: XY mixers conserve excitation
 number, which fits fixed-cardinality constraints rather than an interval constraint
 holding at every step; they need explicit structural knowledge of the feasible set and
 a non-trivial feasible initial state; and all-to-all topologies carry a barren-plateau
@@ -164,7 +164,7 @@ and in **4 of 4** sizes from 8 to 14 qubits
 alternative of selecting on *measured optimal mass* stops working, because at 14
 qubits the optimum is recoverable from a 4,096-shot sample in only 7 of 20 tunings.
 
-**The honest limits**, all recorded in those write-ups and pinned by tests: the
+**The limits**, all recorded in those write-ups and pinned by tests: the
 discriminating comparison rests on **two hard instances out of six seeds**; the
 margin over `⟨H⟩` is a median 5.0% and only matters at the bar; and the largest size
 tested is still enumerable, so it probes the regime by *shot budget*, not by
@@ -184,7 +184,7 @@ intractability.
   [`results/slack-free-encoding.md`](results/slack-free-encoding.md); no reps=2
   `cp3` circuit has ever been submitted.
 
-## How the claims are kept honest
+## How the claims are supported
 
 Every study here was **pre-registered before it ran** (`docs/plans/` then
 `docs/results/`), and the sweep scripts refuse to run against an uncommitted plan, so

@@ -16,7 +16,7 @@ gate counts before submission. Nothing below was chosen after seeing data.
 | `T3/exact` +mitigation | 10 | 106 | 65,536 | 0.0426 | 0.1721 | 0.4535 | 0.3796 |
 | `T3/cp3` +mitigation | 6 | 46 | 4,096 | 0.0497 | 0.1221 | 0.3811 | 0.3203 |
 
-The floor-equalisation worked as designed: 0.0426 and 0.0497 against the planned
+The floor-equalization worked as designed: 0.0426 and 0.0497 against the planned
 ≈0.042 / ≈0.043, so the two circuits are compared on even footing.
 
 > **Replicated 2026-08-03** on an independent run (five circuits, job
@@ -52,7 +52,7 @@ only the hardware counts (B = 10,000) and takes the reference as given:
 | raw TVD gap (exact − cp3) | 0.0516 | **[0.0375, 0.0654]** | **yes** |
 | normalized gap (exact − cp3) | 0.0658 | **[0.0291, 0.1013]** | **yes** |
 
-**Both intervals exclude zero comfortably. The ordering result is solid.**
+**Both intervals exclude zero comfortably.**
 
 An earlier version of this section reported the normalized CI as [0.0038, 0.0977]
 and called the adjudicating metric "marginal, clearing zero by a hair". **That was
@@ -83,7 +83,7 @@ distribution shape rather than encoding. Dimension-normalized shape statistics:
 | `cp3` | 64 | 36.6 | **0.572** | **2.87x** | 3.7486 | 0.9013 | 0.3817 |
 | `exact` | 1024 | 469.3 | **0.458** | **5.30x** | 6.3797 | 0.9204 | 0.4531 |
 
-**The concern does not materialise, and the effect runs the other way.** `cp3`
+**The concern does not materialize, and the effect runs the other way.** `cp3`
 occupies a *larger* fraction of its space (PR/D 0.572 vs 0.458) with a peak
 *half* as tall relative to uniform (2.87x vs 5.30x) — it is the flatter of the
 two, not the peakier.
@@ -94,7 +94,7 @@ The consequence is direct and does not depend on preferring any one shape proxy:
 adjudicating comparison despite carrying the handicap. The measured gap is a
 lower bound on the encoding effect, not an inflation of it.
 
-One honest wrinkle: relative entropy disagrees slightly with the other two
+One wrinkle: relative entropy disagrees slightly with the other two
 measures (`cp3` 0.9013 vs `exact` 0.9204, so marginally *less* flat by that
 statistic). The disagreement is ~2% and concerns tail weighting rather than bulk
 spread, and it does not affect the argument above, which rests on the denominator
@@ -191,12 +191,12 @@ unaffected either way. This arm was declared exploratory and non-gating in
 advance; nothing here changes any conclusion, and the effect is small enough to
 be within run-to-run variation that this design cannot resolve.
 
-## An analysis defect worth recording
+## An analysis defect in the first pass
 
 The first pass at this analysis compared a 65,536-shot hardware distribution
 against a **4,096-shot** simulated reference, because `ideal_sim_counts` defaults
 to the module-level `SHOTS`. That silently defeated the entire
-floor-equalisation design *in the analysis* — it put `exact`'s floor at 0.164
+floor-equalization design *in the analysis* — it put `exact`'s floor at 0.164
 instead of 0.043 and inflated its TVD by 35%, which would have made the raw-gap
 check appear to fail. The run itself was correct; only the reference was
 mis-sampled.

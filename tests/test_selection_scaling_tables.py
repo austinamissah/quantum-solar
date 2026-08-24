@@ -139,7 +139,7 @@ def test_the_margin_caveat_survives():
     # The numbers alone read as `<H>` failing badly. The sentence that says it does
     # not, and the warning against importing the T=3 stakes, are both load-bearing.
     assert "`<H>` is not catastrophic here" in FLAT
-    assert "it simply never picks the best" in FLAT
+    assert "it never picks the best" in FLAT
     assert "The T=3 stakes do not carry over to these ranks" in FLAT
 
 

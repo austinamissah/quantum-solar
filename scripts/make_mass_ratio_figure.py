@@ -36,9 +36,9 @@ identical to the experiment; no experiments are re-run.
 This deliberately writes to docs/figures/web/ (curated figures), NOT to
 docs/results/ (which experiment_scaling.make_all_plots regenerates on a full
 sweep). Separate paths guarantee a future sweep can never overwrite this polished,
-honesty-annotated figure with the plain experiment version.
+upper-limit-annotated figure with the plain experiment version.
 
-Presentation choices that keep the picture honest at a glance:
+Presentation choices that keep the picture from overstating the result:
   - Points where at least one seed's optimal mass fell below the 1/4096 shot-noise
     floor are only UPPER LIMITS. They are drawn as unconnected hollow markers with
     a downward arrow (the standard upper-limit convention) and are NEVER joined by

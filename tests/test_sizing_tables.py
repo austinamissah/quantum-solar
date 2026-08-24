@@ -335,7 +335,7 @@ def test_export_credit_table_row(ratio, row, cost):
     """Both legs and the payback, against the study and its own formula.
 
     Both legs are reported because they move in opposite directions and must never be
-    summed; pinning them together keeps that pairing honest.
+    summed; pinning them together keeps that pairing checked.
     """
     point = next(p for p in ANNUAL["by_export_ratio"] if p["export_ratio"] == ratio)
 
@@ -545,4 +545,4 @@ def test_the_repeated_figure_is_flagged_as_an_identity():
     sharing = [(d, a) for _, d, a in MULTIPLIER_ROWS if abs(a) == figure]
     assert {a > 0 for _, a in sharing} == {True, False}, "the two must have opposite signs"
     assert len({abs(d) for d, _ in sharing}) == 1, "and must move the same throughput"
-    assert f"The repeated ${to_the_cent(figure)} is a real identity" in FLAT
+    assert f"The repeated ${to_the_cent(figure)} is an identity" in FLAT

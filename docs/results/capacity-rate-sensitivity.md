@@ -129,8 +129,8 @@ $0.24183 + 175 winter weekdays × $0.20667 + 104 weekends × $0. Verified to the
 at eight (capacity, rate) points spanning both the capacity-bound and rate-bound
 sides of the knee — every one returns the same constant per kWh/day.
 
-So each headline figure is a small multiple of it, and the multiplier is just how
-much daily peak throughput the change adds or removes:
+So each headline figure is a small multiple of it, and the multiplier is how much
+daily peak throughput the change adds or removes:
 
 | change | Δ useful kWh/day | annual |
 |---|---:|---:|
@@ -139,14 +139,13 @@ much daily peak throughput the change adds or removes:
 | `cp5band` → `cp5`, the last four qubits (`slack-free-encoding.md`) | −2 | **−$113.93** |
 | `cp5` → `cp3` (useful 6 → 2 kWh/day) | −4 | −$227.86 |
 
-**The repeated $113.93 is a real identity, not a transcription.** It reads like a
-copy-paste — the same figure to the cent for a hardware upgrade and for a qubit
-count — and it is worth knowing that it is not. The two are computed by different
-code paths (this study varies `capacity`/`charge_energy` through
-`annual_from_inputs` with the exact DP; the encoding study passes `qubo_min_exact`
-in through the same function's `solver` hook), and they coincide because both
-happen to move 2 kWh/day of peak throughput. Re-derived independently on
-2026-08-07, both to $113.9293.
+**The repeated $113.93 is an identity, not a transcription.** The same figure to
+the cent for a hardware upgrade and for a qubit count reads like a copy-paste,
+and is not one. The two are computed by different code paths (this study varies
+`capacity`/`charge_energy` through `annual_from_inputs` with the exact DP; the
+encoding study passes `qubo_min_exact` in through the same function's `solver`
+hook), and they coincide because both happen to move 2 kWh/day of peak
+throughput. Re-derived independently on 2026-08-07, both to $113.9293.
 
 Doubling the pack earns nothing. A 25% larger inverter earns 25% more. **If
 someone is buying anyway, rate is the axis that pays.**
@@ -156,7 +155,7 @@ $0.242, so winter weekdays contribute less; extrapolating the summer weekday alo
 overstates the gain by about 11%. Both figures above come from the full 365-day
 DP via `annual_from_inputs`.)
 
-## Payback: the arithmetic a buyer actually needs
+## Payback: the arithmetic a buyer needs
 
 **Round-trip losses are now priced** (they were assumed away when this section was
 first written — see the retraction below). A residential Li-ion system with its
@@ -211,7 +210,7 @@ assumption at all**. Payback at $11,500 is bracketed in **[23.6, 28.4] years**
 across the whole plausible range, against a 10-year warranty. Every remaining
 uncertainty has been swept, and none of it reaches the bar.
 
-### The honest conclusion
+### The conclusion
 
 **On a two-tier tariff, arbitrage alone does not pay for the hardware within its
 warranted life.** At a typical ~$11,500 installed cost the battery pays back in
@@ -224,8 +223,7 @@ clears it by six weeks. That is not a margin anyone should buy on.
 This conclusion is now **bracketed rather than bounded**. It used to rest on
 assumptions that were flagged as optimistic and pointed one way; both have since
 been priced, one of them turned out to point the *other* way, and the conclusion
-survives either way. That is a stronger claim than the original, and it is the
-reason the modeling work was worth doing.
+survives either way. That is a stronger claim than the original.
 
 > **Retraction, 2026-08-07.** This section originally reported $455.72/yr and a
 > ~25-year payback from a **lossless** battery, flagged as an upper bound but not
@@ -246,7 +244,7 @@ reason the modeling work was worth doing.
 
 This is a statement about **arbitrage**, not about batteries. Home batteries are
 also bought for backup power and resilience during outages, and that value is real
-— it is simply not something this model prices, because a cost-minimizing schedule
+— it is not something this model prices, because a cost-minimizing schedule
 against a known price curve has no term for "the power stayed on". A buyer who
 wants backup may well be making a sound decision. What does not survive the
 arithmetic is the *savings* pitch.
@@ -288,10 +286,10 @@ arithmetic is the *savings* pitch.
 has step `rate`, so off-grid pairs (10 kWh at 3 kW) have no exact representation
 and are now rejected by `require_soc_on_grid`. Before that guard existed the DP
 *rounded* them, and 10 kWh at 6 kW silently became a 12 kWh battery — a schedule
-reaching 12.0 kWh reported as optimal and feasible. The quantized points are also
-genuinely non-monotonic (10 kWh at 4 kW delivers 8 kWh, less than at 2.5 kW),
-which is a discretization artifact rather than anything about batteries, and is
-why they are kept out of a table meant to inform a purchase.
+reaching 12.0 kWh reported as optimal and feasible. The quantized points are
+also non-monotonic (10 kWh at 4 kW delivers 8 kWh, less than at 2.5 kW), which
+is a discretization artifact rather than anything about batteries, and is why
+they are kept out of a table meant to inform a purchase.
 
 **One instance, one tariff.** The shape (linear then flat, with the knee at
 `rate × peak_hours`) follows from the structure of a two-level time-of-use tariff

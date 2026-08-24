@@ -19,7 +19,7 @@ should be. Rescaled to alpha*, the best schedule becomes the most likely output.
 
 SLACK, AND THE TWO DEFENSIBLE NUMBERS. The QUBO carries slack bits that encode the
 state-of-charge inequality; they are internal bookkeeping and are not part of the
-schedule. So there are two honest ways to ask "how often does it return the best
+schedule. So there are two defensible ways to ask "how often does it return the best
 answer":
 
   * P(best schedule) -- probability summed over the slack settings, i.e. decode the
@@ -42,7 +42,7 @@ quotes -- where the default weight puts 6.8e-6 of the mass on the minimum-energy
 state against alpha*'s 1.52e-2, a factor of 2231. That cell has 1024 outcomes and
 its alpha* arm is censored, so it is quoted here rather than drawn.
 
-HONEST FRAMING, ON THE FIGURE. This is not a claim of quantum advantage. `dp_solve`
+FRAMING, ON THE FIGURE. This is not a claim of quantum advantage. `dp_solve`
 returns the exact optimum for this instance in microseconds. The right panel shows a
 quantum state concentrating on good answers at all, which is a precondition for any
 future advantage and not evidence of one. The left panel shows that a standard

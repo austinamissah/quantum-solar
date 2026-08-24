@@ -20,7 +20,7 @@ feasible — removes most of that, and the removal is close to free:
 - **At T=3, like-for-like: ideal optimal mass 0.00013 → 0.0453 (349×), and 133 →
   54 transpiled two-qubit gates**, at 6 qubits instead of 10.
 - **`α\* = span/penalty = 0.0209`** — an a-priori penalty weight that predicts the
-  exactness cliff exactly, and supersedes `default_weights`' 10× margin.
+  exactness cliff, and supersedes `default_weights`' 10× margin.
 - On hardware, across three runs: a **consistently positive but small** reduction
   in device degradation, pooled **[+0.0075, +0.1285]**, with run-to-run variation
   of the same order as the effect.
@@ -202,14 +202,14 @@ So **"QAOA's concentration on this problem is the limiting factor" is not
 supported.** Four of six instance×α cells have at least one passing arm, and on
 instance 3 four arms clear 10/10. Instance seed 1 — designated primary *in
 advance*, which is the only reason this is a finding rather than a selection
-effect — is simply the hardest of the three.
+effect — is the hardest of the three.
 
 Arm ranking across all six cells: `cobyla-50` and `cobyla-25` pass in 4, and
 `transfer` passes in 1 but does so at **949 evaluations against cobyla-50's
 9,977** — 10× cheaper, sd 0.00102, 10/10. `cobyla-5` and `spsa` never pass.
 
 Formally the study **fails on the primary instance**, and the bar is not moved
-and the primary is not reselected. The honest reading is that a hardware
+and the primary is not reselected. The supported reading is that a hardware
 candidate at this size is plausible but must be established by a *fresh*
 pre-registration designating its instance in advance — picking instance 3 now,
 having seen that it clears, is precisely the error this discipline exists to
@@ -324,8 +324,8 @@ interior SoC penalty is needed at T=3 at all.
 
 ### Transpiler optimization level: a free 8-18% gate reduction
 
-Independent of any encoding question, and worth recording on its own. The
-submission path transpiled at `optimization_level=1`. Re-transpiling **the same
+Independent of any encoding question. The submission path transpiled at
+`optimization_level=1`. Re-transpiling **the same
 four July circuits** at level 3 gives:
 
 | circuit | 2Q at o1 (July) | 2Q at o3 | reduction |

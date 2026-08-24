@@ -15,9 +15,8 @@ required 0.078125". [`eval-censoring.md`](eval-censoring.md) then showed every
 COBYLA arm in the supporting study had run at ≥99% of its evaluation cap, with the
 ladder varying `n_starts` only — `maxiter` was pinned at 200 on every rung. So
 "saturated" might have been the budget rather than a ceiling, and the gap that
-closed the question might not have existed.
-
-It existed.
+closed the question might not have existed. The gap is real: it survives the
+budget lift, which is what Family A below measures.
 
 ## The harness reproduces the original exactly
 
@@ -44,12 +43,12 @@ Five decimal places, four for four.
 | `s5_m1000` | 5,000 | 4,273 (85%) | 0.06632 | 0.00937 | 0/10 |
 | `s5_m5000` | 25,000 | 9,483 (38%) | 0.06790 | 0.00698 | 0/10 |
 
-**The premise was right and the conclusion still holds.** The budget was genuinely
-binding — `s5_m200` hit its cap on **10/10** seeds — and lifting it genuinely
-helped: spend rose on 10/10 seeds, mass improved on 9/10, and the paired gain is
-**+0.00719 (95% CI [+0.0025, +0.0119])**, which excludes zero.
+**The premise was right and the conclusion still holds.** The budget was binding
+— `s5_m200` hit its cap on **10/10** seeds — and lifting it helped: spend rose
+on 10/10 seeds, mass improved on 9/10, and the paired gain is **+0.00719 (95% CI
+[+0.0025, +0.0119])**, which excludes zero.
 
-It is simply not enough. 25× the per-restart budget moves the mean from 0.0607 to
+It is not enough. 25× the per-restart budget moves the mean from 0.0607 to
 0.0679 and leaves **0.0102 still to find**. The improvement is real, measurable,
 and roughly a third of what would be needed.
 

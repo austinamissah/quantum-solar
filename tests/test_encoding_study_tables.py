@@ -4,8 +4,8 @@ Like `capacity-rate-sensitivity.md`, this document is hand-written and its numbe
 were unchecked. It is harder to gate, because its figures do not all live in one
 generated JSON -- they come from the encodings themselves, from a committed CSV, from
 hardware runs, and in places from the prose alone. So each table is pinned against
-whatever is actually load-bearing for it, and **what cannot honestly be checked is
-named** rather than papered over:
+whatever is actually load-bearing for it, and **what cannot be checked is named**
+rather than papered over:
 
 * **Qubit counts are recomputed** from the encodings on the real 24-slot instance.
   This is the document's headline (117 → 52) and it is fully derivable, so it is.
@@ -243,7 +243,7 @@ def assert_ratio_is_consistent(small: str, large: str, ratio: str) -> None:
 
     Equality against the naive quotient would be wrong: these ratios are computed
     from unrounded masses, so 0.0453/0.00013 is published as 349× while the printed
-    figures divide to 348. The interval the inputs describe is the honest bound.
+    figures divide to 348. The interval the inputs describe is the supportable bound.
     """
     lo_small, hi_small = rounding_interval(small)
     lo_large, hi_large = rounding_interval(large)

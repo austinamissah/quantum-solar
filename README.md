@@ -124,11 +124,12 @@ is the penalty-weight result, the most self-contained of the three.
 
 The penalty weight — how hard the QUBO pushes the optimizer to respect the
 battery's physical limits — is usually set by a rule of thumb, ~10× the objective's
-scale. That is fine for a classical solver, where any infeasible answer simply
-loses. It is not fine for QAOA, which minimizes an *expectation* over everything the
-quantum state contains: at ~46–48× the span of the actual electricity cost on these
-instances, the cost we care about is a rounding error inside `⟨H⟩`, and the
-optimizer does exactly what we asked and nothing we wanted.
+scale. That is fine for a classical solver, where any infeasible answer loses
+outright. It is not fine for QAOA, which minimizes an *expectation* over
+everything the quantum state contains: at ~46–48× the span of the actual
+electricity cost on these instances, the cost we care about is a rounding error
+inside `⟨H⟩`, and the optimizer minimizes the penalty term almost to the
+exclusion of the cost.
 
 ![QAOA output distribution at both penalty weights](docs/figures/web/penalty_weight.png)
 
@@ -154,10 +155,10 @@ U-shape in basin count with a strict minimum at α\*; there is no lower branch, 
 the count is 1 at α\* and 1 at every α below. The mechanism posited for the lower
 branch is real but invisible to this metric — below α\* the tuner converges *just as
 reproducibly*, to a single **wrong** basin, because the QUBO's own minimum is
-infeasible there. What replaced the prediction is more useful than it would have
-been: the usable window is `0.010 ≤ α ≤ 0.021`, α\* sits at its **upper edge**, and
-1.4× above it the basin count already doubles. Read basin count without the
-exactness column and the left half of that plot looks fine. Regenerate with
+infeasible there. What replaced the prediction: the usable window is
+`0.010 ≤ α ≤ 0.021`, α\* sits at its **upper edge**, and 1.4× above it the
+basin count already doubles. Read basin count without the exactness column and
+the left half of that plot looks fine. Regenerate with
 `python scripts/make_basin_figure.py`; full account in
 [`docs/results/basin-structure.md`](docs/results/basin-structure.md).
 
@@ -388,7 +389,7 @@ round trip the payback below uses, 2 kW → 2.5 kW is worth **+$101.07/yr**, whi
 losses scale the multiplier and leave the knee, and the asymmetry, where they are.)
 
 Both of those figures are multiples of a single constant: **$56.96/yr per kWh/day
-of peak-window throughput** (lossless), which is just the year's price spreads
+of peak-window throughput** (lossless), which is the year's price spreads
 added up — 86 summer weekdays at $0.242, 175 winter weekdays at $0.207, and 104
 weekends at $0. Annual value is *exactly* linear in delivered peak energy below the
 knee, so a 2 kWh/day step is worth $113.93/yr wherever it comes from. That is why
@@ -405,7 +406,7 @@ still falls far short. **On a two-tier tariff, arbitrage alone does not pay for 
 hardware within its warranted life**, and that conclusion no longer rests on any
 optimistic assumption: both have been priced and swept. Batteries are also bought
 for backup and resilience, which this model does not price and which may well
-justify a purchase — but the savings pitch does not survive the arithmetic.
+justify a purchase — but the arithmetic does not support the savings case.
 
 ![Payback against the export credit assumption, against a 10-year warranty](docs/figures/web/payback.png)
 
@@ -441,8 +442,8 @@ rather than its depth. The full analysis is in
 `notebooks/experiment_hardware.ipynb`, and the run was pre-registered in
 `docs/plans/hardware-run.md`.
 
-Those four circuits also settled which resource actually limits this project — and
-it was not the one the first phase had gone into optimizing:
+Those four circuits also settled which resource limits this project. It is gate
+count, not the qubit count the first phase had gone into optimizing:
 
 ![Hardware degradation against gate count and against qubit count](docs/figures/web/gates_vs_qubits.png)
 
@@ -455,7 +456,7 @@ device) and errors compound; an idle qubit costs comparatively little.
 
 That reordered the project. The 6-slot target needs ~348 gates *even with* the
 qubit-saving encoding, compiled the way those circuits were — more than the worst
-of them (3 slots, 2 layers, 290 gates), which had already returned essentially no
+of them (3 slots, 2 layers, 290 gates), which had already returned almost no
 usable signal. (At the more aggressive `optimization_level=3` the pair is 269
 against 237; the gap holds either way, but the two settings must not be mixed.)
 **No encoding makes it submittable**, and fifteen minutes with data already in hand
@@ -475,10 +476,9 @@ backend, date, shot count and device calibration in
 [`docs/results/hardware-jobs.md`](docs/results/hardware-jobs.md) (generated from
 the raw result files by `scripts/hardware_jobs.py`, so it cannot drift from them).
 
-153 seconds is the point, not an apology for it. The most useful decision in the
-project was **declining** to spend a planned 10-hour run once it was clear the
-metric had already bottomed out two problem sizes earlier and would have returned
-nine zeros — see `docs/LESSONS.md`.
+The total is small because a planned 10-hour run was **declined**: by then the
+metric had already bottomed out two problem sizes earlier and the run would have
+returned nine zeros — see `docs/LESSONS.md`.
 
 ## Roadmap
 

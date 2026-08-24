@@ -34,7 +34,8 @@ state and minimizes the *expectation value* `⟨H⟩` — an average over everyt
 state contains. With penalties 48× the objective's span, `⟨H⟩` is almost entirely
 penalty. The cost we actually cared about was a rounding error inside it.
 
-The optimizer did exactly what we asked and nothing we wanted:
+The optimizer minimized `⟨H⟩` as instructed, and the probability of the best
+schedule fell:
 
 | | reps=1 | reps=2 |
 |---|---:|---:|
@@ -100,7 +101,7 @@ that sits idle costs you comparatively little; a gate costs you every time.
 
 **What this changed.** The 6-slot problem we had been targeting needs **348 gates**
 even with the improved encoding — worse than circuit D above, which had produced
-essentially no usable signal. **No encoding makes it submittable.** We had spent a
+almost no usable signal. **No encoding makes it submittable.** We had spent a
 phase optimizing a resource that was not the binding constraint.
 
 *Compile the comparison the same way.* This paragraph used to quote **269** gates
@@ -126,7 +127,7 @@ level of random guessing** — not because the hardware was bad, but because the
 improvement would have helped, because the shortfall was in the circuit, not the
 device.
 
-Here is the sharpest single example, from a simulator sweep:
+The sharpest single example, from a simulator sweep:
 
 > One cell had a true optimal-state probability of **7×10⁻⁶** and sampled
 > **0 counts in 4096** — an expectation of **0.03 counts**. You would need roughly
@@ -232,8 +233,8 @@ numbers looked like.
 warning line. And note that the obvious test is one-sided: a total *below*
 5 × 200 can still contain individual restarts that hit 200. Ours undercounted
 badly — the aggregate test flagged 5 of 12 cells; 8 of 12 actually consumed more
-when offered more. **The honest check is whether the run takes more budget when you
-offer it**, which costs exactly one re-run.
+when offered more. **The check that discriminates is whether the run takes more
+budget when you offer it**, which costs one re-run.
 
 ### A related trap: fitting a model to the wrong observable
 
@@ -463,13 +464,12 @@ wrong size is not coverage of the size that matters.**
 target, a `slow`-marked branch, an environment-variable override — anything the
 default run skips is untested by default, and "the suite is green" says nothing
 about it. Either give the opt-in path its own test at its real size, or accept that
-you will discover it is broken at the moment you need it. Note which way this cuts:
-the defaults being well covered is exactly what made the gap invisible.
+you will discover it is broken at the moment you need it. The defaults being well
+covered is what made the gap invisible.
 
-The cheap version of this test is not the expensive one. Verifying stage (a) end to
-end at m=22 is slow, but asserting that the *reference distribution* can be built
-at the largest declared target size — and normalizes to 1 — is seconds, and would
-have caught it.
+Verifying stage (a) end to end at m=22 is slow, but asserting that the *reference
+distribution* can be built at the largest declared target size — and normalizes to
+1 — is seconds, and would have caught it.
 
 ---
 
@@ -515,12 +515,12 @@ needs to calibrate how much to trust everything else.
 estimate compared without its uncertainty*. Two numbers, one bigger, conclusion
 drawn. It is the single most common way to be confidently wrong with real data.
 
-The exception is the second one above, and it is worth separating because the
-instinct that produced it is the *good* one. Finding a defect in how something was
-measured feels like finding the answer, and the honest move is smaller: a bad
-measurement tells you that you do not know, which is not the same as knowing the
-opposite. **Scepticism about a result is not evidence against it.** We had to run
-the experiment to find out, and it went the other way.
+The exception is the second one above. The instinct that produced it is the *good*
+one: finding a defect in how something was measured feels like finding the answer,
+and the supported step is smaller. A bad measurement tells you that you do not
+know, which is not the same as knowing the opposite. **Skepticism about a result is
+not evidence against it.** We had to run the experiment to find out, and it went
+the other way.
 
 ---
 
@@ -540,14 +540,14 @@ But the negative results were worth more:
   would have by working, because it forced us to compute what a design *can*
   conclude before running it.
 
-**The single most useful decision in the project was declining to spend quantum
-time.** We planned a 10-hour run at the largest problem size, then noticed that the
-metric had already bottomed out two sizes earlier: it would have returned nine
-zeros. Not running it was worth more than running it, and no result would have
-been published either way.
+**We declined to spend quantum time on a run that could not have produced a
+result.** We planned a 10-hour run at the largest problem size, then noticed
+that the metric had already bottomed out two sizes earlier: it would have
+returned nine zeros. Not running it cost nothing, and no result would have been
+published either way.
 
 That generalizes past quantum computing. The instinct is to collect more data when
-a result is unclear. Often the honest move is to work out what the data *could*
+a result is unclear. Often the useful step is to work out what the data *could*
 show, discover it is nothing, and spend the effort on a measurement that can
 discriminate.
 

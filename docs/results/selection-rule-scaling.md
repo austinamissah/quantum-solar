@@ -51,10 +51,10 @@ So the two rules separate exactly where the plan said they would. **Feasible mas
 picking the argmax at a size where the rule that beat it at T=3 can no longer be
 applied.** That was the untested claim in `selection-rule.md` and it now has evidence.
 
-## What this does not show, and the honest size of it
+## What this does not show, and the size of it
 
 - **The margin is small at every size.** `<H>`'s pick is worse by 1.4%, 3.0%, 0.8% and
-  3.2%. `<H>` is not catastrophic here — it simply never picks the best. That is a
+  3.2%. `<H>` is not catastrophic here — it never picks the best. That is a
   much weaker failure than at T=3 on the hard instance, where its pick **missed the
   bar entirely** and the stakes were binary. **The T=3 stakes do not carry over to
   these ranks.**
@@ -66,7 +66,7 @@ applied.** That was the untested claim in `selection-rule.md` and it now has evi
 - **Concentration is not monotone in T** (4.2×, 5.8×, 7.5×, 4.2×), so T=4 and T=7 do
   not clear the scaled 5×-uniform bar while T=5 and T=6 do. **I cannot explain the
   shape**, and 20 tunings is thin enough that it may not be real. It is reported
-  because smoothing it would be the more comfortable choice, not the right one.
+  rather than smoothed.
 - **Identifiability is not monotone either** (1.00, 0.80, 0.83, 0.28). The T=5 dip
   below T=6 is within what 20 tunings can produce by chance.
 

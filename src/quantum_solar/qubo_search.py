@@ -22,7 +22,7 @@ turn "solve the problem" into "minimize the surrogate":
 3. **Auxiliary variables minimized out.** Slack bits are unconstrained, so for a
    given path each takes its best value analytically — that is what
    ``SoCEncoding.slot_penalty`` returns. The winning assignment is rebuilt
-   afterwards by ``aux_assignment`` so the returned ``x`` is a full QUBO vector.
+   afterward by ``aux_assignment`` so the returned ``x`` is a full QUBO vector.
 
 :class:`WindowDrift` couples slots ``W`` apart, so the state is augmented with the
 last ``W−1`` moves (``3^{W−1}`` extra states — 27 at ``W=4``).

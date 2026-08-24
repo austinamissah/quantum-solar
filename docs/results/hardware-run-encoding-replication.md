@@ -40,7 +40,7 @@ bootstrap median gap of 0.0934 is **10% to 73% of the gap**. That range spans
 **Two separate failures, and fixing only the first would not have helped:**
 
 1. *Wording.* The plan said "comparable to or larger than" without quantifying
-   *comparable*, and in analysis I operationalised it as ≥50% — a threshold
+   *comparable*, and in analysis I operationalized it as ≥50% — a threshold
    chosen **after seeing the data**. That is precisely what pre-registration
    exists to prevent.
 2. *Power.* Even with a numeric threshold fixed in advance, **one pair per arm

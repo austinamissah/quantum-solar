@@ -71,7 +71,7 @@ This also sharpens `LESSONS` §1. The 48× overshoot was known to cost *solution
 quality*; it also costs **reproducibility**, and by a lot — 19 distinct basins out
 of 40 tunings at the default weight, against 1 at α\*.
 
-### Reproducible is not good — the registered limitation earning its place
+### Reproducible is not good — the registered limitation
 
 At α = 0.003 the tuned circuit puts **0.0567** mass on the QUBO's minimizer, higher
 than α\*'s 0.0448. That number is worthless: the minimizer there is **infeasible**,

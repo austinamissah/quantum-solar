@@ -1,6 +1,6 @@
 """Web figure: QAOA vs uniform random, measured exactly, at both penalty weights.
 
-The existing `mass_ratio.png` is honest but conservative: it is built on the
+The existing `mass_ratio.png` is conservative: it is built on the
 *sampled* optimal mass, which floors at 1/4096, so every point where a seed fell
 below the floor could only be drawn as an upper limit inside a "too small to
 measure" band. That was the right call with the data then available.
@@ -50,7 +50,7 @@ Caption (for the site):
   The gap between the two panels is the entire finding. Nothing about the encoding,
   the circuits, or the optimizer differs between them.
 
-  Two honest caveats. Triangles mark points where the classical optimizer ran out
+  Two caveats. Triangles mark points where the classical optimizer ran out
   of its evaluation budget, so those values are lower bounds -- the true numbers are
   at least this good and possibly better. And "better than random guessing" is a
   deliberately low bar: an exact classical solver finds the true optimum for every

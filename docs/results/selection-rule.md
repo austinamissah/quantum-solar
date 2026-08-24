@@ -15,12 +15,12 @@ then `python scripts/selection_rule_study.py` → `selection_rule.json`. The eva
 | **P1** | feasible mass beats `<H>` in strictly more held-out cells than it loses | **7 wins, 2 losses, 6 ties** | **held** |
 | **P2** | feasible mass finds a clearing tuning in more than half the cells that have one | **7 of 9** | **held** |
 
-**P2 held and proves almost nothing**, which is worth saying before anything else:
-**`<H>` also scored 7 of 9.** The two held-out instances clear easily — best masses of
-0.08 to 0.14 against a 0.078125 bar — so on them almost any sane rule clears, and P2
-does not discriminate. It was registered as a floor and it behaved like one.
+**P2 held and proves almost nothing: `<H>` also scored 7 of 9.** The two
+held-out instances clear easily — best masses of 0.08 to 0.14 against a 0.078125
+bar — so on them almost any sane rule clears, and P2 does not discriminate. It
+was registered as a floor and it behaved like one.
 
-The discrimination is elsewhere, and it is sharp.
+The discrimination is in the sound, reproducible band below.
 
 ## The result: in the band you would actually operate in, feasible mass picks the argmax
 
@@ -42,7 +42,7 @@ the comparison the whole question was about, and it is **weaker evidence by desi
 instance 1 is the instance the candidate rules were chosen on, which is exactly why
 its α\* cell is excluded and why these two rungs are reported apart.
 
-## Why it works, and it is not subtle
+## Why it works
 
 The penalty weight exists to move probability onto the feasible subspace. Selecting on
 how much got there is selecting on whether the penalty did its job. `<H>` mixes that

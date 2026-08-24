@@ -123,7 +123,7 @@ def rounding_interval(printed: str) -> tuple[float, float]:
     Used where a document states a ratio computed from unrounded quantities but
     prints the rounded ones beside it: ``0.0453 / 0.00013`` is 348 as printed and
     349 as computed, and only the second is correct. Checking the claim against the
-    interval its own inputs describe is the honest test -- demanding equality with
+    interval its own inputs describe is the right test -- demanding equality with
     the naive quotient would fail on correct arithmetic.
     """
     value = float(printed)
@@ -135,7 +135,7 @@ def rounding_interval(printed: str) -> tuple[float, float]:
 def assert_quotient(numerator: str, denominator: str, quotient: str, what: str = "") -> None:
     """A printed quotient must be reachable from its printed inputs.
 
-    All three values are rounded, so the honest test is whether the range the inputs
+    All three values are rounded, so the right test is whether the range the inputs
     allow overlaps the range the quotient's own precision allows. Demanding equality
     instead fails on correct arithmetic: these documents divide unrounded quantities
     and print the rounded ones, so 0.1682/0.4535 is published as 0.3708 and the

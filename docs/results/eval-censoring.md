@@ -57,11 +57,11 @@ on the way there. The failure scaled with a quantity nobody was tracking.
 **Censoring is a `reps` effect, not a `T` effect.** At reps=1 nothing is censored
 in either arm at any size; at reps=3 almost everything is. More variational
 parameters need more evaluations, and problem size barely enters. The question was
-posed as a property of "the α\* sweep"; it is really a property of circuit depth.
+posed as a property of "the α\* sweep"; it is a property of circuit depth.
 
 Against the pre-registered ladder: C=16 clears "C ≥ 1 → the ratio is a bound" and
 **does not** clear "C ≥ 18 → systematically budget-limited". Reported as it fell.
-44% is close enough to half that a threshold chosen afterwards would have been
+44% is close enough to half that a threshold chosen afterward would have been
 tempting.
 
 ### The detector undercounts, by construction
@@ -149,7 +149,7 @@ was left loose. It decided the outcome.
 
 The registered verdict stands — the strata are ordered and the control is exactly
 0.0%, so dilution by weakly-affected cells explains the 8.0% better than a null
-does — but that is a judgement made after seeing the data and should be read as
+does — but that is a judgment made after seeing the data and should be read as
 one.
 
 ### The default arm cannot answer
@@ -222,6 +222,6 @@ The check costs nothing and belongs next to any recorded eval count:
 > many rows are censored. A count that equals its cap is a bound, and a table of
 > bounds should not be read as a table of measurements.
 
-And, because the aggregate test is one-sided: **the honest check is whether the run
-consumes more when offered more.** That requires one re-run at a raised cap, which
-is what settled this.
+And, because the aggregate test is one-sided: **the check that discriminates is
+whether the run consumes more when offered more.** That requires one re-run at a
+raised cap, which is what settled this.

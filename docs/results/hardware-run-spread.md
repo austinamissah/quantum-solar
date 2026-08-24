@@ -125,9 +125,10 @@ specifically so**:
 - The best point estimate of σ_device/gap (0.389) says a single-pair gap is not
   resolvable. Only the width of the χ² interval prevents that from being the
   verdict.
-- The honest statement is now: **across three runs the slack-free encoding shows
-  a consistently positive but small reduction in device degradation, pooled
-  [+0.0075, +0.1285], with run-to-run variation of the same order as the effect.**
+- The statement that holds is now: **across three runs the slack-free encoding
+  shows a consistently positive but small reduction in device degradation,
+  pooled [+0.0075, +0.1285], with run-to-run variation of the same order as the
+  effect.**
 
 The classical results are untouched and depend on none of this: `cp5band` at 52
 qubits for $0.00/yr, the 349x ideal-mass improvement at T=3, and the

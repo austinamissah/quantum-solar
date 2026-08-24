@@ -5,7 +5,7 @@ points, so the only thing separating it from a story is that the criteria and th
 held-out set were fixed first and that the discovery cell is excluded. Both of those
 are checked here, not assumed.
 
-The document's honest caveats are pinned alongside its findings, deliberately. A later
+The document's caveats are pinned alongside its findings, deliberately. A later
 edit that keeps "feasible mass picks the argmax in 9 of 9" while dropping "and the two
 held-out instances are easy, so P2 does not discriminate" would leave every number
 correct and the paper wrong.
@@ -172,7 +172,7 @@ def test_the_near_duplicate_caveat_survives():
     """feasible_mass and lowest_participation agree in 14 of 15 cells; say so.
 
     Two rules agreeing looks like two confirmations. It is one, and the document is
-    only honest while it keeps saying that.
+    only accurate while it keeps saying that.
     """
     cells = sound_cells(HELD_OUT, exclude_discovery=True)
     same = sum(1 for c in cells

@@ -70,7 +70,7 @@ def dp_solve(problem: BatteryProblem, *, atol: float = TIE_ATOL) -> Solution:
     n_max = int(round(problem.capacity / e))
     k0 = int(round(problem.initial_soc / e))
     # Levels moved per action. Equal (both 1 after scaling) in the symmetric case;
-    # asymmetric rates simply span different numbers of levels on a finer grid.
+    # asymmetric rates span different numbers of levels on a finer grid.
     up = int(round(problem.charge_energy / e))
     down = int(round(problem.discharge_energy / e))
     inf = np.inf
@@ -268,7 +268,7 @@ def optima_census(problem: BatteryProblem, *, atol: float = 1e-9) -> OptimaCensu
             a2 = act[src] + da
             # An unreachable level is inf on both sides, and inf - inf is nan. Mask
             # the subtraction itself (numpy evaluates it before any boolean guard),
-            # leaving inf where it is skipped so the tie test is simply False there.
+            # leaving inf where it is skipped so the tie test is False there.
             cur = nc[dst]
             both = np.isfinite(c2) & np.isfinite(cur)
             diff = np.full(c2.shape, inf)

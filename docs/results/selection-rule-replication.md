@@ -60,7 +60,7 @@ The finding is therefore no longer fitted to its discovery instance.
   that needs the hard case will keep spending most of its budget on instances that
   cannot supply one, and future work should consider constructing hard instances
   rather than sampling for them.
-- **The tightest margin is very tight.** At instance 6, α = 0.030, feasible mass clears
+- **The tightest margin is thin.** At instance 6, α = 0.030, feasible mass clears
   by **0.00062**. That is a real clearance under exact computation, but it is not a
   margin that would survive a modest shot budget, and nothing here says it would.
 - **T=3, reps=2, one α ladder, one encoding.** The scaling behavior is covered
