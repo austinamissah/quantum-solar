@@ -130,3 +130,21 @@ def rounding_interval(printed: str) -> tuple[float, float]:
     decimals = len(printed.split(".")[1]) if "." in printed else 0
     half = 0.5 * 10 ** (-decimals)
     return value - half, value + half
+
+
+def assert_quotient(numerator: str, denominator: str, quotient: str, what: str = "") -> None:
+    """A printed quotient must be reachable from its printed inputs.
+
+    All three values are rounded, so the honest test is whether the range the inputs
+    allow overlaps the range the quotient's own precision allows. Demanding equality
+    instead fails on correct arithmetic: these documents divide unrounded quantities
+    and print the rounded ones, so 0.1682/0.4535 is published as 0.3708 and the
+    printed figures divide to 0.3709.
+    """
+    lo_n, hi_n = rounding_interval(numerator)
+    lo_d, hi_d = rounding_interval(denominator)
+    lo_q, hi_q = rounding_interval(quotient)
+    assert lo_n / hi_d <= hi_q and lo_q <= hi_n / lo_d, (
+        f"{what or 'quotient'}: {numerator}/{denominator} cannot be {quotient} "
+        f"at the precision printed"
+    )

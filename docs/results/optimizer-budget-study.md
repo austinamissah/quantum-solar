@@ -41,7 +41,7 @@ Five decimal places, four for four.
 | arm (α=0.021) | cap | actual spend | mean mass | sd | clears |
 |---|---:|---:|---:|---:|---:|
 | `s5_m200` *(original)* | 1,000 | 1,000 (100%) | 0.06071 | 0.01246 | 1/10 |
-| `s5_m1000` | 5,000 | 4,273 (86%) | 0.06632 | 0.00937 | 0/10 |
+| `s5_m1000` | 5,000 | 4,273 (85%) | 0.06632 | 0.00937 | 0/10 |
 | `s5_m5000` | 25,000 | 9,483 (38%) | 0.06790 | 0.00698 | 0/10 |
 
 **The premise was right and the conclusion still holds.** The budget was genuinely
