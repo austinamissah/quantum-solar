@@ -21,6 +21,11 @@ claim quietly drifting back is the failure this half exists to catch.
 Nothing is retyped into this file. Every quantity comes from the document's own prose
 or from the generated JSON, because retyping a number is the defect being guarded
 against and a test that retypes it can agree with a wrong table.
+
+Two figures live in the prose alone and have no counterpart in the JSON: the lossless
+2.5 kW saving, and the $56.9646/yr per kWh/day constant. Those are checked against the
+document's own decomposition of them -- the only independent statement of either that
+exists -- so that a figure and its derivation cannot drift apart unnoticed.
 """
 
 from __future__ import annotations
@@ -51,6 +56,7 @@ NUMBER = re.compile(r"\d+(?:\.\d+)?")
 #: The document sets these properly; matching a plain hyphen would silently fail.
 MINUS = "−"
 EN_DASH = "–"
+TIMES = "×"
 
 #: Counts the document spells out in words rather than digits.
 NUMBER_WORDS = {13: "thirteen"}
@@ -84,6 +90,23 @@ def numbers(cell: str) -> list[float]:
     (``10, 12, 16, 20``) still reads as four.
     """
     return [float(n) for n in NUMBER.findall(re.sub(r"(?<=\d),(?=\d{3}\b)", "", cell))]
+
+
+def signed_money(cell: str) -> float | None:
+    """A dollar amount carrying its sign, e.g. ``**−$113.93**`` or ``+$0.00/yr``.
+
+    ``None`` where the document prints an em-dash, which it uses for "nothing to
+    compare against" rather than for zero -- the two are different claims and the
+    distinction is checked by the callers.
+    """
+    match = re.search(r"([-+]?)\$(\d+\.\d{2})", cell.replace(MINUS, "-"))
+    return None if match is None else float(match.group(2)) * (
+        -1 if match.group(1) == "-" else 1
+    )
+
+
+def signed_int(cell: str) -> int:
+    return int(re.search(r"([-+]?\d+)", cell.replace(MINUS, "-")).group(1))
 
 
 def signed_percent(cell: str) -> float | None:
@@ -415,3 +438,167 @@ def test_nothing_in_either_sweep_clears_the_warranty():
             reached = [c for c, y in point["payback_years"].items() if y <= WARRANTY]
             assert not reached, f"{key} at {point} clears the warranty at {reached}"
             assert point["cheapest_within_warranty"] is None
+
+
+# --- the annual upgrade table and the constant behind it -------------------------
+#
+# These two tables are the document's buying advice, and they are the one place where
+# the numbers are not all in the JSON: the lossless 2.5 kW figure and the per-kWh/day
+# constant appear in the prose alone. So they are checked against the decomposition
+# the document itself gives, which is the only independent statement of them there is.
+
+#: ``$56.9646 /yr per kWh/day``, the constant the document says generates the rest.
+CONSTANT = float(re.search(r"\$(\d+\.\d{4}) /yr per kWh/day", FLAT).group(1))
+
+
+def upgrade_rows() -> list[tuple[str, list[str]]]:
+    _, rows = markdown_table("| upgrade from")
+    return [(r[0], r) for r in rows]
+
+
+UPGRADE_ROWS = upgrade_rows()
+
+#: Which study field each row of the upgrade table reports. Structure, not data --
+#: a renamed row fails here rather than being silently skipped.
+UPGRADE_FIELDS = {
+    "baseline": ("battery_savings_2kw", None),
+    "rating": ("battery_savings_2p5kw", "rate_upgrade_gain"),
+    "capacity": ("battery_savings_2kw", "capacity_upgrade_gain"),
+}
+
+
+@pytest.mark.parametrize(
+    "label,row", UPGRADE_ROWS, ids=[l.split()[0] for l, _ in UPGRADE_ROWS]
+)
+def test_annual_upgrade_table_row(label, row):
+    """Each row reports the study field it claims to, and its gain is that gain."""
+    key = next((k for k in UPGRADE_FIELDS if label.lower().startswith(k)), None)
+    assert key is not None, f"unrecognized upgrade row {label!r}"
+    savings_field, gain_field = UPGRADE_FIELDS[key]
+
+    assert money(row[1]) == to_the_cent(ANNUAL[savings_field])
+
+    gain = signed_money(row[2])
+    if gain_field is None:
+        assert gain is None, "the baseline row has no gain to report"
+    else:
+        assert gain is not None and to_the_cent(gain) == to_the_cent(ANNUAL[gain_field])
+
+
+def test_the_upgrade_gains_are_differences_from_the_baseline():
+    """A gain column that does not equal its own row minus the baseline is wrong.
+
+    Independent of the JSON's ``*_gain`` fields: this catches a gain that matches a
+    stale field while disagreeing with the savings printed beside it.
+    """
+    baseline = money(UPGRADE_ROWS[0][1][1])
+    for label, row in UPGRADE_ROWS[1:]:
+        gain = signed_money(row[2])
+        assert gain is not None, f"{label!r} should report a gain"
+        expected = float(money(row[1])) - float(baseline)
+        assert to_the_cent(gain) == to_the_cent(expected), label
+
+
+def test_the_lossless_aside_is_consistent_with_the_table():
+    """"Losslessly these were $455.72, $569.65 and +$113.93" -- all three checked.
+
+    Only the first is in the JSON. The second is pinned as the first plus the third,
+    and the third as two kWh/day of the constant, which is what makes the aside more
+    than three numbers typed from memory.
+    """
+    aside = re.search(
+        r"At the ([\d.]+) round trip\. Losslessly these were "
+        r"\$([\d.]+), \$([\d.]+) and \+\$([\d.]+);",
+        FLAT,
+    )
+    assert aside is not None, "the lossless aside has been reworded"
+    round_trip, baseline, upgraded, gain = (float(g) for g in aside.groups())
+
+    assert round_trip == ANNUAL["round_trip_efficiency"]
+    assert to_the_cent(baseline) == to_the_cent(ANNUAL["battery_savings_lossless"])
+    assert to_the_cent(upgraded) == to_the_cent(baseline + gain)
+    assert to_the_cent(gain) == to_the_cent(2 * CONSTANT)
+
+
+def test_the_asymmetry_is_unchanged_only_scaled():
+    """The aside's own claim: losses scale both legs by the same factor.
+
+    Compared at a tolerance rather than exactly, because every figure involved is
+    already rounded to the cent; the point is that one ratio is the other, not that
+    two rounded quotients agree to full precision.
+    """
+    lossless_gain = 2 * CONSTANT
+    assert ANNUAL["rate_upgrade_gain"] / lossless_gain == pytest.approx(
+        ANNUAL["battery_savings_2kw"] / ANNUAL["battery_savings_lossless"], rel=1e-3
+    )
+
+
+def test_the_constant_is_the_years_spreads_summed():
+    """The constant is checked against the document's own decomposition of it.
+
+    Nothing else states it: the JSON carries the summer spread, and the rest of the
+    arithmetic lives only in this sentence. Checking it here is what stops the
+    constant and its derivation from drifting apart.
+    """
+    parts = re.search(
+        rf"(\d+) summer weekdays {TIMES} \$([\d.]+) \+ "
+        rf"(\d+) winter weekdays {TIMES} \$([\d.]+) \+ "
+        rf"(\d+) weekends {TIMES} \$(\d+)",
+        FLAT,
+    )
+    assert parts is not None, "the decomposition sentence has been reworded"
+    summer, summer_spread, winter, winter_spread, weekend, weekend_spread = (
+        float(g) for g in parts.groups()
+    )
+
+    assert summer_spread == SPREAD, "the summer spread is the study's price_spread"
+    assert summer + winter + weekend == 365, "the day counts must cover the year"
+    total = summer * summer_spread + winter * winter_spread + weekend * weekend_spread
+    assert f"{total:.4f}" == f"{CONSTANT:.4f}"
+
+
+def multiplier_rows() -> list[tuple[str, int, float]]:
+    _, rows = markdown_table("| change |")
+    return [(r[0], signed_int(r[1]), signed_money(r[2])) for r in rows]
+
+
+MULTIPLIER_ROWS = multiplier_rows()
+
+
+@pytest.mark.parametrize(
+    "label,delta,annual",
+    MULTIPLIER_ROWS,
+    ids=[f"delta{d:+d}" for _, d, _ in MULTIPLIER_ROWS],
+)
+def test_multiplier_table_row(label, delta, annual):
+    """Each row is its own Δ times the constant, and its Δ is its own useful pair.
+
+    The second half matters: a row can multiply correctly and still state a throughput
+    change that its label contradicts, and the label is what a reader reasons from.
+    """
+    assert to_the_cent(annual) == to_the_cent(delta * CONSTANT)
+
+    pair = re.search(r"useful (\d+) → (\d+)", label)
+    if pair:
+        before, after = (int(g) for g in pair.groups())
+        assert delta == after - before, f"{label!r} contradicts its own Δ"
+    elif "useful stays" in label:
+        assert delta == 0, f"{label!r} says useful is unchanged but Δ is not zero"
+
+
+def test_the_repeated_figure_is_flagged_as_an_identity():
+    """The two rows sharing $113.93 are opposite moves of the same size.
+
+    The document goes out of its way to say this is not a copy-paste, so the property
+    that makes it not one is worth pinning: a future reader "fixing" one of the two is
+    exactly the edit this catches.
+    """
+    magnitudes = [abs(a) for _, _, a in MULTIPLIER_ROWS]
+    repeated = {m for m in magnitudes if magnitudes.count(m) > 1}
+    assert len(repeated) == 1, "expected exactly one repeated figure in the table"
+
+    figure = repeated.pop()
+    sharing = [(d, a) for _, d, a in MULTIPLIER_ROWS if abs(a) == figure]
+    assert {a > 0 for _, a in sharing} == {True, False}, "the two must have opposite signs"
+    assert len({abs(d) for d, _ in sharing}) == 1, "and must move the same throughput"
+    assert f"The repeated ${to_the_cent(figure)} is a real identity" in FLAT
