@@ -444,20 +444,37 @@ def test_transpiler_reduction_percentage(name, o1, o3, reduction):
     assert round((o1 - o3) / o1 * 100) == reduction
 
 
-def test_the_headline_reduction_range_sits_inside_the_measured_span():
-    """"a free 12-18% gate reduction", against the reductions actually listed.
+def test_the_headline_reduction_range_is_the_measured_span():
+    """"a free 8-18% gate reduction" must be exactly the span of its own table.
 
-    Deliberately weaker at the low end than at the high end. The heading's 12% is not
-    the table's smallest reduction -- T2/reps2 gives 8% and T2/reps1 11% -- so the
-    range appears to quote the two T3 circuits rather than all four. That reading is
-    not stated anywhere, so this pins only what is unambiguous: the headline range
-    lies within the measured span, and its top is the largest reduction there is.
+    It read 12-18% until 2026-08-23, which was the range over the two T=3 circuits
+    rather than over the four this section reports -- the T=2 pair reduces by 11% and
+    8%. Now that the heading covers all four rows, both ends can be pinned to the
+    table instead of merely bounded by it, which is what catches a row being added or
+    re-measured without the heading following.
     """
     low, high = (int(g) for g in re.search(r"a free (\d+)-(\d+)% gate reduction", FLAT).groups())
     measured = [r for _, _, _, r in TRANSPILER_ROWS]
-    assert low < high, "the headline must be a range"
-    assert min(measured) <= low, "headline low is below every measured reduction"
-    assert high == max(measured), "headline high must be the largest reduction listed"
+    assert (low, high) == (min(measured), max(measured))
+
+
+def test_the_script_comment_quotes_the_same_range_as_the_study():
+    """The transpiler default is set in code, and its comment repeats this range.
+
+    A comment justifying a live default is a claim like any other; it carried the
+    same wrong 12-18% and drifted from the write-up unnoticed because nothing read
+    both. This reads both.
+    """
+    script = (ROOT / "scripts" / "experiment_hardware.py").read_text()
+    low, high = (int(g) for g in re.search(r"2-qubit gates (\d+)-(\d+)%", script).groups())
+    measured = [r for _, _, _, r in TRANSPILER_ROWS]
+    assert (low, high) == (min(measured), max(measured))
+
+    # The comment also lists the gate counts it is derived from; they must be the
+    # study's own columns, or the two are describing different circuits.
+    before, after = re.search(r"circuits: ([\d/]+) -> ([\d/]+)\)", script).groups()
+    assert [int(n) for n in before.split("/")] == [o1 for _, o1, _, _ in TRANSPILER_ROWS]
+    assert [int(n) for n in after.split("/")] == [o3 for _, _, o3, _ in TRANSPILER_ROWS]
 
 
 # --- hardware runs ---------------------------------------------------------------

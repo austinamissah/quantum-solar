@@ -322,7 +322,7 @@ so the encoding reduces to objective + mutual exclusion + terminal. Soundness
 still covers it (the single gap of 3 ≤ k bounds the excursion to 1 step), so no
 interior SoC penalty is needed at T=3 at all.
 
-### Transpiler optimization level: a free 12-18% gate reduction
+### Transpiler optimization level: a free 8-18% gate reduction
 
 Independent of any encoding question, and worth recording on its own. The
 submission path transpiled at `optimization_level=1`. Re-transpiling **the same
@@ -339,6 +339,13 @@ Since device-noise TVD tracks two-qubit gate count monotonically on exactly thes
 circuits, this is a strict improvement at no cost — no change to the problem, the
 encoding, the parameters, or the shot budget. It is now the default in
 `scripts/experiment_hardware.py`.
+
+> **Correction, 2026-08-23.** This heading read **12-18%** until now, which is the
+> range over the two T=3 circuits rather than over the four this section actually
+> reports: the T=2 pair reduces by 11% and 8%. The measurements are unchanged and
+> were always tabled above; only the summary range was wrong, understating how much
+> the smallest circuits vary. The same range appeared in a comment in
+> `scripts/experiment_hardware.py` and is corrected there too.
 
 ## Device degradation: three runs
 

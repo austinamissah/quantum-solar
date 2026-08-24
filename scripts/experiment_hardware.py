@@ -467,7 +467,7 @@ def run_submit(*, backend_name=None, include_stretch=False, yes_spend_qpu=False,
     else:
         backend = _select_backend(service, max_m)
     # optimization_level=3, not 1: on identical circuits this cuts transpiled
-    # 2-qubit gates 12-18% (July's four circuits: 37/77/124/290 -> 33/71/109/237)
+    # 2-qubit gates 8-18% (July's four circuits: 37/77/124/290 -> 33/71/109/237)
     # at no cost. Device-noise TVD tracks 2-qubit gate count monotonically (July:
     # 0.119/0.203/0.383/0.459), so fewer gates is strictly better here.
     pass_manager = generate_preset_pass_manager(optimization_level=3, backend=backend,
