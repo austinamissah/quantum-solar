@@ -394,8 +394,8 @@ same optimum, same depth, same weight, shot-noise floors equalized.
 > > ([basin-structure.md](basin-structure.md)).** The "ill-defined cell" argument is
 > > also too strong. The *landscape* at default weight is irreproducible — 19
 > > distinct basins over 40 tunings — but the *selection rule* is stable: lowest
-> > `<H>` converges to TVD 0.1488 and holds there from N=10 through N=40. Pinning
-> > N ≥ 10 and the rule defines the cell. What remains against the 2×2 is only that
+> > `<H>` converges to TVD 0.1488 and holds there from N=20 through N=40. Pinning
+> > N ≥ 20 and the rule defines the cell. What remains against the 2×2 is only that
 > > the weight moves `cp3`'s circuit ~4× less than `exact`'s — a weaker argument
 > > than either originally given. Recorded rather than quietly dropped: both halves
 > > of the original rationale were worse than the measurements that replaced them.

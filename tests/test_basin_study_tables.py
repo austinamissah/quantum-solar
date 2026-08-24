@@ -211,28 +211,43 @@ def test_the_selection_rule_picks_one_basin_across_seed_budgets():
     walk-back is load-bearing -- it is why the 2×2's "ill-defined cell" argument was
     withdrawn -- so the property behind it is checked rather than quoted.
 
-    **Checked as one basin, not as one number, and deliberately so.** The committed
-    selection is 0.1477 at N=10 (seed 10) against 0.1488 at N=20 and N=40 (seed 16),
-    so the figure the prose names is not literally held at N=10. Those differ by
-    0.0011 against a basin cutoff τ of 0.0433, i.e. they are the same basin, which is
-    what the table's own parenthetical says is the claim: "the winning *seed*
-    changes; the selected *basin* does not." Asserting the literal number would fail
-    on correct data; asserting the basin is the claim the document reasons from.
+    **Two claims, checked separately, because they hold over different ranges.** The
+    quoted figure is held exactly over the range the prose names -- N ≥ 20 since the
+    2026-08-23 precision fix, the committed selection being 0.1477 at N=10 against
+    0.1488 at N=20 and N=40. The *basin* is the same across every reported budget
+    including N=5, which is the weaker claim the table's parenthetical makes: "the
+    winning *seed* changes; the selected *basin* does not."
+
+    Both are pinned. Checking only the figure would let the basin claim rot; checking
+    only the basin would let the range slide back to N=10, which is the error this
+    fix corrected.
     """
     settled, low, high = (
         re.search(r"converges to TVD ([\d.]+) and stays there from N=(\d+) to N=(\d+)", FLAT).groups()
     )
     selection = RECORDS[max(RECORDS)]["lowest_H_selection_by_N"]
-    budgets = [n for n in STUDY["report_N"] if int(low) <= n <= int(high)]
+    quoted = [n for n in STUDY["report_N"] if int(low) <= n <= int(high)]
+    assert quoted, f"no reported seed budget lies in N={low}..{high}"
 
-    assert f"{selection[high]['tvd_to_alpha_star_ref']:.4f}" == f"{float(settled):.4f}", (
-        "the figure the prose names must be the one at the top of the range"
-    )
-    for n in budgets:
+    for n in quoted:
+        assert f"{selection[str(n)]['tvd_to_alpha_star_ref']:.4f}" == f"{float(settled):.4f}", (
+            f"N={n} is inside the range the prose names but does not hold its figure"
+        )
+
+    # Just below the named range the figure must move, or the range understates itself.
+    below = [n for n in STUDY["report_N"] if n < int(low)]
+    if below:
+        assert any(
+            f"{selection[str(n)]['tvd_to_alpha_star_ref']:.4f}" != f"{float(settled):.4f}"
+            for n in below
+        ), f"the figure is already held below N={low}; the range is too conservative"
+
+    # The basin, however, is one across every reported budget -- the weaker claim.
+    for n in STUDY["report_N"]:
         drift = abs(selection[str(n)]["tvd_to_alpha_star_ref"] - float(settled))
         assert drift < STUDY["tau"], (
             f"N={n} selects a different basin: {drift:.4f} away, τ = {STUDY['tau']}"
         )
-
-    # The seed genuinely does move, which is why the claim is about the basin.
-    assert len({selection[str(n)]["seed"] for n in budgets}) > 1
+    assert len({selection[str(n)]["seed"] for n in STUDY["report_N"]}) > 1, (
+        "the winning seed is supposed to move; if it does not, the claim is trivial"
+    )

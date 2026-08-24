@@ -95,7 +95,7 @@ could be misread.
 
 ## Selection stability — and a correction it forces
 
-The lowest-`<H>` rule was expected to be unstable in N. **It is not**, at N ≥ 10:
+The lowest-`<H>` rule was expected to be unstable in N. **It is not**, at N ≥ 20:
 
 | α | N=5 | N=10 | N=20 | N=40 |
 |---:|---:|---:|---:|---:|
@@ -110,12 +110,22 @@ selected *basin* does not.)
 > weight 2×2 rested partly on the claim that `cp3 @ default` is "ill-defined"
 > because tuning is irreproducible. **That is too strong.** The landscape is
 > irreproducible — 19 basins — but the *selection rule* is stable: lowest-`<H>`
-> converges to TVD 0.1488 and stays there from N=10 to N=40. The cell is definable
-> by pinning N ≥ 10 and the rule. The remaining objection to the 2×2 is only that
+> converges to TVD 0.1488 and stays there from N=20 to N=40. The cell is definable
+> by pinning N ≥ 20 and the rule. The remaining objection to the 2×2 is only that
 > the weight moves `cp3`'s circuit 4× less than `exact`'s, which is a weaker
 > argument than the one originally given. This is the second part of that rationale
 > to be walked back after measuring it, and both walk-backs went the same way:
 > the argument was worse than the measurement.
+>
+> > **Precision fix, 2026-08-23.** This note, the section heading above it, and the
+> > matching passage in `slack-free-encoding.md` all originally read **N ≥ 10**. The
+> > committed selection is TVD **0.1477 at N=10** (seed 10) against **0.1488 at N=20
+> > and N=40** (seed 16), so the figure quoted here is not held at N=10 and the range
+> > is N ≥ 20. The two are 0.0011 apart against τ = 0.043286 — the *same basin*, which
+> > is what the table's parenthetical claims and what is unaffected — so this narrows
+> > the precision of the claim, not its substance. Recorded rather than silently
+> > edited. Now gated by `tests/test_basin_study_tables.py`, which checks both: the
+> > quoted figure over the range named, and one basin across every reported budget.
 
 ## Limitations
 
