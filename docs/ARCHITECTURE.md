@@ -349,6 +349,33 @@ do:
   neither reaches the canvas. Enforced by `tests/test_figure_conventions.py`, which
   parses every script that calls `savefig` rather than relying on anyone
   remembering.
+- **A published number lives in exactly one place; everywhere else derives it.**
+  Every figure a write-up in `docs/results/` states is checked against the artifact
+  that produced it, and every restatement of one in a comment, a docstring, or a
+  module constant is checked against the document it came from. Enforced by
+  `tests/_markdown.py` (shared parsing) plus the `tests/test_*_tables.py` modules,
+  which between them cover every write-up, and by
+  `tests/test_code_comment_figures.py` for the restatements. **Add a number, add its
+  check** — the write-ups are hand-written, no script emits them, and an unchecked
+  figure has drifted from its own data more than once. Three rules separate a gate
+  from a rubber stamp:
+  - **Recompute, do not compare.** A column with no counterpart in an artifact — a
+    percentage, a gain, a ratio — is hand arithmetic, and hand arithmetic is where
+    every wrong number found so far has been.
+  - **Never let a check infer its rule from the data it checks.** It will agree with
+    that data whatever the rule really is. If the code already derives a value
+    (an evaluation cap, a reliability threshold), the test derives it the same way
+    instead of restating the answer.
+  - **A ratio of rounded figures needs an interval, not equality.** These documents
+    divide unrounded quantities and print the rounded ones, so `0.00013 → 0.0453` is
+    published as 349× while the printed pair divides to 348. Use `rounding_interval`
+    and `assert_quotient`; demanding equality fails on correct arithmetic.
+- **Those checks are found by text-matching, so they are blind to a change of
+  units.** A threshold registered as `10%` in a plan and held as `0.10` in code does
+  not match, and was missed for exactly that reason. Fraction against percent is the
+  common case; seconds against minutes and kWh against Wh have the same shape. When a
+  number appears in a unit its document does not use, pair it up by hand — no sweep
+  will do it for you.
 - Commits carry no attribution or co-author trailers. Keep it that way.
 - Editor and local tooling configuration stays out of the repository; add it to
   `.gitignore` rather than committing machine-local settings.
