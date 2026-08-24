@@ -207,11 +207,15 @@ def verdicts(rows):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seeds", type=int, default=HEADLINE_N)
+    parser.add_argument("--instance", type=int, default=INSTANCE,
+                        help="default is the registered primary; other values are "
+                             "robustness sweeps and cannot move the registered verdict")
     parser.add_argument("--tag", default="")
     parser.add_argument("--analyze-only", action="store_true")
     args = parser.parse_args()
 
     commit = require_registered()
+    globals()["INSTANCE"] = args.instance
     suffix = f"_{args.tag}" if args.tag else ""
     csv_path = RESULTS / f"basin_study_reps2{suffix}.csv"
     json_path = RESULTS / f"basin_study_reps2{suffix}.json"
@@ -219,6 +223,9 @@ def main():
 
     print(f"Pre-registration committed at {commit[:12]} — proceeding.")
     print(f"instance {INSTANCE}, reps {REPS}, {len(ALPHAS)} alphas x {args.seeds} seeds")
+    if INSTANCE != 1:
+        print("NOTE: not the registered primary instance; this is a robustness sweep "
+              "and cannot move the registered verdict.")
 
     if args.analyze_only:
         stored = np.load(npz_path)
