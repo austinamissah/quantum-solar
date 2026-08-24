@@ -376,6 +376,28 @@ do:
   common case; seconds against minutes and kWh against Wh have the same shape. When a
   number appears in a unit its document does not use, pair it up by hand — no sweep
   will do it for you.
+- **Mutation-test the guard, not just the finding.** A check that passes on correct
+  data has shown nothing; break the thing it claims to protect and watch it fail. On
+  2026-08-24 five separate guards in this repository turned out to be weaker than they
+  read, and every one was found this way and none any other way:
+  - a rule inferred from the very table it was checking, so it would have agreed with
+    that table whichever rule was real;
+  - an evaluation cap hardcoded where the script derives it;
+  - a caveat guard that checked the sentences either side of the one it protected;
+  - a verdict table whose **outcome** column was never checked, so "held" could flip
+    to "FALSIFIED" with every figure intact;
+  - three guards that silently matched nothing because the sentence they quoted
+    **wraps across source lines**.
+
+  The last is the one to watch for: a pattern that matches nothing passes forever and
+  looks identical to a pattern that matches. **Assert the pattern is present before
+  mutating it**, or a mutation test reports success while exercising nothing — which
+  happened here first and hid two of the five.
+- **Where a write-up's caveats do work, gate the caveats too.** These documents earn
+  their conclusions by bounding them, so a later edit that keeps "picks the argmax in
+  9 of 9" while dropping "and the held-out instances are easy" leaves every number
+  correct and the paper wrong. The `test_selection_*_tables.py` modules assert the
+  limiting sentences alongside the findings, and mutation-test both.
 - Commits carry no attribution or co-author trailers. Keep it that way.
 - Editor and local tooling configuration stays out of the repository; add it to
   `.gitignore` rather than committing machine-local settings.
