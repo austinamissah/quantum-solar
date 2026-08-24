@@ -32,13 +32,15 @@ midnight. The day's bill is **$0.36 against $2.29** with the battery sitting idl
 
 ![Cost-optimal battery schedule for a real Colorado summer weekday](docs/figures/web/schedule_real_day.png)
 
-**Read the peak window, not the individual bars.** Only the four discharge hours are
-forced: **2,448 minimal-cost plans tie** on this day, and every one of them
-discharges across the whole 5–9pm window. The specific charging hours drawn here are
-one arbitrary pick among those ties — `dp_solve` breaks ties arbitrarily, so report
-`optima_census().forced()` rather than the raw hour list. The lone green bar just after
-the peak is forced in kind but not in placement: the day must end where it started,
-so a refill must happen, and every post-peak hour is priced the same.
+**Read the peak window, not the individual bars.** Only the four discharge hours
+are forced: **2,448 minimal-cost plans tie** on this day, and every one of them
+discharges across the whole 5–9pm window. The specific charging hours drawn here
+are one of those ties — `dp_solve`'s tie-break is fixed (minimum cost, then fewest
+battery actions), so the plan is reproducible rather than canonical, and
+`optima_census().forced()` is what to report rather than the raw hour list. The
+lone green bar just after the peak is forced in kind but not in placement: the day
+must end where it started, so a refill must happen, and every post-peak hour is
+priced the same.
 
 **Charging follows the price, not the solar.** Under net metering the optimal plan
 provably depends on the price curve alone — it is unchanged by zero solar, triple

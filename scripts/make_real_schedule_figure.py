@@ -342,7 +342,9 @@ def main():
                    "derive from the same day index (see data/calendar.py, AMY 2018).",
         "_reading_the_schedule": (
             "charge_hours/discharge_hours are ONE tied-optimal schedule, not the "
-            "answer: dp_solve breaks ties arbitrarily. Read forced_hours for the "
+            "answer: dp_solve's tie-break is fixed (minimum cost, then fewest "
+            "battery actions, then idle before charge before discharge), so the "
+            "plan is reproducible rather than canonical. Read forced_hours for the "
             "part that is actually determined -- every minimal-cost plan agrees "
             "there -- and free_hours for the part that is not. n_minimal_optima "
             "counts the tied plans that also use the fewest battery actions; "
