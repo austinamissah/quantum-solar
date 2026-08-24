@@ -65,7 +65,7 @@ def load_series():
         raise SystemExit(
             f"REFUSING TO DRAW: the study is at a "
             f"{annual['round_trip_efficiency']} round trip, but this figure is "
-            f"labelled for {EXPECTED_ROUND_TRIP}."
+            f"labeled for {EXPECTED_ROUND_TRIP}."
         )
 
     ratios, years, savings = [], [], []
@@ -103,7 +103,7 @@ def main() -> None:
     last = len(ratios) - 1
     fig, ax = plt.subplots(figsize=(11.4, 7.0))
 
-    # The bracket, drawn as the band every assumption lands inside. Labelled high
+    # The bracket, drawn as the band every assumption lands inside. Labeled high
     # in the band: the bars' own value labels sit just above each bar, and the
     # rightmost of those lands inside the band.
     ax.axhspan(lo, hi, color=BAND, zorder=0)

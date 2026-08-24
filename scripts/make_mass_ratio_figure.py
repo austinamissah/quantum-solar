@@ -55,7 +55,7 @@ Presentation choices that keep the picture honest at a glance:
 Caption suggestion (for the blog post):
   This chart asks a simple question: does the quantum optimizer (QAOA) find the
   best battery schedule more often than random guessing? Points above the dashed
-  grey line beat random; points on it are no better than chance. Only at the
+  gray line beat random; points on it are no better than chance. Only at the
   smallest problem (2 slots, filled dots) do all our runs place enough
   probability on the best answer to measure this directly, and even there the
   result is mixed: a modest edge at 1 and 3 layers, but worse than random at 2.

@@ -55,7 +55,7 @@ the soundness threshold, the QUBO's own minimum-energy assignment is infeasible 
 the standard metric cannot tell:
 
 > At α = 0.006, **32 of 40 tunings "clear" the concentration bar**, with the best
-> putting 0.0959 mass on the QUBO's minimiser — against a bar of 0.078125. Every one
+> putting 0.0959 mass on the QUBO's minimizer — against a bar of 0.078125. Every one
 > of those is mass on a state that is not a schedule.
 > — [`results/basin-structure-reps2.md`](results/basin-structure-reps2.md)
 

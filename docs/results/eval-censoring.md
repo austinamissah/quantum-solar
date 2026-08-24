@@ -170,7 +170,7 @@ itself is no longer the thing that is broken.
 
 ## 4. What this changes
 
-**Direction of the error is favourable, as pre-registered.** This experiment could
+**Direction of the error is favorable, as pre-registered.** This experiment could
 only reveal the α\* result to be understated. It did.
 
 - The **440× mass shift** and the **0.0716–0.0750 vs 0.078125 bar** in

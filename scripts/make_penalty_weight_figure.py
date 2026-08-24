@@ -247,7 +247,7 @@ def main() -> None:
                             color=("0.45" if not feasible[order[top]] else OPTIMAL)),
         )
         if top != 0:
-            # Clear the neighbouring bars: drop in from above and to the right,
+            # Clear the neighboring bars: drop in from above and to the right,
             # rather than crossing whatever the circuit did concentrate on.
             ax.annotate(
                 f"best schedule\nP = {y[0]:.4f}",

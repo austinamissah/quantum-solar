@@ -225,11 +225,11 @@ This conclusion is now **bracketed rather than bounded**. It used to rest on
 assumptions that were flagged as optimistic and pointed one way; both have since
 been priced, one of them turned out to point the *other* way, and the conclusion
 survives either way. That is a stronger claim than the original, and it is the
-reason the modelling work was worth doing.
+reason the modeling work was worth doing.
 
 > **Retraction, 2026-08-07.** This section originally reported $455.72/yr and a
 > ~25-year payback from a **lossless** battery, flagged as an upper bound but not
-> quantified. Losses are now modelled and the true figures are $404.28/yr and
+> quantified. Losses are now modeled and the true figures are $404.28/yr and
 > ~28 years. The direction was right and the magnitude was understated: the
 > lossless model overstates the saving by 11%. The old $5,000-at-2.5 kW case
 > (8.8 yr, comfortably inside warranty) becomes 9.9 yr, i.e. marginal. Left here
@@ -253,7 +253,7 @@ arithmetic is the *savings* pitch.
 
 ## Caveats
 
-**Losses are modelled; one optimistic assumption remains**
+**Losses are modeled; one optimistic assumption remains**
 (see [`../ARCHITECTURE.md`](../ARCHITECTURE.md)):
 
 - **Round-trip losses change the multiplier, not the knee.** With efficiencies the
@@ -271,7 +271,7 @@ arithmetic is the *savings* pitch.
   pays only where `p_peak/p_off > 1/round_trip`. Xcel's summer ratio is **2.74**
   against a threshold of **1.11** at a 0.90 round trip, so arbitrage stays firmly
   profitable here — it would not on a tariff with a spread under ~11%.
-- **Export paid below import is now modelled, and it helps the battery.** It
+- **Export paid below import is now modeled, and it helps the battery.** It
   raises the battery leg (self-consumption) while cutting the solar leg; see the
   export sweep above. It does change the sizing arithmetic on a solar-bearing day,
   because whether a slot imports or exports now matters — the daily figures on this

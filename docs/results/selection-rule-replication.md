@@ -63,7 +63,7 @@ The finding is therefore no longer fitted to its discovery instance.
 - **The tightest margin is very tight.** At instance 6, α = 0.030, feasible mass clears
   by **0.00062**. That is a real clearance under exact computation, but it is not a
   margin that would survive a modest shot budget, and nothing here says it would.
-- **T=3, reps=2, one α ladder, one encoding.** The scaling behaviour is covered
+- **T=3, reps=2, one α ladder, one encoding.** The scaling behavior is covered
   separately in [`selection-rule-scaling.md`](selection-rule-scaling.md) and is not
   re-established here.
 - **The rules were not changed**, deliberately. Introducing a new candidate after

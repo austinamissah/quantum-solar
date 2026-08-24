@@ -13,8 +13,8 @@ reads only the first ``2T`` entries, so the (domain-agnostic) solvers can pass t
 full vector through unchanged.
 
 Round-trip losses, an export credit below the import price, and asymmetric
-charge/discharge energy per slot are all modelled; every one defaults to the
-original v1 behaviour. SoC stays on a uniform grid whose step is the greatest
+charge/discharge energy per slot are all modeled; every one defaults to the
+original v1 behavior. SoC stays on a uniform grid whose step is the greatest
 common divisor of the two energy quanta (:func:`soc_quantum`).
 """
 
@@ -235,7 +235,7 @@ def require_soc_on_grid(problem: "BatteryProblem") -> None:
     half a step. A 10 kWh battery at 6 kWh/slot became ``n_max = 2``, i.e. a top
     level of 12 kWh — the solver returned a schedule reaching 12 kWh on a 10 kWh
     battery and reported it optimal and feasible. Checked here rather than floored
-    silently, because quietly modelling a *different* battery from the one asked
+    silently, because quietly modeling a *different* battery from the one asked
     for is the same class of error.
     """
     e = soc_quantum(problem)

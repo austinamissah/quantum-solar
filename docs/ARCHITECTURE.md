@@ -133,9 +133,9 @@ Gotchas:
   Exact (preserves the brute-force contract) but adds `(T−1)·b` qubits — this is
   why brute force / QAOA stay small-`T` and `dp_solve` exists. The terminal
   `S_T = S_0` is a slack-free `(S_T − S_0)²` penalty.
-- **No v1 modelling assumptions remain.** Round-trip losses, export credited below
-  import, and asymmetric charge/discharge rates are all modelled, and every one
-  defaults to the original behaviour.
+- **No v1 modeling assumptions remain.** Round-trip losses, export credited below
+  import, and asymmetric charge/discharge rates are all modeled, and every one
+  defaults to the original behavior.
 - **Asymmetric charge/discharge energy** is supported. The SoC grid step is
   `soc_quantum(problem)` — the **GCD** of the two quanta, not either one — because
   reachable states `S_0 + n_c·e_c − n_d·e_d` form a uniform grid iff the quanta are
@@ -151,13 +151,13 @@ Gotchas:
     2.0-in/1.5-out and 42 for 2.0/1.25, while slack-free `checkpoint(3)` stays at
     **12 regardless**. So asymmetric hardware *widens* the encoding gap that
     `docs/results/slack-free-encoding.md` measured, in the slack-free encoding's
-    favour.
+    favor.
   - **`qubo_min_exact` rejects `WindowDrift` + asymmetric rates.** That search packs
     each SoC step into one base-3 digit (−1/0/+1), which cannot hold the four
     distinct steps asymmetry produces. Every other encoding has no drift term, so
     only this combination is affected; it raises rather than returning a quietly
     wrong optimum.
-- **Asymmetric pricing is modelled** via `sell_price` (default `None` = net
+- **Asymmetric pricing is modeled** via `sell_price` (default `None` = net
   metering). Exports credit at `export_price`, imports at `buy_price`, so the bill
   becomes **convex piecewise linear** with a kink at `net == 0`. Three consequences
   worth knowing before touching this: the DP is still valid (the household's net is
@@ -167,7 +167,7 @@ Gotchas:
   and silently wrong on `c_j == d_j == 1`, breaking the brute-force contract where
   nothing looks; and the objective **stops separating**, so the plan finally
   depends on solar and load. `tests/test_export_pricing.py`.
-- **Round-trip losses are modelled** (`charge_efficiency`, `discharge_efficiency`,
+- **Round-trip losses are modeled** (`charge_efficiency`, `discharge_efficiency`,
   both defaulting to `1.0` = the original lossless model). The design rule is
   **losses live in the price, not in the state of charge**: the two energy quanta
   stay store-side and equal so the SoC grid is untouched, and the efficiencies
@@ -188,7 +188,7 @@ Gotchas:
   the battery's own term, and the battery appears only in the second — so the plan
   depends on the **price curve alone**. Verified: identical schedule under zero
   solar, 3× solar, flat load and random load; only the bill moves. **It is a
-  modelling artifact rather than real-world guidance**, and a caption asserting the
+  modeling artifact rather than real-world guidance**, and a caption asserting the
   battery charges on surplus solar would be wrong: it does not.
   This holds **only under net metering**. Set `sell_price` below `price` and the
   kink at `net == 0` couples the plan to the household, which is the regime where a

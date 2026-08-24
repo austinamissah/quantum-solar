@@ -1,4 +1,4 @@
-"""Conventions that every generated figure has to honour.
+"""Conventions that every generated figure has to honor.
 
 Figures leave this repository on their own -- pasted into a write-up, attached to
 something, read by people who never see the surrounding text. So the rules about

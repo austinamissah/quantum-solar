@@ -122,7 +122,7 @@ def sweep(n_seeds, writer, handle):
     return out
 
 
-def analyse(swept):
+def analyze(swept):
     """Per size: what each rule picks, and whether the size is informative at all."""
     per_size = []
     for slots, cell in swept.items():
@@ -178,7 +178,7 @@ def main():
         writer.writeheader()
         swept = sweep(args.seeds, writer, handle)
 
-    per_size = analyse(swept)
+    per_size = analyze(swept)
     largest = max(per_size, key=lambda r: r["T"])
 
     wins = sum(1 for r in per_size

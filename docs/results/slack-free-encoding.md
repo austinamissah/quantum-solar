@@ -467,7 +467,7 @@ Recorded with their reasoning rather than quietly replaced:
 
 A recurring pattern worth naming: **every one of these was a point estimate
 compared without its interval, or a threshold stated without pinning the
-quantities entering it.** Three pre-registrations in this programme each left an
+quantities entering it.** Three pre-registrations in this program each left an
 analysis choice unspecified that could have decided an outcome.
 
 # Scope limits

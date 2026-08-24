@@ -68,7 +68,7 @@ def require_registered() -> str:
 
 # --- the rules ------------------------------------------------------------------
 #
-# Every rule maps a distribution to a score that is MAXIMISED. All are computable
+# Every rule maps a distribution to a score that is MAXIMIZED. All are computable
 # from the circuit's own output; none needs the optimum handed to it, and the one
 # that identifies the optimum does so the way a practitioner would -- by decoding
 # samples, keeping the feasible ones and taking the cheapest.

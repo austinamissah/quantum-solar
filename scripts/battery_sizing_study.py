@@ -62,7 +62,7 @@ ROUND_TRIPS = (1.0, 0.95, 0.90, 0.85, 0.80)
 HEADLINE_ROUND_TRIP = 0.90
 
 # Export credit as a fraction of the import price. 1.0 is full-retail net metering
-# (the v1 assumption); real programmes range from near-retail down to avoided cost.
+# (the v1 assumption); real programs range from near-retail down to avoided cost.
 # Swept rather than pinned because the right value is jurisdiction-specific and
 # cannot be verified from the committed snapshot.
 EXPORT_RATIOS = (1.0, 0.75, 0.50, 0.25, 0.10)

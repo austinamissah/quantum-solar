@@ -79,7 +79,7 @@ def test_flat_price_day_has_exactly_one_minimal_optimum():
     """No price spread means no arbitrage: the only minimal plan is to do nothing.
 
     ``n_optima`` meanwhile counts every feasible schedule, because in a lossless
-    model each charge is cancelled by its discharge. That gap is the reason
+    model each charge is canceled by its discharge. That gap is the reason
     ``n_minimal`` exists.
     """
     census = optima_census(_problem([0.14] * 8))

@@ -97,7 +97,7 @@ SLACKFREE_TARGETS = [
 # direct drift probe against July's measured k.
 # Order is load-bearing: the PRIMARY comparison is the first-listed pair
 # (replicate 1), fixed here so it cannot be chosen after seeing which pair is more
-# favourable. Replicate 2 is a VARIANCE ESTIMATE and is never pooled into the gap.
+# favorable. Replicate 2 is a VARIANCE ESTIMATE and is never pooled into the gap.
 REPLICATION_TARGETS = [
     {"T": 3, "seed": 0, "reps": 1, "encoding": "checkpoint3", "alpha": 0.021, "shots": 4096, "replicate": 1},
     {"T": 3, "seed": 0, "reps": 1, "encoding": "exact", "alpha": 0.021, "shots": 65536, "replicate": 1},

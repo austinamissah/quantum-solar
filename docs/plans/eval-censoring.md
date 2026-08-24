@@ -8,7 +8,7 @@
 
 Written **before** the sweep was re-run and before any eval count was inspected.
 The selection rule below is fixed here so that the choice of which cells get a
-raised budget cannot be made after seeing which ones look favourable.
+raised budget cannot be made after seeing which ones look favorable.
 
 ## The problem
 

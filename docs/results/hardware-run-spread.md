@@ -108,7 +108,7 @@ ordering.
 
 An earlier draft of this document said run-to-run variation "exceeds what
 within-job replication explains", from a bare point comparison of 0.02437 against
-0.01743. **That is retracted.** It is the same failure this document criticises
+0.01743. **That is retracted.** It is the same failure this document criticizes
 one level up — comparing point estimates without their intervals — and at n = 3
 the interval is far too wide to support it. What holds is only that within-job
 spread does not *bound* between-run variance, which was known in advance.

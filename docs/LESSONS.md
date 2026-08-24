@@ -425,7 +425,7 @@ index so they cannot disagree by construction. **When several inputs must agree,
 derive them from one source rather than trusting yourself to keep them aligned.**
 
 **Stale committed artifacts.** A figure in the repo paired 21 June solar output
-with a price schedule labelled July. It had been generated before the fix and
+with a price schedule labeled July. It had been generated before the fix and
 never regenerated. **Derived artifacts checked into a repository are claims, and
 they go stale silently.** Regenerate them from the code that is current.
 

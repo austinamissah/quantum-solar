@@ -8,7 +8,7 @@ Inputs are assembled the same way ``annual.annual_from_inputs`` assembles them,
 so the three of them cannot disagree on season or day type: the day index picks
 the PVWatts generation day, and ``data.calendar`` derives the price month, the
 weekday/weekend URDB schedule, and the load bucket from that *same* index. (The
-previous hand-written snapshot predated that fix and labelled a June solar day
+previous hand-written snapshot predated that fix and labeled a June solar day
 with a July price.) Everything is read from the committed annual snapshot and the
 committed ResStock profiles; the optimal schedule is recomputed with the exact DP
 solver. No network, no experiments re-run.
@@ -101,7 +101,7 @@ def pick_day(month: int, wanted: str) -> int:
     * **Federal holidays are skipped.** URDB carries no holiday schedule and the
       ResStock weekday aggregate folds holidays into weekdays, so a holiday is
       billed here as an ordinary weekday. That is a documented v1 limitation, but
-      putting it on the face of a published figure makes it look like a modelling
+      putting it on the face of a published figure makes it look like a modeling
       claim. Skipping is general, not a patch for one date: the first January
       weekday is Jan 1, and the third Monday is MLK Day, so a naive "first
       matching day" rule hits a holiday twice in the same month.
@@ -373,11 +373,11 @@ def main():
             "on the PRICE curve -- it is provably unchanged by zero solar, 3x "
             "solar, flat load or random load (only the bill moves). Corrected "
             "2026-08-07: this note used to say round-trip losses would restore the "
-            "coupling. They do not. Losses are now modelled and only rescale the "
+            "coupling. They do not. Losses are now modeled and only rescale the "
             "battery term's coefficients, so the plan is identical at a 0.90 round "
             "trip. ONLY an export price below the import price breaks the "
             "separation, by making which price applies depend on the sign of the "
-            "household's net. Do not publish this as advice."
+            "household's net. It is not publishable as advice."
         ),
         "location": snap["location"], "system_kw": snap["system_kw"],
         "capacity": snap["capacity"], "charge_energy": snap["charge_energy"],

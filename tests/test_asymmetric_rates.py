@@ -92,7 +92,7 @@ def test_schedule_stays_on_grid_and_in_bounds(charge, discharge):
 
 
 def test_asymmetric_round_trip_uses_unequal_action_counts():
-    """The behaviour the constraint forbade: 2 kWh in balanced by 2 x 1 kWh out.
+    """The behavior the constraint forbade: 2 kWh in balanced by 2 x 1 kWh out.
 
     Under ``e_c == e_d`` every optimal schedule has equal charge and discharge
     counts, because each action moves one grid level. Asymmetric rates break that,

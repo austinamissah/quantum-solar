@@ -73,7 +73,7 @@ roundness.
 > a threshold would import ±11% of its own noise. τ is the expected floor.
 
 **Clustering rule: complete linkage.** A cluster is a set in which *every* pair is
-within τ. Single linkage would let a chain of near-neighbours merge two genuinely
+within τ. Single linkage would let a chain of near-neighbors merge two genuinely
 separated basins, and at α values with many near-degenerate optima that is a real
 risk, not a theoretical one. Complete linkage is the headline; **single linkage is
 reported alongside as a sensitivity**, and any α where the two disagree is flagged

@@ -151,7 +151,7 @@ def test_arbitrage_stops_below_the_breakeven_ratio():
     """Below `1 / round_trip`, a cycle loses money and the optimum is to do nothing.
 
     The lossless model has no such threshold: any spread at all pays. This is the
-    qualitative behaviour losslessness was hiding.
+    qualitative behavior losslessness was hiding.
     """
     # Price ratio 3/2 = 1.5, so arbitrage pays iff round_trip > 1/1.5 = 0.667.
     price = np.array([0.20, 0.20, 0.30, 0.30, 0.20, 0.20])

@@ -165,7 +165,7 @@ class OptimaCensus:
             a real battery would pay for in wear, and on a flat-price day it counts
             every feasible schedule and carries no information at all. Set a
             round-trip efficiency below 1 and that degeneracy disappears — the
-            cancelling pair now strictly loses money — so this count becomes
+            canceling pair now strictly loses money — so this count becomes
             meaningful and usually small. The 1.5e10-tie flat day is an artifact of
             the lossless default, not a property of batteries.
         n_minimal: cost-optimal schedules that also use the fewest battery actions.

@@ -83,7 +83,7 @@ was the obvious suspect. The landscape contains a clearing point. The obstacle i
 ## The registered trap fired, exactly as written
 
 The plan required exactness beside every mass figure, because the reps=1 study found
-that weak penalties put *more* mass on the QUBO's minimiser while that minimiser is
+that weak penalties put *more* mass on the QUBO's minimizer while that minimizer is
 infeasible. Read the `clears` column alone and α = 0.006 is the best setting on the
 page: **32 of 40 tunings clear the bar**, nearly a third above it.
 

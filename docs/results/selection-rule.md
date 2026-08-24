@@ -24,7 +24,7 @@ The discrimination is elsewhere, and it is sharp.
 
 ## The result: in the band you would actually operate in, feasible mass picks the argmax
 
-Restricting to cells that are both **sound** (the QUBO's minimiser is feasible) and
+Restricting to cells that are both **sound** (the QUBO's minimizer is feasible) and
 **reproducible** (α ≤ 0.03, before basin count runs away):
 
 | pool | cells | feasible mass clears | `<H>` clears | feasible mass picked the *best available* tuning |

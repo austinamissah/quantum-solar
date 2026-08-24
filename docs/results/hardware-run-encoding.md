@@ -90,7 +90,7 @@ two, not the peakier.
 
 The consequence is direct and does not depend on preferring any one shape proxy:
 `cp3`'s denominator is **smaller** (0.3817 vs 0.4531), so the normalization
-*divides its degradation by less* and therefore **penalises `cp3`**. It wins the
+*divides its degradation by less* and therefore **penalizes `cp3`**. It wins the
 adjudicating comparison despite carrying the handicap. The measured gap is a
 lower bound on the encoding effect, not an inflation of it.
 

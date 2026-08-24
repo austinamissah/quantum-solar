@@ -49,7 +49,7 @@ duplicate rows 1–2 as independently sampled entries.
 
 ## Duplicate arms: a variance estimate, not extra samples
 
-Both bootstraps in this programme resample *within* a fixed set of counts, so
+Both bootstraps in this program resample *within* a fixed set of counts, so
 they can only see sampling variance. They are blind to device drift, transient
 2-qubit error, and readout instability — precisely the terms that would explain a
 reversal, and precisely what this design otherwise omits. Rows 4–5 measure that
@@ -60,7 +60,7 @@ depths), independently sampled in the same job.
 
 - **The primary comparison uses replicate 1 only** — rows 1–2. That is fixed here
   and in the target list order in `scripts/experiment_hardware.py` before
-  submission, so the more favourable pair cannot be selected afterwards.
+  submission, so the more favorable pair cannot be selected afterwards.
 - **Duplicates are NOT pooled into the primary gap.** They do not tighten the gap
   CI, do not enter the replication decision in cases A–D, and are not averaged
   with replicate 1. Pooling would convert a variance measurement into a precision

@@ -178,12 +178,12 @@ def test_every_zero_penalty_assignment_is_feasible():
         for spacing in range(1, max_sound_spacing(problem) + 1):
             for banded in (False, True):
                 encoding = Encoding.checkpoint(spacing, banded=banded)
-                penalised = build_qubo(problem, weights, encoding)
+                penalized = build_qubo(problem, weights, encoding)
                 objective = build_qubo(problem, free, encoding)
-                assert penalised.num_vars == objective.num_vars
+                assert penalized.num_vars == objective.num_vars
 
-                states = enumerate_bitstrings(penalised.num_vars)
-                penalty = (qubo_energy_diagonal(penalised)
+                states = enumerate_bitstrings(penalized.num_vars)
+                penalty = (qubo_energy_diagonal(penalized)
                            - qubo_energy_diagonal(objective))
                 zero = np.flatnonzero(penalty <= 1e-9)
                 assert zero.size, (t, spacing, banded, "no zero-penalty assignment")

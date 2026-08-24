@@ -15,7 +15,7 @@ follow-up: **is there a rule that does find it?**
 That is a fitted choice on 40 points with roughly seven observables tried, and it is
 disclosed here rather than presented as evidence. What was seen:
 
-| rule (maximise) | rank it gives the clearing tuning | corr. with optimal mass |
+| rule (maximize) | rank it gives the clearing tuning | corr. with optimal mass |
 |---|---:|---:|
 | lowest `<H>` *(incumbent)* | 12 | 0.918 |
 | lowest entropy | 1 | 0.925 |
@@ -46,7 +46,7 @@ instance 1 α\*, disclosed here: it picks the clearing tuning **26%** of the tim
 best tuning (0.07952) and the runner-up (0.07791) is 0.00162, against a shot-noise sd
 of 0.00424 at 4,096 shots — **the margin is smaller than the noise the study used.**
 
-**Q2 — a rule that generalises.** At m=6 you can enumerate; at the sizes this project
+**Q2 — a rule that generalizes.** At m=6 you can enumerate; at the sizes this project
 cares about you cannot, and then a rule may use only the shape of the output
 distribution. **Primary candidate: total feasible mass.** It needs no knowledge of the
 optimum, only a feasibility check, which is cheap at any size. It is also the
@@ -85,7 +85,7 @@ It cannot be evidence for a rule that was chosen by looking at it.
 
 **Unsound rungs are excluded from P2** (0.003, 0.006, 0.010 on instance 1, and
 whichever rungs prove unsound on the new instances). A tuning "clearing the bar" where
-the QUBO's minimiser is infeasible is the trap `basin-structure-reps2.md` documents,
+the QUBO's minimizer is infeasible is the trap `basin-structure-reps2.md` documents,
 and a rule that wins there has won nothing.
 
 ## Procedure

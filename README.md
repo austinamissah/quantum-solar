@@ -76,7 +76,7 @@ BatteryProblem ──build_qubo──▶ QUBO ──qubo_to_ising──▶ Ising
 
 **Round-trip losses** (`charge_efficiency`/`discharge_efficiency`), **export
 credited below import** (`sell_price`), and **asymmetric charge/discharge rates**
-(`charge_energy != discharge_energy`) are all modelled. Each defaults to the
+(`charge_energy != discharge_energy`) are all modeled. Each defaults to the
 simple case — lossless, net-metered, symmetric — so the defaults reproduce the
 original model exactly. Asymmetric rates refine the state-of-charge grid to the
 GCD of the two energy quanta rather than breaking it; incommensurate rates have no

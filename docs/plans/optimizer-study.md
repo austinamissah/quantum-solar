@@ -61,7 +61,7 @@ An arm **PASSES** if its **mean ideal optimal mass over the 10 tuning seeds is
 ≥ 0.078125 on the primary instance (seed 1)**, at either α. Pass/fail is on the
 mean alone.
 
-Independently, and reported alongside, an arm is labelled **RELIABLE** if it
+Independently, and reported alongside, an arm is labeled **RELIABLE** if it
 clears the bar on ≥ 8 of 10 tuning seeds. An arm that passes on the mean but is
 not reliable is a materially weaker result than one that is both, because
 variance is precisely what failed at the baseline — so all three of **mean, sd,

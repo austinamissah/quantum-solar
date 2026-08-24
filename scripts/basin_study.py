@@ -116,7 +116,7 @@ def sweep(instance_seed, n_seeds, writer, handle):
     return out
 
 
-def analyse(swept, reference, tau):
+def analyze(swept, reference, tau):
     """Everything the pre-registration asks to be reported, per α."""
     rows = []
     for alpha, (dists, achieved) in swept.items():
@@ -180,7 +180,7 @@ def main() -> None:
         writer.writeheader()
         for instance in instances:
             swept = sweep(instance, args.seeds, writer, handle)
-            report[str(instance)] = analyse(swept, reference, tau)
+            report[str(instance)] = analyze(swept, reference, tau)
             for alpha, (dists, _) in swept.items():
                 store[f"i{instance}_a{alpha}"] = dists
             np.savez_compressed(npz_path, **store)
