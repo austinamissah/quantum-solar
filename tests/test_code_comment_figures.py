@@ -32,6 +32,7 @@ SRC = ROOT / "quantum_solar" if (ROOT / "quantum_solar").is_dir() else ROOT / "s
 LESSONS = (ROOT / "docs" / "LESSONS.md").read_text()
 SIZING = (ROOT / "docs" / "results" / "capacity-rate-sensitivity.md").read_text()
 BASIN = (ROOT / "docs" / "results" / "basin-structure.md").read_text()
+ARCHITECTURE = (ROOT / "docs" / "ARCHITECTURE.md").read_text()
 ENCODING = (ROOT / "docs" / "results" / "slack-free-encoding.md").read_text()
 STUDY_JSON = json.loads((ROOT / "docs" / "results" / "capacity_rate_sensitivity.json").read_text())
 
@@ -246,3 +247,184 @@ def test_the_basin_window_quoted_in_its_figure_script():
         for g in re.search(r"usable window on this instance is ([\d.]+) ≤ α ≤ ([\d.]+)", BASIN).groups()
     )
     assert (low, high) == (document_low, document_high)
+
+
+# --- executable constants: the code is the enforcement point ---------------------
+#
+# The checks above cover figures a comment *describes*. These cover values the code
+# *acts on* -- a threshold, a seed budget, a warranty term -- where a write-up states
+# the same number as pinned or registered. Drift matters in both directions here: a
+# study whose script no longer uses the weight its write-up names is not the study
+# that was published, and a document naming a threshold the code has moved past is
+# describing something that no longer runs.
+#
+# Ordinary parameters are deliberately out of scope. Most numeric defaults in this
+# repo (``capacity=10.0``, ``charge_energy=2.0``) appear in the write-ups only because
+# the write-ups describe the instance; the code is their source, so there is nothing
+# for them to drift from.
+
+
+def module_constants(relative: str) -> dict:
+    """Module-level literal assignments, without importing the module."""
+    found = {}
+    for node in ast.parse(source(relative)).body:
+        if not isinstance(node, ast.Assign):
+            continue
+        try:
+            value = ast.literal_eval(node.value)
+        except Exception:
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                found[target.id] = value
+            elif isinstance(target, ast.Tuple) and isinstance(value, tuple):
+                for element, item in zip(target.elts, value):
+                    if isinstance(element, ast.Name):
+                        found[element.id] = item
+    return found
+
+
+BASIN_JSON = json.loads((ROOT / "docs" / "results" / "basin_study.json").read_text())
+
+
+def test_the_two_alpha_star_constants_are_different_on_purpose():
+    """`basin_study.ALPHA_STAR` is 0.021; `make_basin_figure.ALPHA_STAR` is 0.0209.
+
+    They are not the same quantity and must not be reconciled. 0.0209 is the a-priori
+    rule, span/penalty; 0.021 is the ladder rung the hardware runs actually used and
+    the study anchors on. Both appear in the write-ups, one line apart in places, so
+    a well-meaning "fix" that harmonizes them is a real risk -- and it would silently
+    re-anchor either the study or the figure.
+    """
+    study = module_constants("scripts/basin_study.py")["ALPHA_STAR"]
+    figure = module_constants("scripts/make_basin_figure.py")["ALPHA_STAR"]
+
+    assert study == BASIN_JSON["alpha_star"], "the study must use its artifact's anchor"
+    document = float(
+        re.search(r"\(objective span\) / \(default penalty\) = ([\d.]+)", ENCODING).group(1)
+    )
+    assert figure == document, "the figure must use the a-priori threshold"
+    assert study != figure, "these are different quantities; harmonizing them is the bug"
+
+
+def test_the_basin_study_constants_match_its_own_artifact():
+    """Seed budgets, resamples and solver settings, against `basin_study.json`.
+
+    The JSON is what the write-up reports; these constants are what would produce it
+    on a re-run. If they part company the study is no longer reproducible from its
+    own script, which is the one property a pre-registered sweep has to keep.
+    """
+    constants = module_constants("scripts/basin_study.py")
+    assert constants["HEADLINE_N"] == BASIN_JSON["headline_N"]
+    assert list(constants["REPORT_N"]) == BASIN_JSON["report_N"]
+    assert constants["TAU_RESAMPLES"] == BASIN_JSON["tau_resamples"]
+
+    solver = BASIN_JSON["solver"]
+    assert constants["SHOTS"] == solver["shots"]
+    assert constants["N_STARTS"] == solver["n_starts"]
+    assert constants["MAXITER"] == solver["maxiter"]
+    assert constants["REPS"] == solver["reps"]
+
+
+def test_the_warranty_term_is_one_number_in_three_places():
+    """The 10-year warranty is the bar the whole payback conclusion is measured against.
+
+    It is stated in the sizing study, in the CLI that prints a payback verdict, and in
+    the committed JSON. A drift in the CLI alone would have it telling a user a
+    different story than the write-up.
+    """
+    study = module_constants("scripts/battery_sizing_study.py")["WARRANTY_YEARS"]
+    cli = module_constants("src/quantum_solar/__main__.py")["WARRANTY_YEARS"]
+    committed = STUDY_JSON["annual"]["warranty_years"]
+
+    assert study == cli == committed
+    assert f"**{committed} years**" in SIZING
+
+
+def test_the_headline_round_trip_is_one_number():
+    """0.90 is the regime every current dollar figure is quoted in.
+
+    Two scripts name it and the JSON records it. The figure script's copy is the one
+    that decides which regime gets drawn, so it drifting would mislabel a chart rather
+    than fail loudly.
+    """
+    study = module_constants("scripts/battery_sizing_study.py")["HEADLINE_ROUND_TRIP"]
+    figure = module_constants("scripts/make_payback_figure.py")["EXPECTED_ROUND_TRIP"]
+    assert study == figure == STUDY_JSON["annual"]["round_trip_efficiency"]
+
+
+def test_the_cheapest_install_the_figure_calls_out():
+    """`make_payback_figure.CHEAPEST` must be the cheapest install the study prices."""
+    cheapest = module_constants("scripts/make_payback_figure.py")["CHEAPEST"]
+    assert cheapest == min(p["installed_cost"] for p in STUDY_JSON["annual"]["payback"])
+
+
+def test_the_peak_window_end_hour_matches_the_construction_note():
+    """The sweep grows the window backward from a fixed end hour; both name hour 20.
+
+    The write-up explains that growing it forward would eat the refill hours and bind
+    instead of the rule under test, so this constant is load-bearing for the result.
+    """
+    end = module_constants("scripts/battery_sizing_study.py")["PEAK_END"]
+    assert f"window *ends* at hour {end}" in SIZING
+
+
+def test_the_reliability_rule_is_the_scripts_own():
+    """PASS+RELIABLE is `RELIABLE_FRACTION` of the seeds, not a threshold read off.
+
+    The code says 0.8, i.e. >= 8/10. The published table happens to show 9, 9, 10 and
+    7, which is equally consistent with a >= 9 rule -- so reading the rule off the
+    table gives a plausible wrong answer. Taken from the script instead.
+    """
+    constants = module_constants("scripts/optimizer_study.py")
+    fraction = constants["RELIABLE_FRACTION"]
+
+    _, rows = markdown_table(ENCODING, "| instance | α | best arm |")
+    for row in rows:
+        clears, total = (int(n) for n in numbers(row[4])[:2])
+        verdict = row[5].strip("*")
+        assert ("RELIABLE" in verdict) == (clears >= fraction * total), row[0]
+
+
+def test_the_spsa_budget_matches_its_published_eval_count():
+    """SPSA evaluates twice per iteration, so its arm-table cost is 2 x SPSA_ITERS."""
+    iterations = module_constants("scripts/optimizer_study.py")["SPSA_ITERS"]
+    _, rows = markdown_table(ENCODING, "| arm | mean (α=0.021) |")
+    published = next(numbers(row[3])[0] for row in rows if row[0].strip("`") == "spsa")
+    assert published == 2 * iterations
+
+
+def test_the_committed_instance_day_matches_the_write_up():
+    """"AMY-2018 day 192" must be the day the committed schedule actually holds.
+
+    The loader's ``day=172`` default is not this number and is not meant to be -- the
+    committed instance passes its day explicitly -- so the check is against the
+    artifact, not the default.
+    """
+    snapshot = json.loads((ROOT / "docs" / "figures" / "web" / "schedule_real_day.json").read_text())
+    day = snapshot["buckets"]["summer_weekday"]["day"]
+    year = module_constants("src/quantum_solar/data/calendar.py")["AMY_YEAR"]
+    assert f"AMY-{year} day {day}" in SIZING
+
+
+@pytest.mark.parametrize(
+    "relative,name",
+    [
+        ("src/quantum_solar/brute_force.py", "MAX_ENUMERATION_SITES"),
+        ("src/quantum_solar/problem.py", "MAX_SOC_LEVELS"),
+    ],
+    ids=["enumeration-sites", "soc-levels"],
+)
+def test_the_refusal_ceilings_architecture_quotes(relative, name):
+    """`ARCHITECTURE.md` names both refusal ceilings with their values in brackets.
+
+    These are guards, not preferences: one keeps brute force from being asked for an
+    intractable enumeration, the other rejects an off-grid rate rather than silently
+    rounding it -- a defect this repo actually shipped once, a 10 kWh battery quietly
+    becoming 12. A document quoting a ceiling the code has moved past would send a
+    reader looking for the wrong failure.
+    """
+    value = module_constants(relative)[name]
+    # The opening backtick is dropped from the match: one of the two is written
+    # ``> MAX_ENUMERATION_SITES`` inside the quoted span, the other bare.
+    assert f"{name}` ({value})" in ARCHITECTURE

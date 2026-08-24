@@ -347,7 +347,11 @@ def test_instance_dependence_table_row(instance, alpha, row):
 
     verdict = row[5].strip("*")
     assert (clears == 0) == (verdict == "fail")
-    assert ("RELIABLE" in verdict) == (clears >= 9)
+    # The reliability threshold is the study script's RELIABLE_FRACTION, not a
+    # number read off this table: 9/9/10/7 is equally consistent with >= 9, and
+    # the script says 0.8. Pinned against the script in
+    # tests/test_code_comment_figures.py; used here so both agree.
+    assert ("RELIABLE" in verdict) == (clears >= 0.8 * len(masses))
 
 
 def test_the_two_optimizer_tables_agree_on_the_primary_instance():
