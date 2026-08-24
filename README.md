@@ -102,7 +102,25 @@ a Python interface under active development, which is also why the hardware scri
 uses a saved account rather than the legacy `channel="ibm_quantum"` retired in the
 2025 platform migration (see the Hardware section).
 
-## The finding: one number decides whether any of this works
+## The findings
+
+Three things have to be right before QAOA works on a constrained problem: the
+**encoding** must be sound, the **penalty weight** must be scaled, and the rule you
+use to **select a tuning** must track what you actually want. Each failure is
+invisible in the metric you would naturally watch.
+
+> **[`docs/FINDINGS.md`](docs/FINDINGS.md) says which of the three is new and which
+> are rediscoveries**, with the prior art, and points at the test behind each number.
+> Short version: the **soundness guarantee** on the checkpoint encoding is the part
+> that appears not to exist elsewhere — removing slack variables is a crowded field,
+> but the published alternatives bias toward feasibility rather than guaranteeing it.
+> The penalty-weight rule and the selection rule below are **known ideas**; what is
+> ours is measuring what they cost on a real instance.
+
+Read that first if you are here to judge the work. The rest of this section is the
+penalty-weight result, which is the most self-contained of the three.
+
+### The penalty weight
 
 The penalty weight — how hard the QUBO pushes the optimizer to respect the
 battery's physical limits — is usually set by a rule of thumb, ~10× the objective's
@@ -212,6 +230,9 @@ agree), then plots the optimal schedule for a full day. Its real-data cells need
 
 ## Documentation
 
+- [`docs/FINDINGS.md`](docs/FINDINGS.md) — **what is actually new here and what is
+  not**, positioned against the published literature, with the test behind every
+  number. Read this before citing anything.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how the pipeline fits together,
   the invariants that are easy to break, data provenance, and conventions. Start
   here before changing anything.

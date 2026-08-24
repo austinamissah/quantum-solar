@@ -15,6 +15,7 @@ import pytest
 
 from quantum_solar import (
     Encoding,
+    PenaltyWeights,
     brute_force_solve,
     build_qubo,
     default_weights,
@@ -22,7 +23,14 @@ from quantum_solar import (
     max_sound_spacing,
     synthetic_instance,
 )
+from quantum_solar.brute_force import enumerate_bitstrings
 from quantum_solar.qubo_search import qubo_min_exact
+
+
+def qubo_energy_diagonal(qubo):
+    """Energy of every basis assignment, indexed by basis integer."""
+    x = enumerate_bitstrings(qubo.num_vars).astype(float)
+    return np.einsum("bi,ij,bj->b", x, qubo.Q, x) + qubo.offset
 
 # Instances small enough to brute-force, spanning capacity and initial SoC.
 INSTANCES = [
@@ -142,3 +150,60 @@ def test_scales_past_brute_force():
     for name, encoding in _encodings(problem):
         dp = qubo_min_exact(problem, weights, encoding)
         assert np.isfinite(dp.qubo_energy), name
+
+
+def test_every_zero_penalty_assignment_is_feasible():
+    """Soundness in the strong form the write-ups state, checked exhaustively.
+
+    ``test_checkpoint_is_sound_at_scale`` covers the *minimum-energy* assignment at
+    sizes brute force cannot reach. This covers the stronger sentence the write-ups
+    actually publish -- "every zero-penalty assignment is genuinely feasible" -- by
+    enumerating the whole register at sizes where that is possible.
+
+    That sentence is the one load-bearing claim in `docs/FINDINGS.md`: removing slack
+    variables is a crowded field, and what distinguishes `Checkpoint` from the
+    published alternatives is that it is a guarantee rather than a bias. A guarantee
+    asserted only about the minimum is a weaker claim than the one being made, so it
+    is checked here about every assignment.
+
+    Penalty is isolated by differencing against a zero-weight QUBO on the same
+    encoding, so this tests `build_qubo`'s penalty terms directly rather than any
+    reimplementation of them.
+    """
+    free = PenaltyWeights(mutual_exclusion=0.0, soc_bounds=0.0, terminal=0.0)
+
+    for t, capacity, initial in ((3, 3.0, 1.0), (4, 3.0, 1.0), (4, 4.0, 2.0)):
+        problem = _problem(t, capacity, initial)
+        weights = default_weights(problem)
+        for spacing in range(1, max_sound_spacing(problem) + 1):
+            for banded in (False, True):
+                encoding = Encoding.checkpoint(spacing, banded=banded)
+                penalised = build_qubo(problem, weights, encoding)
+                objective = build_qubo(problem, free, encoding)
+                assert penalised.num_vars == objective.num_vars
+
+                states = enumerate_bitstrings(penalised.num_vars)
+                penalty = (qubo_energy_diagonal(penalised)
+                           - qubo_energy_diagonal(objective))
+                zero = np.flatnonzero(penalty <= 1e-9)
+                assert zero.size, (t, spacing, banded, "no zero-penalty assignment")
+
+                for index in zero:
+                    assert problem.is_feasible(states[index]), (
+                        f"T={t} cap={capacity} spacing={spacing} banded={banded}: "
+                        f"assignment {index} carries zero penalty but is infeasible, "
+                        f"so the encoding is NOT sound"
+                    )
+
+
+def test_the_soundness_guard_refuses_an_unsound_spacing():
+    """Guard the guard: past `max_sound_spacing` the encoding must refuse, not bias.
+
+    If it silently accepted, the test above would pass vacuously on a spacing that
+    has no guarantee, which is exactly the failure `docs/FINDINGS.md` says the
+    published alternatives have.
+    """
+    problem = _problem(6, 3.0, 1.0)
+    too_far = max_sound_spacing(problem) + 1
+    with pytest.raises(ValueError, match="headroom"):
+        build_qubo(problem, default_weights(problem), Encoding.checkpoint(too_far))
