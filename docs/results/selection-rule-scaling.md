@@ -56,8 +56,8 @@ applied.** That was the untested claim in `selection-rule.md` and it now has evi
 - **The margin is small at every size.** `<H>`'s pick is worse by 1.4%, 3.0%, 0.8% and
   3.2%. `<H>` is not catastrophic here — it simply never picks the best. That is a
   much weaker failure than at T=3 on the hard instance, where its pick **missed the
-  bar entirely** and the stakes were binary. **Do not quote the T=3 stakes with these
-  ranks.**
+  bar entirely** and the stakes were binary. **The T=3 stakes do not carry over to
+  these ranks.**
 - **T=7 is still enumerable** — 16,384 states. This tests the regime **by shot
   budget**, not by intractability. A genuinely non-enumerable instance is untested and
   this is not a substitute for one.

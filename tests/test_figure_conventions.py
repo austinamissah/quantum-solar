@@ -106,8 +106,8 @@ def test_there_are_figure_scripts_to_check():
 def test_no_em_dash_reaches_the_canvas(script):
     """No em-dash in any text that gets drawn.
 
-    Use a colon, a comma, a semicolon, or a second sentence instead. En-dashes are
-    untouched by this rule: they are the right character for a range.
+    Figures here use a colon, a comma, a semicolon, or a second sentence in its
+    place. En-dashes are untouched: they are the right character for a range.
     """
     offenders = [(line, text) for line, text in renderable_strings(script)
                  if EM_DASH in text]

@@ -232,8 +232,8 @@ def show_year(result, *, capacity, rate, round_trip, export_ratio) -> None:
           f"    solar saves   {_money(result.solar_savings):>10}")
     print(f"  solar + optimal battery                      {_money(result.optimized_cost):>12}"
           f"    battery adds  {_money(result.battery_savings):>10}")
-    print("\n  The battery figure holds solar fixed, so it is the battery ALONE. Do not add")
-    print("  the two: under an export credit below retail they move in OPPOSITE directions")
+    print("\n  The battery figure holds solar fixed, so it is the battery ALONE. The two")
+    print("  do not sum: under an export credit below retail they move in OPPOSITE directions")
     print("  (a poor credit hurts solar and helps the battery, via self-consumption).")
 
     if result.battery_savings > 0:

@@ -89,7 +89,7 @@ page: **32 of 40 tunings clear the bar**, nearly a third above it.
 
 It is worthless. At α = 0.006 the QUBO's minimum-energy assignment **is not a
 feasible schedule**, so that mass sits on a state that is not an answer. The same
-holds at 0.010. **Never read `clears` without `encoding sound?`.**
+holds at 0.010. The `clears` column has no meaning without the `encoding sound?` column beside it.
 
 ## The usable window is instance-dependent, and narrower here
 

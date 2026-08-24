@@ -38,8 +38,8 @@ domain-agnostic over "a QUBO + a problem exposing `energy(x)`/`is_feasible(x)`".
   penalties to dominate the objective.
 - `dynamic_programming.py` — `dp_solve`: exact, `O(T·K·3)` DP over the discrete
   SoC grid. The **scalable** ground truth; enforces SoC bounds structurally (no
-  slack). Use it, not brute force, for any non-tiny `T`.
-  **`dp_solve`'s tie-break is specified, and must stay that way.** Selection is
+  slack). It replaces brute force for any non-tiny `T`.
+  **`dp_solve`'s tie-break is specified rather than incidental.** Selection is
   lexicographic: minimum cost (within `TIE_ATOL`), then **fewest battery actions**,
   then a fixed action preference (idle < charge < discharge). The comparison is
   tolerance-based *on purpose* — an exact `<` is what let the `action_costs()`
@@ -57,7 +57,7 @@ domain-agnostic over "a QUBO + a problem exposing `energy(x)`/`is_feasible(x)`".
   still only one of many tied optima**. Every hour at the same price is
   interchangeable, so on the real Xcel RE-TOU weekday 2,448 minimal-cost plans tie
   and only the four peak discharge hours are forced. Report `forced()` and
-  `n_minimal`, never the raw hour list, whenever the audience might read it as *the*
+  `n_minimal` rather than the raw hour list, wherever the audience might read it as *the*
   answer — the tie-break makes the plan reproducible, not canonical. Note `n_optima`
   (all ties) is a much larger and near-useless number **at the lossless default**:
   a charge and discharge at one price then cancel, so it counts unbounded free
@@ -77,7 +77,7 @@ domain-agnostic over "a QUBO + a problem exposing `energy(x)`/`is_feasible(x)`".
 - `brute_force.py` — exact `2^M` enumeration of the QUBO; validates the
   *encoding* on tiny instances. Refuses `> MAX_ENUMERATION_SITES` (20) vars.
 - `statevector.py` — `qaoa_probabilities`: the exact QAOA output distribution in
-  NumPy. **Use this, never `Statevector(QAOAAnsatz(...))`** — the latter
+  NumPy. **This replaces `Statevector(QAOAAnsatz(...))`** — the latter
   matrix-exponentiates the undecomposed cost layer and raises `MemoryError` from
   `m=14` up, which silently capped `ideal_opt_mass` at `T=3` for a whole sweep.
   The cost Hamiltonian is diagonal, so no exponentiation is needed. A constant
@@ -108,10 +108,10 @@ exports (`qubo_to_ising`, `QAOASolver`, `QAOAResult`) lazily via PEP 562
 `__getattr__`. So `import quantum_solar` pulls **numpy and the stdlib only** — not
 qiskit, scipy or matplotlib — and `dp_solve`/`brute_force_solve`/`build_qubo`/
 `annual_savings` all run without a quantum stack installed. Touching a quantum name
-raises `ImportError` at the attribute, not at package import. Keep the deferral at
-the package boundary: `ising`/`qaoa` should keep ordinary top-level imports so each
-module still declares its real dependencies, and importing them directly is
-eagerly-qiskit by design. `tests/test_optional_qiskit.py` enforces this by blocking
+raises `ImportError` at the attribute, not at package import. The deferral sits at
+the package boundary: `ising`/`qaoa` keep ordinary top-level imports so each module
+still declares its real dependencies, and importing them directly is eagerly-qiskit
+by design. `tests/test_optional_qiskit.py` enforces this by blocking
 qiskit in `sys.meta_path`, so a stray top-level import fails the suite rather than
 passing silently in an environment that happens to have qiskit.
 - `annual.py` — `annual_savings` sweeps **all 365 days exactly** (PVWatts fetched
@@ -142,7 +142,7 @@ Gotchas:
   commensurate. A charge then spans `charge_energy/g` levels and a discharge
   `discharge_energy/g`; with equal rates `g` *is* that rate and nothing changes.
   `encodings.soc_grid` is the **single place** this lands — slack width, penalty
-  scaling and the search state space all derive from it, so do not reintroduce
+  scaling and the search state space all derive from it, so nothing reintroduces
   `problem.charge_energy` as a grid step anywhere. Three consequences:
   - **Incommensurate rates are rejected, not approximated.** 2.0 against 2.0√2
     needs ~9M levels, so `require_soc_on_grid` fails on `MAX_SOC_LEVELS` (4096).
@@ -187,9 +187,9 @@ Gotchas:
   one buy=sell price the bill separates into `price @ (load − generation)` plus
   the battery's own term, and the battery appears only in the second — so the plan
   depends on the **price curve alone**. Verified: identical schedule under zero
-  solar, 3× solar, flat load and random load; only the bill moves. **Never present
-  it as real-world guidance**, and don't "fix" a caption by asserting the battery
-  charges on surplus solar — it does not.
+  solar, 3× solar, flat load and random load; only the bill moves. **It is a
+  modelling artifact rather than real-world guidance**, and a caption asserting the
+  battery charges on surplus solar would be wrong: it does not.
   This holds **only under net metering**. Set `sell_price` below `price` and the
   kink at `net == 0` couples the plan to the household, which is the regime where a
   battery earns self-consumption value rather than pure arbitrage.
@@ -216,14 +216,14 @@ Gotchas:
   `api.openei.org`, keyed by the same NREL key), and **load** (NREL ResStock
   representative CO single-family-detached profile — packaged CSVs read with no
   network; provenance in `src/quantum_solar/data/profiles/SOURCE.md`).
-- **Season/day-type coherence (do not regress).** `load_nrel_instance` derives the
+- **Season/day-type coherence.** `load_nrel_instance` derives the
   price month, the URDB weekday-vs-weekend schedule, **and** the load bucket all
   from `day` (the 0-based day-of-year), so the three inputs can never disagree on
   season or day type — the bug fixed here was `day` selecting the solar day while
   load/price silently stayed on July. The day→season/day-type map lives in
   `data/calendar.py`, pinned to **AMY 2018**: it is the year the ResStock CSVs were
   averaged under, and it is non-leap so `range(365)` aligns 1:1 with the 8760-hour
-  PVWatts array — **do not make the year dynamic.** Helpers: `day_to_month`,
+  PVWatts array, so the year is fixed rather than dynamic. Helpers: `day_to_month`,
   `is_weekend`, `day_type`.
 - **Load profiles are 4 committed buckets** (summer/winter × weekday/weekend),
   read via `load_profile(month, day_type)`. An internal month→season table folds
@@ -246,7 +246,7 @@ Gotchas:
   monkeypatched); `slow` live tests (`test_pvwatts_live`, `test_urdb_live`) hit
   the real APIs and self-skip when no key is configured.
 - **NREL API key** lives in `NREL_API_KEY`. The repo-root `.env` holds it and is
-  gitignored — never commit it. `config.nrel_api_key()` reads `os.environ` first,
+  gitignored and uncommitted. `config.nrel_api_key()` reads `os.environ` first,
   then falls back to parsing the repo-root `.env` (ignoring the `REPLACE_ME`
   placeholder).
 - **NREL developer domain moved to `developer.nlr.gov`** (NREL → "National
@@ -320,19 +320,19 @@ do:
 ## Code quality
 
 - Prioritize correctness and efficiency.
-- Prefer vectorized NumPy over Python loops for numerical work.
+- Numerical work is vectorized NumPy rather than Python loops.
 
 ## Conventions
 
 - `requirements.txt` lists only direct dependencies with `~=` major.minor bounds.
-  Keep it that way; add a line when introducing a new direct dependency. It is the
+  A line is added there when a new direct dependency appears. It is the
   **single source of truth** for dependencies — `pyproject.toml` deliberately
   declares none, which is why the package installs with `pip install -e . --no-deps`.
   Each line is annotated with which half of the project needs it (only `numpy` is
   required by the classical path), but the file is still one full environment, not
-  a set of installable tiers. **Do not split it into core/quantum files and do not
-  mirror it into `pyproject.toml` extras**: either creates two declarations of the
-  same dependency, and they drift. If a slim install is ever actually needed —
+  a set of installable tiers. It is deliberately **not** split into core/quantum
+  files and **not** mirrored into `pyproject.toml` extras: either creates two
+  declarations of the same dependency, and they drift. If a slim install is ever actually needed —
   publishing to PyPI, or someone asking for one — do it properly in one move:
   dependencies and `quantum`/`hardware`/`dev` extras into `pyproject.toml`, and
   delete `requirements.txt`. Maintaining both is the failure mode to avoid.
@@ -342,42 +342,36 @@ do:
   **lazily** so stages (a)/(c) and the tests run without it installed. Hardware
   auth is a saved account (`~/.qiskit`) via a bare `QiskitRuntimeService()` — no
   legacy `channel="ibm_quantum"` (sunset in the 2025 migration).
-- **No em-dashes in anything a figure draws.** Titles, axis labels, annotations,
-  captions: use a colon, a comma, a semicolon, or a second sentence. En-dashes are
-  fine and are the right character for a range (`5–9pm`, `T=2–5`); the rule is
-  about the em-dash specifically. Docstrings and `print` output are exempt, since
-  neither reaches the canvas. Enforced by `tests/test_figure_conventions.py`, which
-  parses every script that calls `savefig` rather than relying on anyone
-  remembering.
 - **A published number lives in exactly one place; everywhere else derives it.**
   Every figure a write-up in `docs/results/` states is checked against the artifact
   that produced it, and every restatement of one in a comment, a docstring, or a
   module constant is checked against the document it came from. Enforced by
   `tests/_markdown.py` (shared parsing) plus the `tests/test_*_tables.py` modules,
   which between them cover every write-up, and by
-  `tests/test_code_comment_figures.py` for the restatements. **Add a number, add its
-  check** — the write-ups are hand-written, no script emits them, and an unchecked
-  figure has drifted from its own data more than once. Three rules separate a gate
+  `tests/test_code_comment_figures.py` for the restatements. A number added to a write-up gets its check
+  with it: the write-ups are hand-written, no script emits them, and an unchecked
+  figure has drifted from its own data more than once. Three things separate a gate
   from a rubber stamp:
-  - **Recompute, do not compare.** A column with no counterpart in an artifact — a
+  - **Recomputation, not comparison.** A column with no counterpart in an artifact — a
     percentage, a gain, a ratio — is hand arithmetic, and hand arithmetic is where
     every wrong number found so far has been.
-  - **Never let a check infer its rule from the data it checks.** It will agree with
-    that data whatever the rule really is. If the code already derives a value
-    (an evaluation cap, a reliability threshold), the test derives it the same way
-    instead of restating the answer.
+  - **A check that infers its rule from the data it checks proves nothing.** It
+    agrees with that data whatever the rule really is. Where the code already derives
+    a value (an evaluation cap, a reliability threshold), the test derives it the same
+    way rather than restating the answer.
   - **A ratio of rounded figures needs an interval, not equality.** These documents
     divide unrounded quantities and print the rounded ones, so `0.00013 → 0.0453` is
-    published as 349× while the printed pair divides to 348. Use `rounding_interval`
-    and `assert_quotient`; demanding equality fails on correct arithmetic.
+    published as 349× while the printed pair divides to 348. `rounding_interval` and
+    `assert_quotient` cover this; equality fails on correct arithmetic.
 - **Those checks are found by text-matching, so they are blind to a change of
   units.** A threshold registered as `10%` in a plan and held as `0.10` in code does
   not match, and was missed for exactly that reason. Fraction against percent is the
-  common case; seconds against minutes and kWh against Wh have the same shape. When a
-  number appears in a unit its document does not use, pair it up by hand — no sweep
-  will do it for you.
-- **Mutation-test the guard, not just the finding.** A check that passes on correct
-  data has shown nothing; break the thing it claims to protect and watch it fail. On
+  common case; seconds against minutes and kWh against Wh have the same shape. A
+  number appearing in a unit its document does not use has to be paired up by hand,
+  since no sweep finds it.
+- **Guards here are mutation-tested, not just the findings.** A check that passes on
+  correct data has shown nothing; breaking what it claims to protect is what shows it
+  works. On
   2026-08-24 five separate guards in this repository turned out to be weaker than they
   read, and every one was found this way and none any other way:
   - a rule inferred from the very table it was checking, so it would have agreed with
@@ -389,15 +383,15 @@ do:
   - three guards that silently matched nothing because the sentence they quoted
     **wraps across source lines**.
 
-  The last is the one to watch for: a pattern that matches nothing passes forever and
-  looks identical to a pattern that matches. **Assert the pattern is present before
-  mutating it**, or a mutation test reports success while exercising nothing — which
-  happened here first and hid two of the five.
+  The last is the subtlest: a pattern that matches nothing passes forever and looks
+  identical to a pattern that matches. Mutations here assert the pattern is present
+  before changing it, because otherwise the mutation test reports success while
+  exercising nothing — which happened here first and hid two of the five.
 - **Where a write-up's caveats do work, gate the caveats too.** These documents earn
   their conclusions by bounding them, so a later edit that keeps "picks the argmax in
   9 of 9" while dropping "and the held-out instances are easy" leaves every number
   correct and the paper wrong. The `test_selection_*_tables.py` modules assert the
   limiting sentences alongside the findings, and mutation-test both.
-- Commits carry no attribution or co-author trailers. Keep it that way.
-- Editor and local tooling configuration stays out of the repository; add it to
-  `.gitignore` rather than committing machine-local settings.
+- Commits carry no attribution or co-author trailers.
+- Editor and local tooling configuration stays out of the repository, in
+  `.gitignore` rather than committed.

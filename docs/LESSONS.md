@@ -117,7 +117,7 @@ minutes with the existing data would have reordered the whole project.
 
 ---
 
-## 3. Check your metric is measurable before you spend anything
+## 3. The metric was not measurable at the size we spent on
 
 Of four circuits in an earlier hardware run, **three had a target signal below the
 level of random guessing** — not because the hardware was bad, but because the
@@ -280,7 +280,7 @@ How many repeats you need:
 
 Three is a floor, not a target.
 
-### Check your design can produce every verdict it defines
+### A design that could not produce every verdict it defined
 
 The follow-up used 5 replicates and defined three outcomes: RESOLVED, UNRESOLVED,
 INDETERMINATE. Working through the arithmetic *before* running it:
@@ -303,7 +303,7 @@ their intervals, which is the same error this document criticizes elsewhere.
 
 ---
 
-## 5. Do not count the same noise twice
+## 5. The same noise counted twice
 
 Two instances, both subtle, both changing conclusions.
 
@@ -473,7 +473,7 @@ have caught it.
 
 ---
 
-## 8. Retract in place
+## 8. Retracting in place
 
 We withdrew several claims. One example, because the reasoning error is common:
 
@@ -553,31 +553,35 @@ discriminate.
 
 ---
 
-## A short checklist
+## What this project checks now
 
-1. Compare your constraint penalties to your objective's spread. Ratio ≫ 1 means
-   you are optimizing the constraints.
-2. Work out which resource actually limits you. It is usually not the one that is
-   easy to count.
-3. Compute what your metric will read if your hypothesis is true. If that is below
-   your resolution, redesign before spending. Check the code computing it reaches
-   your largest size, too — "unmeasurable" includes "the implementation dies there".
-4. Simulate your own decision rule. Check it can return every verdict it defines,
-   and pin the *population* it applies to, not just the threshold.
-5. Never compare two point estimates without their intervals. Check neither is
-   sitting on a limit you imposed — a ratio of two capped numbers is 1.0 by
-   construction, and reads as a clean null. Then check whether the cap actually
-   changed the answer: raise it, and if the extra allowance goes unused, it was
-   never what was binding.
-6. Do not let the same noise into your analysis twice.
-7. Dry-run anything that spends; open the artifact rather than trusting exit
-   codes; verify fast paths against slow ones. Before reporting that a job ran,
-   check evidence it produced — not that its supervisor is alive.
-8. Test opt-in paths at their real size. Flags, `--include-*` switches, stretch
-   targets and env-var overrides are skipped by the default run, so a green suite
-   says nothing about them — and calling the right function at the wrong size is
-   not coverage of the size that matters.
-9. Derive inputs that must agree from a single source.
-10. Write down what would falsify you *before* you look, including the wording of
-    the retraction.
-11. Retract in place.
+Written as notes rather than advice: these are the checks that would have caught the
+failures above, and they are the ones this repository runs.
+
+1. Constraint penalties are compared against the objective's spread. A ratio ≫ 1
+   means the constraints are what is being optimized.
+2. Which resource actually limits the run gets worked out first. It is usually not
+   the one that is easy to count.
+3. What the metric will read *if the hypothesis is true* is computed before
+   spending. If that sits below the resolution available, the design changes first.
+   The code computing it has to reach the largest size too — "unmeasurable" includes
+   "the implementation dies there".
+4. The decision rule gets simulated against itself: whether it can return every
+   verdict it defines, with the *population* pinned rather than only the threshold.
+5. Point estimates are not compared without their intervals, and neither is allowed
+   to sit on a self-imposed limit — a ratio of two capped numbers is 1.0 by
+   construction and reads as a clean null. Whether the cap changed the answer is a
+   separate check: raise it, and if the extra allowance goes unused it was never
+   what was binding.
+6. The same noise does not enter the analysis twice.
+7. Anything that spends gets a dry run; the artifact is opened rather than the exit
+   code trusted; fast paths are verified against slow ones. Evidence a job produced
+   output is what counts as it having run, not that its supervisor is alive.
+8. Opt-in paths are tested at their real size. Flags, `--include-*` switches,
+   stretch targets and env-var overrides are skipped by the default run, so a green
+   suite says nothing about them, and calling the right function at the wrong size
+   is not coverage of the size that matters.
+9. Inputs that must agree are derived from a single source.
+10. What would falsify a claim is written down *before* the data, including the
+    wording of the retraction.
+11. Retractions happen in place.

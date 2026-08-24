@@ -140,7 +140,7 @@ def test_the_margin_caveat_survives():
     # not, and the warning against importing the T=3 stakes, are both load-bearing.
     assert "`<H>` is not catastrophic here" in FLAT
     assert "it simply never picks the best" in FLAT
-    assert "Do not quote the T=3 stakes with these ranks" in FLAT
+    assert "The T=3 stakes do not carry over to these ranks" in FLAT
 
 
 def test_the_non_monotonicity_is_reported_not_smoothed():

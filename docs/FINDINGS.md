@@ -18,14 +18,14 @@ artifact it came from.
 ## The three legs
 
 A constrained problem handed to QAOA needs three separate things to be right. Each
-failure is **invisible in the metric you would naturally watch**, which is the reason
+failure is **invisible in the metric one would naturally watch**, which is the reason
 all three are worth writing down together.
 
 | | what must be right | what goes wrong if it is not | new? |
 |---|---|---|---|
 | 1 | **the encoding is sound** | mass piles onto states that are not schedules, and the metric reports success | **apparently yes** |
 | 2 | **the penalty weight** | the landscape stops being reproducible | no — known |
-| 3 | **the tuning selection rule** | the run that would have worked is not the one you keep | no — known |
+| 3 | **the tuning selection rule** | the run that would have worked is not the one kept | no — known |
 
 ---
 

@@ -36,13 +36,13 @@ midnight. The day's bill is **$0.36 against $2.29** with the battery sitting idl
 forced: **2,448 minimal-cost plans tie** on this day, and every one of them
 discharges across the whole 5–9pm window. The specific charging hours drawn here are
 one arbitrary pick among those ties — `dp_solve` breaks ties arbitrarily, so report
-`optima_census().forced()`, never the raw hour list. The lone green bar just after
+`optima_census().forced()` rather than the raw hour list. The lone green bar just after
 the peak is forced in kind but not in placement: the day must end where it started,
 so a refill must happen, and every post-peak hour is priced the same.
 
 **Charging follows the price, not the solar.** Under net metering the optimal plan
 provably depends on the price curve alone — it is unchanged by zero solar, triple
-solar, flat load, or random load; only the bill moves. Do not read this as advice to
+solar, flat load, or random load; only the bill moves. This is not advice to
 "charge on surplus solar". See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the
 derivation and the one assumption that breaks it.
 
@@ -105,9 +105,9 @@ uses a saved account rather than the legacy `channel="ibm_quantum"` retired in t
 ## The findings
 
 Three things have to be right before QAOA works on a constrained problem: the
-**encoding** must be sound, the **penalty weight** must be scaled, and the rule you
-use to **select a tuning** must track what you actually want. Each failure is
-invisible in the metric you would naturally watch.
+**encoding** has to be sound, the **penalty weight** has to be scaled, and the rule
+that **selects a tuning** has to track what is actually wanted. Each failure is
+invisible in the metric one would naturally watch.
 
 > **[`docs/FINDINGS.md`](docs/FINDINGS.md) says which of the three is new and which
 > are rediscoveries**, with the prior art, and points at the test behind each number.
@@ -117,8 +117,8 @@ invisible in the metric you would naturally watch.
 > The penalty-weight rule and the selection rule below are **known ideas**; what is
 > ours is measuring what they cost on a real instance.
 
-Read that first if you are here to judge the work. The rest of this section is the
-penalty-weight result, which is the most self-contained of the three.
+That document is the place to start for judging the work. The rest of this section
+is the penalty-weight result, the most self-contained of the three.
 
 ### The penalty weight
 

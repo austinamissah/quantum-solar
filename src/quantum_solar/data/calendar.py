@@ -9,15 +9,15 @@ as weekends (and vice versa).
 
 2018 is pinned for that provenance reason and because it is **non-leap**: a
 ``range(365)`` annual loop aligns 1:1 with the 8760-hour PVWatts array with no
-Feb-29 case to special-case. Do not make the year dynamic — a leap year would
-desync the day index from the 8760-hour grid.
+Feb-29 case to special-case. The year is fixed rather than dynamic: a leap year
+would desync the day index from the 8760-hour grid.
 """
 
 from __future__ import annotations
 
 import datetime
 
-# Non-leap; see module docstring. Not a parameter — do not change.
+# Non-leap; see module docstring. Fixed by that alignment, not a tunable.
 AMY_YEAR = 2018
 
 _JAN1 = datetime.date(AMY_YEAR, 1, 1)
