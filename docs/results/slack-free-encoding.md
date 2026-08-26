@@ -314,8 +314,21 @@ is why H1's gate is on *ideal* mass, which can be computed exactly.
 
 Like-for-like at T=3, the encoding took ideal mass from 0.00013 to **0.0453
 (349×)** at 54 gates instead of 133. T=6 and T=4 are ruled out: their reps=2
-circuits (269 and 267 gates) are past the coherence limit, and a candidate that
-can only run one depth cannot answer a question about depth.
+circuits (**~590** and **267** gates at level 3) are past the coherence limit, and
+a candidate that can only run one depth cannot answer a question about depth.
+
+> **Correction, 2026-08-25.** The T=6 figure read **269** until now, which is that
+> circuit's **reps=1** count at level 3 — the value in the table directly above,
+> not its reps=2 count. Re-transpiling against `FakeFez` puts the T=6 reps=2
+> circuit at **581–600** two-qubit gates over five draws, against **263–284** for
+> T=4, which is where the quoted 267 sits. The same re-measure returns the table's
+> own rows at 276–301 (T=6) and 120–134 (T=4), so the table is reps=1 throughout
+> and is unchanged; only this sentence mixed the two depths. The ruling-out stands
+> and is strengthened, the real reps=2 circuit being about twice as far past the
+> coherence limit as the wrong number suggested. This is `docs/LESSONS.md` §6
+> ("make comparisons differ in exactly one thing") failing on the same number that
+> file already records for the 348/269 pairing: mixed there on transpiler level,
+> here on depth.
 
 A structural result at T=3: with spacing 3 there are **no interior checkpoints**,
 so the encoding reduces to objective + mutual exclusion + terminal. Soundness
