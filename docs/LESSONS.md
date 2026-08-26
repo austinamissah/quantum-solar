@@ -633,6 +633,50 @@ record, and correcting it needed no change to anything archived.
 
 ---
 
+## 11. A limit was written down, and writing it down became the substitute for fixing it
+
+**The setup.** The prior-art scan behind the novelty claim in `docs/FINDINGS.md` was
+about a dozen searches across encoding, penalty, mixer and application vocabularies,
+plus a domain survey. Its limits were recorded in the same file, honestly and in
+public, and one of them read: **"No citation-graph traversal was done."** That is an
+accurate description of what was not done, published alongside the claim it weakens.
+
+**What we did.** Nothing further. The caveat sat in the file for two days while the
+claim it qualified went into the README, into a release note, and into a tagged
+release archived under a DOI.
+
+**What was wrong.** The nearest prior art to the claim was one citation hop from a
+survey that was already in hand. Halffmann, Holzer, Plociennik and Trebing
+(arXiv:2212.06480) build a unit-commitment QUBO specifically to avoid slack variables
+and squared sums, from the same stated motivation used here — slack costs qubits,
+squared penalties force all-to-all connectivity — and report 20 variables and 38
+interactions against 50 and 106. Reading one reference list found it. The scan had
+already named the exact method that would have found it.
+
+**What it cost.** Two days of a public claim that slack-free encoding and the qubit
+reduction were new here, when both were published in 2022, and a v1.0.0 snapshot
+archived carrying the overclaimed version. The claim is now narrowed to the part that
+survives: for a running-sum constraint the zero-penalty set is contained in the
+feasible set, proved, and refused at construction rather than assumed.
+
+**The part worth transferring.** A recorded limitation reads like diligence and
+functions like a receipt. It converts an open task into a disclosed property of the
+work, and disclosure feels finished in a way the task is not. The tell is
+specificity: this caveat did not say "the literature is large", it named the exact
+technique not applied, which means the work it described was already scoped and
+costed. **A limit stated that precisely is a to-do list entry wearing a caveat's
+clothes.** The scan's other limits — one problem family, no advantage claim — are
+genuine boundaries, and the difference is that no amount of further work removes
+them.
+
+**What limited the damage.** The `CITATION.cff` abstract hedges: it describes the
+encoding by the property that actually distinguishes it, says only that the first leg
+*appears* to be new, and points at the limits section rather than restating the
+claim. The archived record is therefore narrower than the document it shipped with,
+though not as narrow as the claim now standing.
+
+---
+
 ## What this project checks now
 
 Written as notes rather than advice: these are the checks that would have caught the
@@ -668,3 +712,7 @@ failures above, and they are the ones this repository runs.
 12. A fact that comes from outside the repository carries its source where it is
     written: a date, a docket or proceeding number, a link. No test can pin one, so
     the citation is the only thing that makes it checkable later.
+13. A limit recorded in a caveat is read back as work outstanding, not as work done.
+    The ones naming a specific technique that was not applied are the ones to act on;
+    a boundary no further effort would move is the only kind that is finished when it
+    is written.
