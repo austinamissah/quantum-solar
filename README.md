@@ -596,6 +596,22 @@ Open:
   bypassing it. The published claim is sufficiency and stands either way; what is
   open is whether the bound gives up qubit savings that are actually sound.
 
+## Citation
+
+Each release is archived on Zenodo. The **concept DOI**
+[`10.5281/zenodo.22105805`](https://doi.org/10.5281/zenodo.22105805) resolves to the
+newest version; `10.5281/zenodo.22105806` is v1.0.0 specifically. `CITATION.cff` at
+the repository root holds the metadata, and both the Zenodo record and GitHub's
+"Cite this repository" button are built from it.
+
+> Amissah, A. (2026). *quantum-solar: an exactly-solved battery-scheduling instance
+> for QAOA method work, with a slack-free encoding* (v1.0.0). Zenodo.
+> https://doi.org/10.5281/zenodo.22105805
+
+[`docs/FINDINGS.md`](docs/FINDINGS.md) separates what appears to be new here from what
+is a rediscovery of published work, along with the prior-art scan behind that split
+and its limits.
+
 ## How this work gets made
 
 Built with help from an AI assistant, Claude Code: it wrote and debugged much of the
