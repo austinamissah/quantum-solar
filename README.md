@@ -527,3 +527,10 @@ returned nine zeros — see `docs/LESSONS.md`.
   `dp_solve` returns the exact optimum for every one of these instances in
   microseconds — so this measures concentration, not advantage. Figure:
   `docs/figures/web/mass_ratio_exact.png`. See `docs/results/eval-censoring.md`.
+
+## How this work gets made
+
+Built with help from an AI assistant, Claude Code: it wrote and debugged much of the
+code, ran the prior-art searches, and helped draft the docs. The experiments, the
+registered predictions, the claims and their strength, and any errors are mine.
+Working method: https://amissah.net/about#how-its-made

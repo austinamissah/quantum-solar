@@ -4,6 +4,9 @@ This repository contains three results about getting QAOA to work on a *constrai
 problem. **One of them appears to be new. Two are rediscoveries of published work**,
 kept because the measurements are worth having, not because the ideas are ours.
 
+The prior-art searches were run with an AI assistant; every source named below was
+then checked by me. Disclosure in the README.
+
 This file exists so that a reader who knows the literature can see, quickly, which is
 which — and so that nobody cites the wrong one. A prior-art scan was run on
 2026-08-24 (about a dozen searches plus a domain survey); its limits are recorded at
