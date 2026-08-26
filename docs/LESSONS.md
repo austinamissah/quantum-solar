@@ -243,6 +243,44 @@ predict a different one (a full-distribution distance). It overpredicted by
 **+33%, +76%, +36%, +6%**. Refit directly on the quantity being predicted, it
 worked. A model is calibrated *for a purpose*; it is not a general-purpose truth.
 
+### The same model then missed twice more, both times in the same direction
+
+Refitting fixed the wrong-observable problem. It did not make the model safe to
+predict *forward*, and the record of that took three runs to become obvious because
+each failure was written up separately.
+
+The model is a simple one: every two-qubit gate has some chance of scrambling the
+state, so a circuit's output degrades as a fixed rate compounded over its gate
+count. Fitted to the first hardware run, that rate came out at **~1.32% per
+two-qubit gate**.
+
+| when | what it predicted | what happened |
+|---|---|---|
+| refit check | the four held-out distances | overpredicted by **+33%, +76%, +36%, +6%** |
+| encoding run | the larger circuit would degrade into **[0.463, 0.628]** | it degraded to **0.3708**, below the band |
+| depth run | a **dead heat** between two depths, difference +0.000003 | difference **+0.03613**, 4.7x the threshold |
+
+**Every miss is in the same direction: the model predicts more damage than the
+device does.** Two of the three were on the record, in this repository, before the
+third prediction was written. Nobody looked. The third prediction was staked on the
+model anyway, and a falsified pre-registration is what came back.
+
+The cost is not the failed prediction, which was registered honestly and is
+reported as a result. The cost is that it was **predictable** and the evidence was
+already sitting in two files a directory apart. Three misses sharing a sign is not
+bad luck; it is a bias, and the sign is visible long before the magnitude is
+understood.
+
+What makes this hard to notice is that each write-up was individually correct.
+Each said "the model failed here" and moved on. **No document was responsible for
+the sequence**, so the pattern existed only across documents, where nothing checks.
+The repository now records the count in the place the rate is introduced, so the
+next person to reach for it sees three failures rather than one good in-sample fit.
+
+The transferable form: a model's *accuracy* is what gets reported, and a model's
+*error signs* are what predict whether it can be trusted next time. The second is
+cheaper to track and was, here, far more informative.
+
 ---
 
 ## 4. Statistics with small n, which is all you get on real hardware
