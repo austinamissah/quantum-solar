@@ -484,14 +484,23 @@ returned nine zeros — see `docs/LESSONS.md`.
 
 ## Roadmap
 
-- **Done — annualized savings.** `annual_savings` sweeps all **365 days exactly**
-  (not representative-day sampling): PVWatts generation is fetched once and cached
-  and the DP is microseconds per day, so an exact full-year total is cheaper to
-  compute than a weighted representative-day estimate and needs no weighting
-  scheme. Reports the three-way split above.
-- Relax the v1 modeling assumptions: asymmetric buy/sell prices and round-trip
-  efficiency. (This shrinks the solar-export leg; the battery-arbitrage leg is
-  largely unaffected — see the caveat above.)
+- ~~Annualized savings.~~ **Done.** `annual_savings` sweeps all **365 days
+  exactly** (not representative-day sampling): PVWatts generation is fetched
+  once and cached and the DP is microseconds per day, so an exact full-year
+  total is cheaper to compute than a weighted representative-day estimate and
+  needs no weighting scheme. Reports the three-way split above.
+- ~~Relax the v1 modeling assumptions: asymmetric buy/sell prices and round-trip
+  efficiency.~~ **Done**, along with asymmetric charge/discharge rates, which was
+  not on this list. All three default to the original behavior, so the lossless
+  net-metered figures above reproduce exactly. The prediction in this item held for
+  the export credit: it is the **solar** leg that suffers, ~40% down from
+  **$970.61/yr** to **$569.14/yr** near avoided-cost, while the battery leg is
+  robust to it and in fact moves the other way, since a poor credit adds
+  self-consumption value on top of arbitrage. Round-trip losses are the separate
+  cost, and they do reach the battery leg: ~11% down to **$404.28/yr** at a 0.90 AC
+  round trip. Both legs are quoted under
+  [Annualized savings](#annualized-savings) and priced in
+  [`docs/results/capacity-rate-sensitivity.md`](docs/results/capacity-rate-sensitivity.md).
 - ~~Scaling study: slack-free approximate encodings vs. the exact one.~~ **Done.**
   A *sound* checkpoint encoding (`Encoding.checkpoint(k, banded=True)`) captures
   the full $455.72/yr battery value at **52 qubits** against the exact encoding's
@@ -527,6 +536,32 @@ returned nine zeros — see `docs/LESSONS.md`.
   `dp_solve` returns the exact optimum for every one of these instances in
   microseconds — so this measures concentration, not advantage. Figure:
   `docs/figures/web/mass_ratio_exact.png`. See `docs/results/eval-censoring.md`.
+
+Open:
+
+- Bill US federal holidays off-peak instead of as ordinary weekdays. URDB carries
+  no holiday schedule and ResStock's weekday aggregate folds holidays in, so both
+  the price and the load side currently treat them as weekdays, while under this
+  tariff most of them bill off-peak like a weekend. **11 weekday holidays** in AMY
+  2018 are affected, and the annual figure overstates battery arbitrage on each,
+  because the model sees an on/off-peak spread the real tariff does not charge.
+  `is_federal_holiday` already identifies them, rule-derived rather than
+  hardcoded, and is not wired into the annual loop. This is the last thing in the
+  repository still carrying the v1 label (`src/quantum_solar/data/calendar.py`).
+- A reps=2 checkpoint circuit on hardware. Every `cp3` circuit submitted so far is
+  **reps=1** — 46 two-qubit gates against `exact`'s 106 in the replication run —
+  while the penalty-weight and selection-rule findings are both reps=2 results and
+  carry no hardware leg at all, which is why
+  [`docs/FINDINGS.md`](docs/FINDINGS.md) claims neither on the device. The gate
+  budget is the question to settle first, and the circuit-cost table in
+  [`docs/results/slack-free-encoding.md`](docs/results/slack-free-encoding.md)
+  §Circuit cost is where the candidates are already priced.
+- Whether `max_sound_spacing` is tight. The soundness condition is proved
+  *sufficient* and the guard enforces it, but nothing here shows that a spacing one
+  step past it admits an infeasible zero-penalty assignment: the guard refuses to
+  construct that encoding, so necessity cannot be probed without deliberately
+  bypassing it. The published claim is sufficiency and stands either way; what is
+  open is whether the bound gives up qubit savings that are actually sound.
 
 ## How this work gets made
 
