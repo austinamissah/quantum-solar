@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+title: "quantum-solar: an exactly-solved battery-scheduling instance for QAOA method work, with a slack-free encoding"
+authors:
+  - family-names: Amissah
+    given-names: Austin
+    website: "https://amissah.net"
+version: "1.0.0"
+date-released: 2026-08-26
+license: MIT
+repository-code: "https://github.com/austinamissah/quantum-solar"
+url: "https://github.com/austinamissah/quantum-solar"
+keywords:
+  - QAOA
+  - quantum optimization
+  - QUBO
+  - constraint encoding
+  - battery scheduling
+  - pre-registration
+abstract: >-
+  A home solar-battery scheduling problem solved exactly on a real Colorado
+  year (Golden, CO: PVWatts generation, Xcel URDB prices, NREL ResStock load),
+  used as a checkable instance for QAOA method work. Three results: a
+  slack-free checkpoint encoding whose zero-penalty assignments are all
+  provably feasible; a measured penalty-weight scale and the reproducibility
+  cost of overshooting it; and in-constraint probability used as a post-hoc
+  selector among tuning restarts. Only the first appears to be new, on a
+  prior-art scan whose limits are recorded in docs/FINDINGS.md; the other two
+  are rediscoveries, kept for their measurements. Six small pre-registered
+  hardware runs on ibm_fez back the device-level claims. Not a claim of
+  quantum advantage: an exact dynamic program solves every instance here in
+  microseconds.
