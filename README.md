@@ -479,8 +479,17 @@ answer it. **The registered prediction was falsified.** The depolarizing model
 fitted to the July circuits said the deeper arm's ideal 1.93x advantage would be
 exactly cancelled by 2.4x the two-qubit gates; instead hardware optimal mass rose
 **+0.03613** against a threshold of 0.00765, and both depths retained the same
-fraction of their ideal. That per-gate error rate does not transfer to these
-circuits. See
+fraction of their ideal.
+
+**This is one job, and the write-up's own pre-registration says that is not
+enough.** Of the three pre-committed outcomes, the one measured is the only one
+that argues for deeper circuits, and the plan required replication before it counts
+as more than a single job's result. The two replicates here share one calibration
+snapshot, so they check consistency within that job and do not supply it. The
+reading that survives is the narrow one: on this instance, in this job, the
+per-gate error rate fitted to the July circuits **did not** predict what these
+circuits did. Whether that is the fit, the device day, or something about these
+circuits is undetermined. See
 [`docs/results/hardware-run-depth.md`](docs/results/hardware-run-depth.md).
 
 **In total: 6 jobs, 29 circuits, 548,864 shots, 159 seconds of QPU time.** Every
@@ -552,10 +561,12 @@ returned nine zeros — see `docs/LESSONS.md`.
   QPU seconds. It answers **H1** — does depth help, net of noise? — which the July
   run defined and never submitted, and which T=4 and T=6 were ruled out for because
   a circuit that can only run one depth cannot answer a question about depth.
-  **The registered prediction was falsified.** The depolarizing model said the
+  **The registered prediction was falsified**: the depolarizing model said the
   ideal 1.93x gain would be exactly cancelled by 2.4x the gates; instead optimal
   mass rose **+0.03613**, against a threshold of 0.00765, with both depths
-  retaining the same fraction of their ideal. See
+  retaining the same fraction of their ideal. **One job, and the plan asked for
+  replication before this outcome counts as more than that** — the two replicates
+  share a calibration snapshot. See
   [`docs/results/hardware-run-depth.md`](docs/results/hardware-run-depth.md).
 
 Open:
