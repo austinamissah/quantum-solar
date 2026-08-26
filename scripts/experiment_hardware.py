@@ -178,6 +178,19 @@ PLANS = {
         # Heron devices. Unavailable => fail, never substitute.
         "backend": "ibm_fez",
     },
+    "depth-replication": {
+        # Pre-registered in docs/plans/hardware-run-depth-replication.md.
+        # **params points at the depth run's own file on purpose.** A replication
+        # of a between-run question must fly the IDENTICAL circuits: re-tuning
+        # would make new angles a second variable alongside the calibration
+        # window, and the whole point is that the window is the only thing that
+        # changed. Nothing here calls `optimize`; the guard on that path would
+        # refuse to overwrite the file anyway, which is the behavior wanted.
+        "targets": DEPTH_TARGETS,
+        "params": RESULTS_DIR / "hardware_params_depth.json",
+        "counts": RESULTS_DIR / "hardware_counts_depth_replication.json",
+        "backend": "ibm_fez",
+    },
     "slackfree": {
         "targets": SLACKFREE_TARGETS,
         "params": RESULTS_DIR / "hardware_params_slackfree.json",
