@@ -134,17 +134,21 @@ def gather():
     plans = sorted(PLANS.glob("*.md"))
     writeups = [p for p in sorted(RESULTS.glob("*.md")) if p.name not in GENERATED]
 
+    # Both counts are DERIVED and drawn, never asserted. An earlier version fixed
+    # the falsified count at one and required every write-up to carry a correction,
+    # so each new result made the figure unregenerable and the caption beside it
+    # drifted instead (docs/LESSONS.md section 7, on the figure about the process).
+    # The guards below check the claim is non-vacuous, not that it is a fixed size.
     falsified = [p for p in writeups if "FALSIFIED" in p.read_text()]
-    if len(falsified) != 1:
+    if not falsified:
         raise SystemExit(
-            f"REFUSING TO DRAW: the summary claims one falsified prediction, but "
-            f"{len(falsified)} write-ups contain FALSIFIED.")
+            "REFUSING TO DRAW: the summary says predictions were falsified and "
+            "published as such, but no write-up contains FALSIFIED.")
     corrected = [p for p in writeups if CORRECTION.search(p.read_text())]
-    if len(corrected) != len(writeups):
-        missing = sorted(p.name for p in writeups if p not in corrected)
+    if not corrected:
         raise SystemExit(
-            f"REFUSING TO DRAW: the summary says every claim-making write-up carries "
-            f"a correction, but these do not: {missing}.")
+            "REFUSING TO DRAW: the summary says write-ups carry corrections, but "
+            "none does.")
 
     totals = re.search(
         r"\*\*(\d+) jobs, (\d+) circuits, ([\d,]+) shots, (\d+) seconds of QPU time",
@@ -165,6 +169,7 @@ def gather():
             "figure paraphrases.")
 
     return {"plans": len(plans), "writeups": len(writeups),
+            "falsified": len(falsified), "corrected": len(corrected),
             "jobs": int(totals.group(1)), "circuits": int(totals.group(2)),
             "qpu": int(totals.group(4))}
 
@@ -199,7 +204,7 @@ def main() -> None:
     # the prediction matters: "a prediction was falsified" is a claim about
     # temperament, and only the actual prediction makes it checkable.
     ax.text(3, -1.14, f"{d['jobs']} jobs, {d['circuits']} circuits, {d['qpu']} "
-            f"seconds\nof quantum processor time in all.\nA 4th experiment was "
+            f"seconds\nof quantum processor time in all.\nAn experiment was "
             f"designed,\ncosted, and then not run.",
             ha="center", va="top", fontsize=10.5, color=HARDWARE)
     ax.text(7, -1.14, "Predicted: the tuner would converge\nless reliably at penalty "
@@ -214,8 +219,9 @@ def main() -> None:
     fig.text(
         0.5, 0.125,
         f"Each stage rests on the one before it, and none was trusted on its own. "
-        f"{d['plans']} predictions were registered before the runs they describe, and "
-        f"{d['writeups']} of {d['writeups']} write-ups carry a correction or a "
+        f"{d['plans']} predictions were registered before the runs they describe, "
+        f"{d['falsified']} were falsified and published as such, and "
+        f"{d['corrected']} of {d['writeups']} write-ups carry a correction or a "
         f"retraction:\nbeing wrong was the normal case, not the exception.",
         ha="center", va="center", fontsize=10.5, color=INK,
         bbox=dict(boxstyle="round,pad=0.5", facecolor=BOX, edgecolor="#C6D3E4"))
@@ -231,8 +237,8 @@ def main() -> None:
     for i, ((title, *_), start) in enumerate(zip(STAGES, starts), 1):
         print(f"  {i}. {title.replace(chr(10), ' '):<40} earliest module {start}")
     print(f"  order check passed; {d['plans']} pre-registrations, "
-          f"{d['writeups']}/{d['writeups']} write-ups corrected, "
-          f"{d['qpu']} QPU-seconds")
+          f"{d['falsified']} falsified, {d['corrected']}/{d['writeups']} write-ups "
+          f"corrected, {d['qpu']} QPU-seconds")
 
 
 if __name__ == "__main__":

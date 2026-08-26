@@ -21,6 +21,16 @@ exclude zero by a wide margin.
 ideal 1.93x advantage of the deeper circuit would be exactly cancelled by 2.4x the
 two-qubit gates. It was not cancelled; most of it survived.
 
+**This is the third failure of that model, and the third in the same direction.**
+[`hardware-run-encoding.md`](hardware-run-encoding.md) records the second, where
+`exact` "degraded substantially *less* than predicted" and fell below its
+pre-registered band, with the mass-fitted version having already failed against
+July's normalized TVD before that. A model that has now missed three times, always
+by predicting more degradation than occurs, is not merely wrong on this instance:
+it is **systematically pessimistic about gate count**, and no result in this
+repository should lean on it for a forward prediction. The registered prediction
+above leaned on it, which is why the falsification was available to be had.
+
 ## The circuits
 
 | circuit | 2Q | hw optimal mass | hw feasible mass | TVD(ideal,hw) | TVD(ideal,unif) | normalized |

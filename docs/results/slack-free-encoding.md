@@ -301,7 +301,12 @@ whatever the weights were).
 
 Fitting a depolarizing model to July's one usable row gives ~1.32% effective error
 per 2-qubit gate; it predicts held-out TVD at 77 and 290 gates to within 3.5% and
-1%. It does **not** predict single-bitstring optimal mass for collapsed circuits —
+1%. **That in-sample accuracy has not survived contact with later runs**: the model
+has since been falsified three times, always by predicting more degradation than
+occurred, most recently at 112 gates in
+[`hardware-run-depth.md`](hardware-run-depth.md). It is used below to price
+candidate circuits, which is what it is fit for; it should not be relied on for a
+forward prediction. It does **not** predict single-bitstring optimal mass for collapsed circuits —
 device noise has structure and does not take the state to exactly uniform — which
 is why H1's gate is on *ideal* mass, which can be computed exactly.
 
