@@ -591,6 +591,48 @@ discriminate.
 
 ---
 
+## 10. A fact from outside the repository, published before it was checked
+
+**The setup.** Everything here is pinned. Every number in a write-up traces by test to
+the artifact that produced it, and the tariff itself is frozen by a URDB label and a
+committed fixture, so the prices cannot move underneath a result. That discipline
+covers *measurements*. It says nothing about a fact that arrives from outside: a news
+item, a regulatory decision, something reported by someone who read it elsewhere.
+
+**What we did.** Preparing the v1.0.0 release, the README's tariff caveat was changed
+from "a ~9.9% Xcel increase filed for August 2026" to say the increase had been
+approved, with a dollar figure attached. The claim came from report. No source was
+consulted at the time. It went into `README.md`, into the module comment that pins the
+rate label, and into a published release note, and was pushed.
+
+**What was wrong.** Two web searches afterwards found the decision: Colorado PUC,
+2026-08-20, proceeding 25AL-0494E, $157 million approved against roughly $356 million
+originally filed, about $5 a month on an average residential bill. The dollars were
+right and so was "roughly half". The timing was not. **Those rates take effect at the
+end of December 2026.** The published text said billed prices were "already drifting
+from the modeled ones"; they were not, and would not be for four months.
+
+**What it cost.** Three commits where one would have done, and a false sentence
+standing in the public README and in the release note of a tagged, archived release.
+Cheap only because it was caught the same day.
+
+**The part worth transferring.** The failure was not the wrong fact, which was a
+detail. It was the ordering: evidence first, then the sentence. That order is applied
+to everything measured here and was skipped for the one claim that came from outside,
+precisely because it did not look like a measurement. A sourceless external fact is
+the one kind of statement this repository's tests are structurally unable to catch,
+which makes it the kind that most needs a citation attached at the moment it is
+written. The claim now carries its date, its proceeding number and a link, so the next
+reader can check it in the way no test can.
+
+**What limited the damage.** The `CITATION.cff` abstract, which is what Zenodo
+publishes as the archived record's description, deliberately carries no dollar figures
+at all. The reasoning at the time was only that the abstract should not be able to
+drift from the tests. The effect was that the tariff error never reached the DOI
+record, and correcting it needed no change to anything archived.
+
+---
+
 ## What this project checks now
 
 Written as notes rather than advice: these are the checks that would have caught the
@@ -623,3 +665,6 @@ failures above, and they are the ones this repository runs.
 10. What would falsify a claim is written down *before* the data, including the
     wording of the retraction.
 11. Retractions happen in place.
+12. A fact that comes from outside the repository carries its source where it is
+    written: a date, a docket or proceeding number, a link. No test can pin one, so
+    the citation is the only thing that makes it checkable later.
