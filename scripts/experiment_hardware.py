@@ -121,6 +121,33 @@ SPREAD_TARGETS = [
     {"T": 3, "seed": 0, "reps": 1, "encoding": "exact", "alpha": 0.021, "shots": 65536, "replicate": 2},
 ]
 
+# Pre-registered in docs/plans/hardware-run-depth.md. T3/cp3 is the first circuit
+# that fits BOTH depths inside the coherence budget, so it is the only candidate
+# that can answer H1 -- does depth help, net of noise? T=4 and T=6 were ruled out
+# for precisely this reason: a circuit that can only run one depth cannot answer a
+# question about depth.
+#
+#   both depths in ONE job, so they share a calibration snapshot. Between-run
+#     variance is bounded by nothing here (n=3), so comparing this reps=2 circuit
+#     against July's or August's reps=1 numbers would confound depth with drift.
+#     The reps=1 arm is re-run for that reason, not for want of prior measurements.
+#   EQUAL shots on both arms, unlike the encoding plans. There the arms differed
+#     in qubit count, so the TVD shot-noise floor differed and unequal shots
+#     equalised it. Here both arms are the same encoding on the same 6 qubits, so
+#     the floor is already identical and unequal shots would introduce the bias
+#     that unequal shots exist to remove.
+#   alpha = 0.021 on both, matching every prior cp3 arm.
+# Order is load-bearing: the PRIMARY comparison is replicate 1 of each depth,
+# listed first, fixed here before submission. Replicate 2 of each is a variance
+# estimate and is NEVER pooled into the primary comparison.
+_DEPTH = {"T": 3, "seed": 0, "encoding": "checkpoint3", "alpha": 0.021, "shots": 4096}
+DEPTH_TARGETS = [
+    {**_DEPTH, "reps": 1, "replicate": 1},
+    {**_DEPTH, "reps": 2, "replicate": 1},
+    {**_DEPTH, "reps": 1, "replicate": 2},
+    {**_DEPTH, "reps": 2, "replicate": 2},
+]
+
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "docs" / "results"
 # hardware_params.json / hardware_counts.json are the provenance record of the
 # 2026-07-11 run and are NEVER written by the slackfree plan.
@@ -140,6 +167,15 @@ PLANS = {
         "targets": REPLICATION_TARGETS,
         "params": RESULTS_DIR / "hardware_params_replication.json",
         "counts": RESULTS_DIR / "hardware_counts_replication.json",
+        "backend": "ibm_fez",
+    },
+    "depth": {
+        "targets": DEPTH_TARGETS,
+        "params": RESULTS_DIR / "hardware_params_depth.json",
+        "counts": RESULTS_DIR / "hardware_counts_depth.json",
+        # Pinned for the same reason as slackfree: the reps=1 arm's prior numbers
+        # are ibm_fez numbers and per-device error rates do not transfer across
+        # Heron devices. Unavailable => fail, never substitute.
         "backend": "ibm_fez",
     },
     "slackfree": {
@@ -294,8 +330,41 @@ def validate_statevector(t=2, seed=0, reps_values=(1, 2)):
     print(f"statevector self-check: NumPy vs Qiskit agree to {worst:.1e}", flush=True)
 
 
+def _tune_on_feasible_mass(problem, qubo, reps, *, n_starts, shots, seed, maxiter):
+    """Leg 3's rule: keep the restart with the most feasible mass, not the lowest <H>.
+
+    The pool is **one** ``QAOASolver`` run's restarts, i.e. exactly the candidates
+    the default rule chose between. That matters: an earlier version of this drew
+    n_starts *independent* single-start solves instead, which is a different and
+    worse pool, and it made the head-to-head against lowest-<H> incomparable
+    because the two rules were then ranking different candidate sets.
+
+    Mass is the exact (noiseless) statevector feasible mass, the same quantity
+    ``rules()`` in ``scripts/selection_rule_study.py`` calls ``feasible_mass``.
+    ``max`` returns the first maximal element, so ties break to the earliest
+    restart, as the plan states.
+    """
+    result = QAOASolver(reps=reps, n_starts=n_starts, shots=shots, seed=seed,
+                        maxiter=maxiter).solve(problem, qubo)
+    opt_mask, feas_mask = basis_masks(problem, qubo)
+    energies = np.array([qubo.energy(x) for x in enumerate_bitstrings(qubo.num_vars)])
+    pool = []
+    for i, (params, _fun) in enumerate(result.restarts):
+        probs = exact_distribution(qubo, params, reps)
+        metrics = scalar_metrics(probs, opt_mask, feas_mask)
+        pool.append({
+            "restart": i,
+            "params": params,
+            "H": float(np.dot(probs, energies)),
+            "optimal_mass": metrics["optimal_mass"],
+            "feasible_mass": metrics["feasibility"],
+        })
+    best = max(pool, key=lambda c: c["feasible_mass"])
+    return best["params"], pool
+
+
 def optimize_params(targets, *, seed=QAOA_SEED, n_starts=N_STARTS, shots=SHOTS,
-                    maxiter=MAXITER):
+                    maxiter=MAXITER, select="lowest_H"):
     """Re-optimize QAOA angles on the simulator; return one record per target.
 
     Reference metrics (ideal_opt_mass, ideal_feasibility) are the EXACT statevector
@@ -304,6 +373,7 @@ def optimize_params(targets, *, seed=QAOA_SEED, n_starts=N_STARTS, shots=SHOTS,
     validate_statevector()
     records = []
     tuned = {}  # (T, seed, reps, encoding, alpha) -> params; mitigation arms reuse
+    candidates = {}  # same key -> the full restart pool, when selecting on mass
     for tgt in targets:
         T, s, reps = tgt["T"], tgt["seed"], tgt["reps"]
         encoding, alpha = tgt.get("encoding", "exact"), tgt.get("alpha", 1.0)
@@ -313,9 +383,14 @@ def optimize_params(targets, *, seed=QAOA_SEED, n_starts=N_STARTS, shots=SHOTS,
             # Mitigation is a sampling-time option, not a circuit change, so a
             # mitigated target reuses its unmitigated twin's angles rather than
             # re-tuning to a different local optimum and confounding the pair.
-            result = QAOASolver(reps=reps, n_starts=n_starts, shots=shots, seed=seed,
-                                maxiter=maxiter).solve(problem, qubo)
-            tuned[key] = [float(x) for x in result.optimal_params]
+            if select == "feasible_mass":
+                tuned[key], candidates[key] = _tune_on_feasible_mass(
+                    problem, qubo, reps, n_starts=n_starts, shots=shots,
+                    seed=seed, maxiter=maxiter)
+            else:
+                result = QAOASolver(reps=reps, n_starts=n_starts, shots=shots, seed=seed,
+                                    maxiter=maxiter).solve(problem, qubo)
+                tuned[key] = [float(x) for x in result.optimal_params]
         params = tuned[key]
 
         probs = exact_distribution(qubo, params, reps)
@@ -325,6 +400,17 @@ def optimize_params(targets, *, seed=QAOA_SEED, n_starts=N_STARTS, shots=SHOTS,
             "T": T, "seed": s, "reps": reps, "m": qubo.num_vars,
             "encoding": encoding, "alpha": alpha,
             "shots": int(tgt.get("shots", shots)),
+            # Recorded because it is not a free knob: the reps=2 landscape is
+            # multi-modal (15 basins at alpha* against 1 at reps=1), so a restart
+            # budget that is ample for the shallow arm can under-tune the deep one.
+            # A params file that does not say how hard it looked is not provenance.
+            "n_starts": int(n_starts),
+            # Which rule picked these angles, and (when it was not the default)
+            # every candidate it chose between. Leg 3 says the two rules disagree
+            # exactly where the decision is made, so a record that keeps only the
+            # winner cannot show whether they disagreed here.
+            "selection": select,
+            "candidates": candidates.get(key),
             "mitigated": bool(tgt.get("mitigated", False)),
             "replicate": tgt.get("replicate"),
             "params": params,
@@ -336,7 +422,8 @@ def optimize_params(targets, *, seed=QAOA_SEED, n_starts=N_STARTS, shots=SHOTS,
     return records
 
 
-def run_optimize(include_stretch=False, plan="july", overwrite=False):
+def run_optimize(include_stretch=False, plan="july", overwrite=False,
+                 n_starts=N_STARTS, select="lowest_H"):
     cfg = PLANS[plan]
     params_path = cfg["params"]
     # Refuse to clobber ANY existing params file, not just the July one. Tuned
@@ -353,7 +440,7 @@ def run_optimize(include_stretch=False, plan="july", overwrite=False):
     targets = list(cfg["targets"])
     if include_stretch:
         targets += [dict(t, stretch=True) for t in STRETCH_TARGETS]
-    records = optimize_params(targets)
+    records = optimize_params(targets, n_starts=n_starts, select=select)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     params_path.write_text(json.dumps(records, indent=2))
     for r in records:
@@ -574,6 +661,11 @@ def main():
     p_opt.add_argument("--plan", default="july", choices=sorted(PLANS))
     p_opt.add_argument("--overwrite", action="store_true",
                        help="allow clobbering an existing params file (provenance record)")
+    p_opt.add_argument("--n-starts", type=int, default=N_STARTS,
+                       help=f"multi-start budget per tuning (default {N_STARTS})")
+    p_opt.add_argument("--select", default="lowest_H",
+                       choices=("lowest_H", "feasible_mass"),
+                       help="restart selection rule (default lowest_H, QAOASolver's own)")
 
     p_sub = sub.add_parser("submit", help="stage (b): sample on hardware (QPU-gated)")
     p_sub.add_argument("--backend", default=None)
@@ -584,7 +676,8 @@ def main():
     args = parser.parse_args()
     if args.stage == "optimize":
         run_optimize(include_stretch=args.include_stretch, plan=args.plan,
-                     overwrite=args.overwrite)
+                     overwrite=args.overwrite, n_starts=args.n_starts,
+                     select=args.select)
     elif args.stage == "submit":
         run_submit(backend_name=args.backend, include_stretch=args.include_stretch,
                    yes_spend_qpu=args.yes_spend_qpu, plan=args.plan)

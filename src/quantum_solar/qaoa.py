@@ -9,7 +9,7 @@ bitstrings use standard little-endian qubit ordering.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 from qiskit.circuit.library import QAOAAnsatz
@@ -31,6 +31,12 @@ class QAOAResult(Solution):
     optimal_params: np.ndarray
     cost_history: list[float]
     counts: dict[str, int]
+    # Every restart's (params, <H>), in draw order — not just the winner. The
+    # selection rule is a consumer of the whole pool: `docs/FINDINGS.md` leg 3
+    # selects on feasible mass instead of lowest <H>, and it can only do that over
+    # the same candidates the default rule chose between. Defaulted, so existing
+    # construction sites and pickled results are unaffected.
+    restarts: list[tuple[list[float], float]] = field(default_factory=list)
 
 
 def _counts_key_to_x(key: str, m: int) -> np.ndarray:
@@ -80,17 +86,20 @@ class QAOASolver:
         rng = np.random.default_rng(self.seed)
         best_params: np.ndarray | None = None
         best_cost = np.inf
+        restarts: list[tuple[list[float], float]] = []
         for _ in range(self.n_starts):
             x0 = rng.uniform(0.0, np.pi, size=ansatz.num_parameters)
             res = minimize(
                 cost, x0, method=self.optimizer, options={"maxiter": self.maxiter}
             )
+            restarts.append(([float(v) for v in res.x], float(res.fun)))
             if res.fun < best_cost:
                 best_cost = float(res.fun)
                 best_params = res.x
 
         counts = self._sample(isa, best_params)
-        return self._best_solution(problem, qubo, counts, best_params, history)
+        return self._best_solution(problem, qubo, counts, best_params, history,
+                                   restarts=restarts)
 
     def _sample(self, isa, params: np.ndarray) -> dict[str, int]:
         measured = isa.copy()
@@ -106,6 +115,8 @@ class QAOASolver:
         counts: dict[str, int],
         params: np.ndarray,
         history: list[float],
+        *,
+        restarts: list[tuple[list[float], float]] | None = None,
     ) -> QAOAResult:
         m = qubo.num_vars
         best_x: np.ndarray | None = None
@@ -125,4 +136,5 @@ class QAOASolver:
             optimal_params=params,
             cost_history=history,
             counts=counts,
+            restarts=list(restarts or []),
         )
