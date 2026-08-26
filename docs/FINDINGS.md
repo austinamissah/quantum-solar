@@ -184,14 +184,17 @@ intractability.
   algorithm*, not about beating a classical solver.
 - **No hardware claim for legs 2 and 3.** Three runs on `ibm_fez` (146 QPU-seconds)
   support the device-degradation result in
-  [`results/slack-free-encoding.md`](results/slack-free-encoding.md); no reps=2
-  `cp3` circuit has ever been submitted.
+  [`results/slack-free-encoding.md`](results/slack-free-encoding.md). A reps=2
+  `cp3` circuit has since flown, on 2026-08-25
+  ([`results/hardware-run-depth.md`](results/hardware-run-depth.md)), but it
+  measured **depth**, not the penalty weight or the selection rule; legs 2 and 3
+  remain simulator findings.
 
 ## How the claims are supported
 
 Every study here was **pre-registered before it ran** (`docs/plans/` then
 `docs/results/`), and the sweep scripts refuse to run against an uncommitted plan, so
-the ordering is checkable in `git log` rather than asserted. **Two registered
+the ordering is checkable in `git log` rather than asserted. **Three registered
 predictions were falsified and are reported as such.** Every number in every write-up
 is pinned by a test to the artifact that produced it, and the limiting sentences —
 the caveats — are pinned too, because a document that keeps its findings and loses

@@ -1,7 +1,7 @@
 """Generate the IBM Quantum job-provenance table from the committed artifacts.
 
 Every hardware result in this repo traces to a job ID on a named backend. That
-provenance is currently spread across four `hardware_counts*.json` files and is
+provenance is currently spread across five `hardware_counts*.json` files and is
 invisible unless you open them, so this collects it into one table.
 
 Generated, never hand-edited: a provenance table that is transcribed by hand is a
@@ -40,6 +40,9 @@ RUNS = [
     ("hardware_counts_spread.json", "spread", "2026-08-03",
      "Run-to-run spread at n=10 replicates, powered so RESOLVED was reachable.",
      "hardware-run-spread.md"),
+    ("hardware_counts_depth.json", "depth", "2026-08-25",
+     "Does depth help, net of noise? cp3 at reps 1 and 2 in one job.",
+     "hardware-run-depth.md"),
 ]
 
 

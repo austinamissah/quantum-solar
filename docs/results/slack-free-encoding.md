@@ -286,7 +286,7 @@ conflated those two axes.
 
 | question | metric | outcome |
 |---|---|---|
-| **H1** — does depth help, net of noise? | ideal optimal mass, gate 5× uniform | **never submitted** — gate not met on the pre-designated instance |
+| **H1** — does depth help, net of noise? | ideal optimal mass, gate 5× uniform | **not submitted under this plan** — gate not met on the pre-designated instance. Answered later, on 2026-08-25, by [hardware-run-depth.md](hardware-run-depth.md) |
 | **Encoding vs device degradation** | TVD(ideal, hardware) | **three runs on `ibm_fez`, 146 QPU-seconds** |
 
 These are different metrics answering different questions. H1's failure says

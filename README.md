@@ -472,7 +472,18 @@ without error mitigation, a **replication** of the encoding gap with a
 default-weight control, and a **10-replicate spread** measurement sized so its
 `RESOLVED` verdict was actually reachable.
 
-**In total: 5 jobs, 25 circuits, 532,480 shots, 153 seconds of QPU time.** Every
+A fourth question followed on August 25, 2026, also pre-registered: **does depth
+help, net of noise?** `cp3` ran at reps 1 and 2 in one job, the first circuit small
+enough to fit both depths inside the coherence budget and so the first that could
+answer it. **The registered prediction was falsified.** The depolarizing model
+fitted to the July circuits said the deeper arm's ideal 1.93x advantage would be
+exactly cancelled by 2.4x the two-qubit gates; instead hardware optimal mass rose
+**+0.03613** against a threshold of 0.00765, and both depths retained the same
+fraction of their ideal. That per-gate error rate does not transfer to these
+circuits. See
+[`docs/results/hardware-run-depth.md`](docs/results/hardware-run-depth.md).
+
+**In total: 6 jobs, 29 circuits, 548,864 shots, 159 seconds of QPU time.** Every
 number in every hardware write-up traces to one of those job IDs, listed with
 backend, date, shot count and device calibration in
 [`docs/results/hardware-jobs.md`](docs/results/hardware-jobs.md) (generated from
@@ -536,6 +547,16 @@ returned nine zeros — see `docs/LESSONS.md`.
   `dp_solve` returns the exact optimum for every one of these instances in
   microseconds — so this measures concentration, not advantage. Figure:
   `docs/figures/web/mass_ratio_exact.png`. See `docs/results/eval-censoring.md`.
+- ~~A reps=2 checkpoint circuit on hardware.~~ **Done**, on 2026-08-25: `cp3` at
+  reps 1 and 2 in one job on `ibm_fez`, 112 two-qubit gates at the deeper arm, 6.0
+  QPU seconds. It answers **H1** — does depth help, net of noise? — which the July
+  run defined and never submitted, and which T=4 and T=6 were ruled out for because
+  a circuit that can only run one depth cannot answer a question about depth.
+  **The registered prediction was falsified.** The depolarizing model said the
+  ideal 1.93x gain would be exactly cancelled by 2.4x the gates; instead optimal
+  mass rose **+0.03613**, against a threshold of 0.00765, with both depths
+  retaining the same fraction of their ideal. See
+  [`docs/results/hardware-run-depth.md`](docs/results/hardware-run-depth.md).
 
 Open:
 
@@ -548,18 +569,6 @@ Open:
   `is_federal_holiday` already identifies them, rule-derived rather than
   hardcoded, and is not wired into the annual loop. This is the last thing in the
   repository still carrying the v1 label (`src/quantum_solar/data/calendar.py`).
-- A reps=2 checkpoint circuit on hardware. Every `cp3` circuit submitted so far is
-  **reps=1** — 46 two-qubit gates against `exact`'s 106 in the replication run —
-  while the penalty-weight and selection-rule findings are both reps=2 results and
-  carry no hardware leg at all, which is why
-  [`docs/FINDINGS.md`](docs/FINDINGS.md) claims neither on the device. The gate
-  budget looks affordable: re-transpiled against `FakeFez`, `cp3` at reps=2 costs
-  **114–123** two-qubit gates over five draws at `optimization_level=1`, and
-  104–113 at level 3 — inside the **37–290** range already flown, and far below the
-  **348** of the 6-slot target that the gate-count result ruled out. Candidates are
-  priced in
-  [`docs/results/slack-free-encoding.md`](docs/results/slack-free-encoding.md)
-  §Circuit cost.
 - Whether `max_sound_spacing` is tight. The soundness condition is proved
   *sufficient* and the guard enforces it, but nothing here shows that a spacing one
   step past it admits an infeasible zero-penalty assignment: the guard refuses to
