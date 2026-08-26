@@ -81,8 +81,8 @@ whole horizon, which is what makes the excursion bound the thing needing proof. 
 also keep the squared demand penalty, the one term they did not remove.
 
 A 2026 survey of quantum computing for unit commitment — the application area with
-exactly this constraint structure — describes feasibility as an open challenge and
-records no encoding carrying a proved containment of this kind.
+exactly this constraint structure — records no encoding carrying a proved
+containment of this kind.
 
 **What it costs when the guarantee is absent, measured.** At a penalty weight below
 the soundness threshold, the QUBO's own minimum-energy assignment is infeasible — and
