@@ -1,5 +1,11 @@
 # Does depth help, net of noise? — results
 
+> **Replicated 2026-08-26, with one part corrected.** The primary result below
+> reproduced in a second job:
+> [`hardware-run-depth-replication.md`](hardware-run-depth-replication.md).
+> **The mechanism proposed in this document did not**, and the section claiming it
+> carries a correction in place.
+
 **Pre-registered:** [`../plans/hardware-run-depth.md`](../plans/hardware-run-depth.md),
 committed at `d0dbca7` **before submission**. One job
 `da75ik6sidac73aetu50` on `ibm_fez`, four circuits, **6.0 QPU seconds** (the
@@ -53,7 +59,28 @@ ideal feasible mass 0.28735 and 0.45313.
 Replicate 2, which the plan reserved as a variance estimate and never pools into
 the primary: +0.03320 [+0.02344, +0.04272] and +0.08276 [+0.06323, +0.10278].
 
-## The mechanism: both depths retain the same fraction of their ideal
+## The mechanism proposed here, and withdrawn
+
+> **Correction, 2026-08-26.** Everything in this section is what one job showed,
+> and it did **not** replicate. In a second job 36 minutes later, with the same
+> angles, the two arms' retention differed by **0.063** on the primary replicate
+> against the **0.005** below, and normalized TVD went from flat (0.3114 against
+> 0.2986) to plainly not flat (**0.2670 against 0.4585**). The reps=2 arm's
+> retention alone moved from 0.845 to 0.771 between windows, a swing larger than
+> the entire gap this section rested on.
+>
+> **Equal retention was a property of that job, not of these circuits.** The
+> paragraphs below are left standing rather than edited, because the claim was
+> published and deleting it would hide that it was made.
+>
+> **What replaces it.** The deeper circuit *does* degrade more; its ideal advantage
+> of 1.93x is simply larger than the extra degradation, so it finishes ahead
+> anyway. That is the weaker and correct statement, and it is enough to explain the
+> falsification. The registered prediction is still falsified and the primary
+> result still replicates; only this explanation of it goes.
+>
+> Detail in
+> [`hardware-run-depth-replication.md`](hardware-run-depth-replication.md).
 
 This is the part that explains the falsification, and it was not predicted.
 
@@ -84,14 +111,18 @@ particular circuits transpile into cheaper structure, is **not determined here.*
 > This is the only outcome that argues for deeper circuits, and it would need
 > replication before being reported as more than one job's result.
 
-That stands. The two replicates here **share one job, one calibration snapshot, one
-queue position and one thermal state**, so they are a within-job consistency check
-and not the replication that sentence asks for.
+The two replicates here **share one job, one calibration snapshot, one queue
+position and one thermal state**, so they are a within-job consistency check and
+not the replication that sentence asks for.
+
+**That replication was run on 2026-08-26 and the primary result held**, at +0.03027
+and +0.03394 against this run's +0.03613 and +0.03320. The requirement is met for
+the primary claim. It is not met for the mechanism, which the same run withdrew.
 
 ## Limits
 
-- **One job, one device, one day, one instance** — T=3, seed 0, `checkpoint(3)`,
-  α = 0.021, `ibm_fez`. The reps=1 arm's normalized TVD here (0.3114, 0.3195) sits
+- **One job here, two across both runs** — T=3, seed 0, `checkpoint(3)`, α = 0.021,
+  `ibm_fez` throughout. The reps=1 arm's normalized TVD here (0.3114, 0.3195) sits
   above the same circuit's 0.2590 and 0.2980 in
   [`hardware-run-encoding-replication.md`](hardware-run-encoding-replication.md),
   which is between-run drift of the size that study already recorded, and n for

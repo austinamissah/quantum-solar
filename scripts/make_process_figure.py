@@ -220,7 +220,7 @@ def main() -> None:
         0.5, 0.125,
         f"Each stage rests on the one before it, and none was trusted on its own. "
         f"{d['plans']} predictions were registered before the runs they describe, "
-        f"{d['falsified']} were falsified and published as such, and "
+        f"{d['falsified']} write-ups report one of them falsified, and "
         f"{d['corrected']} of {d['writeups']} write-ups carry a correction or a "
         f"retraction:\nbeing wrong was the normal case, not the exception.",
         ha="center", va="center", fontsize=10.5, color=INK,

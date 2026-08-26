@@ -121,16 +121,24 @@ def test_retention_is_the_quotient_it_claims_to_be(rep, reps, stated):
     assert f"{got:.3f}" == f"{stated:.3f}"
 
 
-def test_the_two_depths_retain_the_same_fraction():
-    """The mechanism the write-up rests on, asserted rather than described.
+def test_this_job_did_show_equal_retention_and_the_document_says_it_did_not_replicate():
+    """This job's data really did show equal retention. It did not replicate.
 
-    If the depths retained *differently*, the falsification would still stand but
-    its explanation would not, and the document leads with the explanation.
+    Kept, because the claim was published and the correction is only checkable if
+    the thing corrected is still verifiable: the numbers below are what this job
+    measured, and the write-up now carries a correction saying a second job 36
+    minutes later did not reproduce them
+    (``tests/test_depth_replication_tables.py`` pins that side).
+
+    So this asserts a historical fact about one job, not a standing claim about
+    these circuits.
     """
     for rep in (1, 2):
         r1 = M[(1, rep)]["opt"] / M[(1, rep)]["ideal_opt"]
         r2 = M[(2, rep)]["opt"] / M[(2, rep)]["ideal_opt"]
         assert abs(r1 - r2) < 0.02, f"replicate {rep}: retention {r1:.3f} vs {r2:.3f}"
+    assert "**Correction, 2026-08-26.**" in FLAT
+    assert "Equal retention was a property of that job" in FLAT
 
 
 def test_the_verdict_crosses_the_threshold_the_plan_registered():

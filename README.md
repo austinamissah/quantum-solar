@@ -250,10 +250,10 @@ The build order, and what was put in place to catch each stage being wrong. Each
 stage rests on the one before it and none was trusted on its own: the classical
 solver is checked against brute-force enumeration, QAOA against the exact optimum,
 the encodings against brute force again, the fast statevector against Qiskit, the
-sizing rule at all 56 swept points. Thirteen predictions were registered before the
-runs they describe, three were falsified and published as such, eight of fourteen
-write-ups carry a correction or a retraction, and one hardware experiment was
-designed, costed, and then not run. The stage order is not asserted:
+sizing rule at all 56 swept points. Fourteen predictions were registered before the
+runs they describe, four write-ups report one of them falsified, nine of fifteen
+carry a correction or a retraction, and one hardware experiment was designed,
+costed, and then not run. The stage order is not asserted:
 `scripts/make_process_figure.py` refuses to draw unless each stage's modules first
 appear in the repository no earlier than the previous stage's, so a tidier story
 than the one that happened fails instead of printing.
@@ -482,18 +482,19 @@ exactly cancelled by 2.4x the two-qubit gates; instead hardware optimal mass ros
 **+0.03613** against a threshold of 0.00765, and both depths retained the same
 fraction of their ideal.
 
-**This is one job, and the write-up's own pre-registration says that is not
-enough.** Of the three pre-committed outcomes, the one measured is the only one
-that argues for deeper circuits, and the plan required replication before it counts
-as more than a single job's result. The two replicates here share one calibration
-snapshot, so they check consistency within that job and do not supply it. The
-reading that survives is the narrow one: on this instance, in this job, the
-per-gate error rate fitted to the July circuits **did not** predict what these
-circuits did. Whether that is the fit, the device day, or something about these
-circuits is undetermined. See
-[`docs/results/hardware-run-depth.md`](docs/results/hardware-run-depth.md).
+**It replicated, and its stated mechanism did not.** The plan required replication
+before this outcome counted as more than one job, so the identical circuits flew
+again the next day in a fresh calibration window: the difference came back at
+**+0.03027** and **+0.03394**, against +0.03613 and +0.03320 the first time. The
+effect is real on this instance and this device. But the first run's explanation
+for it, that both depths retain the same fraction of their ideal, **did not
+survive** the second run and is withdrawn in place. What survives is weaker and
+sufficient: the deeper circuit degrades more, by an amount that varies between
+runs, and by less than its 1.93x ideal advantage. See
+[`docs/results/hardware-run-depth.md`](docs/results/hardware-run-depth.md) and
+[its replication](docs/results/hardware-run-depth-replication.md).
 
-**In total: 6 jobs, 29 circuits, 548,864 shots, 159 seconds of QPU time.** Every
+**In total: 7 jobs, 33 circuits, 565,248 shots, 165 seconds of QPU time.** Every
 number in every hardware write-up traces to one of those job IDs, listed with
 backend, date, shot count and device calibration in
 [`docs/results/hardware-jobs.md`](docs/results/hardware-jobs.md) (generated from
@@ -565,10 +566,11 @@ returned nine zeros — see `docs/LESSONS.md`.
   **The registered prediction was falsified**: the depolarizing model said the
   ideal 1.93x gain would be exactly cancelled by 2.4x the gates; instead optimal
   mass rose **+0.03613**, against a threshold of 0.00765, with both depths
-  retaining the same fraction of their ideal. **One job, and the plan asked for
-  replication before this outcome counts as more than that** — the two replicates
-  share a calibration snapshot. See
-  [`docs/results/hardware-run-depth.md`](docs/results/hardware-run-depth.md).
+  retaining the same fraction of their ideal. **Replicated the next day** in a
+  fresh calibration window (+0.03027, +0.03394), which is what that run's plan
+  required; the equal-retention *mechanism* did not replicate and is withdrawn in
+  place. See [`docs/results/hardware-run-depth.md`](docs/results/hardware-run-depth.md)
+  and [its replication](docs/results/hardware-run-depth-replication.md).
 
 Open:
 

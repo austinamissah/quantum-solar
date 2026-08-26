@@ -194,7 +194,7 @@ intractability.
 
 Every study here was **pre-registered before it ran** (`docs/plans/` then
 `docs/results/`), and the sweep scripts refuse to run against an uncommitted plan, so
-the ordering is checkable in `git log` rather than asserted. **Three registered
+the ordering is checkable in `git log` rather than asserted. **Four registered
 predictions were falsified and are reported as such.** Every number in every write-up
 is pinned by a test to the artifact that produced it, and the limiting sentences —
 the caveats — are pinned too, because a document that keeps its findings and loses
