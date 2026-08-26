@@ -7,7 +7,15 @@ authors:
     website: "https://amissah.net"
 version: "1.0.0"
 date-released: 2026-08-26
+doi: 10.5281/zenodo.22105805
 license: MIT
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.22105805
+    description: "Concept DOI: resolves to the latest version."
+  - type: doi
+    value: 10.5281/zenodo.22105806
+    description: "Version DOI: v1.0.0 specifically."
 repository-code: "https://github.com/austinamissah/quantum-solar"
 url: "https://github.com/austinamissah/quantum-solar"
 keywords:

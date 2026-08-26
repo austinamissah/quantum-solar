@@ -1,6 +1,7 @@
 # quantum-solar
 
 [![tests](https://github.com/austinamissah/quantum-solar/actions/workflows/tests.yml/badge.svg)](https://github.com/austinamissah/quantum-solar/actions/workflows/tests.yml)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22105805.svg)](https://doi.org/10.5281/zenodo.22105805)
 
 Quantum optimization of **residential battery charge/discharge scheduling under
 time-of-use electricity pricing**.
