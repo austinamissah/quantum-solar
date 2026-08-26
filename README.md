@@ -356,10 +356,12 @@ RE-TOU** tariff (URDB label `69bd927af5cd25efec0e9aad`, snapshot as of **August
   the split reports them separately. See
   [`docs/results/capacity-rate-sensitivity.md`](docs/results/capacity-rate-sensitivity.md).
 
-The dollar amounts are a tariff snapshot — a **~9.9% Xcel increase filed for
-August 2026** will move the absolute bills (the URDB label pins the version we
-test against). Weekends contribute **$0** battery savings: the RE-TOU weekend
-schedule is flat off-peak, so there is no spread to arbitrage.
+The dollar amounts are a tariff snapshot — Colorado's utility commission approved
+an Xcel increase in **August 2026**, roughly half the **~9.9%** filed and about
+**$5 a month** on an average residential bill, so billed prices are already
+drifting from the modeled ones (the URDB label pins the version we test against,
+so the figures here still reproduce). Weekends contribute **$0** battery savings:
+the RE-TOU weekend schedule is flat off-peak, so there is no spread to arbitrage.
 
 ### Sizing and payback
 

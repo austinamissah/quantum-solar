@@ -39,9 +39,10 @@ URDB_ENDPOINT = "https://api.openei.org/utility_rates"
 #   https://apps.openei.org/USURDB/rate/view/69bd927af5cd25efec0e9aad
 #
 # The entry keeps the legacy "RE-TOU" name but reflects the post-Nov-2025
-# two-period (on/off-peak) TOU structure. Tariff data is a snapshot — Xcel has a
-# ~9.9% increase filed for Aug 2026 — so this label (and the committed test
-# fixture) pin the specific version we test against.
+# two-period (on/off-peak) TOU structure. Tariff data is a snapshot — Colorado's
+# utility commission approved an Xcel increase in Aug 2026, about half the ~9.9%
+# filed — so this label (and the committed test fixture) pin the specific version
+# we test against.
 XCEL_CO_RETOU_LABEL = "69bd927af5cd25efec0e9aad"
 
 DEFAULT_CACHE = Path(__file__).resolve().parents[3] / "data" / "cache"
