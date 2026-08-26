@@ -40,18 +40,49 @@ excursion by `⌊k/2⌋`, so **every zero-penalty assignment is genuinely feasib
 whenever `⌊k/2⌋ ≤ min(k₀, n_max − k₀)` — the condition `max_sound_spacing()`
 computes. This is a *proved* property of the encoding, not a bias.
 
-**Why that is the part worth having.** Removing slack variables is a crowded field —
-unbalanced penalization, exponential and Heaviside custom penalties, Lagrangian and
-augmented-Lagrangian duals, and in this application domain a
-Powell–Hestenes–Rockafellar formulation for stochastic unit commitment. **All of them
-bias the search toward feasibility. None of them guarantees that the minimum-energy
-assignment is feasible.** A 2026 survey of quantum computing for unit commitment —
-the application area with exactly this constraint structure — records no encoding
-with such a guarantee and describes feasibility as an open challenge.
+**What is not new here.** Removing slack variables is a crowded field — unbalanced
+penalization, exponential and Heaviside custom penalties, Lagrangian and
+augmented-Lagrangian duals, and in this application domain the
+Powell–Hestenes–Rockafellar formulation of Hong, Xu and Teng for stochastic unit
+commitment (arXiv:2502.15917). **Slack-free encoding is not new here, and neither is
+the qubit reduction.** The nearest prior art is Halffmann, Holzer, Plociennik and
+Trebing, *A Quantum Computing Approach for the Unit Commitment Problem*
+(arXiv:2212.06480, OR Proceedings 2022), which builds a UC QUBO specifically to avoid
+slack variables and, largely, squared sums, from the same motivation given here: each
+slack variable costs qubits, and squared penalty terms create the all-to-all
+connectivity NISQ hardware cannot embed. They report **20 variables and 38
+interactions against 50 and 106** for the generic construction. On qubit count and
+connectivity they got there first.
 
 **So the qubit count is not the headline.** 117 qubits → 52 on the real instance is
-real, and it is the *contested* half: several published methods also remove slack.
-The uncontested half is that ours removes slack **and keeps a guarantee**.
+real, and it is the *contested* half: Halffmann et al. and several other published
+methods also remove slack. The uncontested half is narrower than "removes slack".
+
+**What is left, stated narrowly.** For a **running-sum** constraint — a state of
+charge coupled across the whole horizon — the zero-penalty set is contained in the
+feasible set, proved under a sufficient spacing condition that the constructor
+enforces rather than assumes.
+
+**How that differs from Halffmann et al.** The two guarantees are of different kinds,
+and the difference is where they live rather than how strong they are:
+
+- **Theirs is about the minimization.** Infeasible assignments must not win, secured
+  by a condition on penalty magnitude, `B > D · maxᵢ mindownᵢ`, stated in prose
+  alongside the formulation. It is needed because their last penalty term, in their
+  words, "provides a bonus for an infeasible solution" when a start variable is left
+  unset, so the start penalty has to outweigh that bonus.
+- **Ours is about the zero set.** Zero penalty implies feasible, proved, and
+  `max_sound_spacing()` refuses to construct the encoding outside the condition
+  instead of leaving it to whoever picks the weights.
+
+The constraint classes differ too. Theirs are windowed minimum up and down times,
+local to a `minup`/`mindown` window; ours is a state variable accumulated across the
+whole horizon, which is what makes the excursion bound the thing needing proof. They
+also keep the squared demand penalty, the one term they did not remove.
+
+A 2026 survey of quantum computing for unit commitment — the application area with
+exactly this constraint structure — describes feasibility as an open challenge and
+records no encoding carrying a proved containment of this kind.
 
 **What it costs when the guarantee is absent, measured.** At a penalty weight below
 the soundness threshold, the QUBO's own minimum-energy assignment is infeasible — and
@@ -210,3 +241,11 @@ evidence than finding it; the encoding literature is large and moves quickly. If
 know of a slack-free encoding with a proved feasibility guarantee for a sequential
 running-sum constraint, that claim should come down, and the issue tracker is the
 place to say so.
+
+**Extended 2026-08-26, and the extension is the point.** Halffmann et al.
+(arXiv:2212.06480) and Hong et al. (arXiv:2502.15917) are not results of that scan.
+They came from the reference list of a survey (arXiv:2601.01777) read afterwards. The
+nearest prior art to the leg-1 claim was one citation hop from a document already in
+hand, which is precisely the gap "no citation-graph traversal was done" describes. The
+claim was narrowed on finding it: slack removal and the qubit saving are no longer
+claimed as new, and what remains is the containment property alone.
