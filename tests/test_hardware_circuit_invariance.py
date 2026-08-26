@@ -36,6 +36,7 @@ import experiment_hardware as hw  # noqa: E402
 RESULTS = Path(__file__).resolve().parents[1] / "docs" / "results"
 PARAMS_FILES = [
     "hardware_params.json",
+    "hardware_params_depth.json",
     "hardware_params_replication.json",
     "hardware_params_slackfree.json",
     "hardware_params_spread.json",
