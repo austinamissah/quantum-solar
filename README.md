@@ -600,12 +600,12 @@ Open:
 
 Each release is archived on Zenodo. The **concept DOI**
 [`10.5281/zenodo.22105805`](https://doi.org/10.5281/zenodo.22105805) resolves to the
-newest version; `10.5281/zenodo.22105806` is v1.0.0 specifically. `CITATION.cff` at
-the repository root holds the metadata, and both the Zenodo record and GitHub's
-"Cite this repository" button are built from it.
+newest version, and each release also carries its own version DOI, listed on the
+Zenodo record. `CITATION.cff` at the repository root holds the metadata, and both the
+Zenodo record and GitHub's "Cite this repository" button are built from it.
 
 > Amissah, A. (2026). *quantum-solar: an exactly-solved battery-scheduling instance
-> for QAOA method work, with a slack-free encoding* (v1.0.0). Zenodo.
+> for QAOA method work, with a slack-free encoding* (v1.0.1). Zenodo.
 > https://doi.org/10.5281/zenodo.22105805
 
 [`docs/FINDINGS.md`](docs/FINDINGS.md) separates what appears to be new here from what
