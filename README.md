@@ -553,9 +553,13 @@ Open:
   while the penalty-weight and selection-rule findings are both reps=2 results and
   carry no hardware leg at all, which is why
   [`docs/FINDINGS.md`](docs/FINDINGS.md) claims neither on the device. The gate
-  budget is the question to settle first, and the circuit-cost table in
+  budget looks affordable: re-transpiled against `FakeFez`, `cp3` at reps=2 costs
+  **114–123** two-qubit gates over five draws at `optimization_level=1`, and
+  104–113 at level 3 — inside the **37–290** range already flown, and far below the
+  **348** of the 6-slot target that the gate-count result ruled out. Candidates are
+  priced in
   [`docs/results/slack-free-encoding.md`](docs/results/slack-free-encoding.md)
-  §Circuit cost is where the candidates are already priced.
+  §Circuit cost.
 - Whether `max_sound_spacing` is tight. The soundness condition is proved
   *sufficient* and the guard enforces it, but nothing here shows that a spacing one
   step past it admits an infeasible zero-penalty assignment: the guard refuses to
