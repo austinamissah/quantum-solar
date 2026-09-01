@@ -3,6 +3,18 @@
 [![tests](https://github.com/austinamissah/quantum-solar/actions/workflows/tests.yml/badge.svg)](https://github.com/austinamissah/quantum-solar/actions/workflows/tests.yml)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22105805.svg)](https://doi.org/10.5281/zenodo.22105805)
 
+A home battery in Golden, Colorado saves $456 a year under Xcel's Colorado
+RE-TOU tariff, and that number has a closed form: 8 kWh of peak-hour discharge,
+times each season's peak/off-peak price spread, summed over the year's 261
+weekdays. I built an exact classical optimizer to confirm it on all 365 days.
+The quantum half asked two questions: is the QUBO encoding of this problem
+correct (proved sound, and checked against exhaustive enumeration at 2 to 4
+slots and the exact DP at every size), and can the circuit run on today's
+hardware (no: the 6-slot circuit needs 348 two-qubit gates, and at 290 almost
+no signal survived).
+
+The rest of this README is the technical version.
+
 Quantum optimization of **residential battery charge/discharge scheduling under
 time-of-use electricity pricing**.
 
@@ -17,8 +29,8 @@ baselines.
 > Start with **[docs/LESSONS.md](docs/LESSONS.md)** — a standalone field report on
 > what went wrong in this project and what each mistake cost, with the numbers. It
 > assumes no knowledge of this repo. Topics include why a penalty weight 48x too
-> large made QAOA optimize the wrong thing, why we spent a phase optimizing qubit
-> count when gate count was the binding constraint, and why a variance estimate
+> large made QAOA optimize the wrong thing, why the first phase went to optimizing
+> qubit count when gate count was the binding constraint, and why a variance estimate
 > from two samples cannot decide anything.
 
 ## Example schedule
@@ -118,7 +130,7 @@ invisible in the metric one would naturally watch.
 > that appears not to exist elsewhere — removing slack variables is a crowded field,
 > but the published alternatives bias toward feasibility rather than guaranteeing it.
 > The penalty-weight rule and the selection rule below are **known ideas**; what is
-> ours is measuring what they cost on a real instance.
+> mine is measuring what they cost on a real instance.
 
 That document is the place to start for judging the work. The rest of this section
 is the penalty-weight result, the most self-contained of the three.

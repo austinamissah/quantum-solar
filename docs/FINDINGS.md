@@ -2,7 +2,7 @@
 
 This repository contains three results about getting QAOA to work on a *constrained*
 problem. **One of them appears to be new. Two are rediscoveries of published work**,
-kept because the measurements are worth having, not because the ideas are ours.
+kept because the measurements are worth having, not because the ideas are mine.
 
 The prior-art searches were run with an AI assistant; every source named below was
 then checked by me. Disclosure in the README.
@@ -144,7 +144,7 @@ these instances is a **48× overshoot**.
 seeking the smallest sufficient penalty, are both established practice — the standard
 tutorial guidance is 10–100× the maximum coefficient, and published work already
 evaluates penalty weights *as fractions of the objective range* and finds small values
-beat conservative bounds. **Our `default_weights` implements the standard heuristic,
+beat conservative bounds. **My `default_weights` implements the standard heuristic,
 so "48× overshoot" is a critique of common practice rather than of a local mistake.**
 
 **What does not appear in the sources scanned** is the consequence measured here:
