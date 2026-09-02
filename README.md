@@ -187,7 +187,7 @@ that generalizes past this project. Regenerate with
 ## Installation
 
 ```bash
-git clone git@github.com:austinamissah/quantum-solar.git
+git clone https://github.com/austinamissah/quantum-solar.git
 cd quantum-solar
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt   # qiskit, qiskit-aer, numpy, scipy, matplotlib, jupyter, pytest
