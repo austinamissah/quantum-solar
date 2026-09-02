@@ -264,7 +264,7 @@ stage rests on the one before it and none was trusted on its own: the classical
 solver is checked against brute-force enumeration, QAOA against the exact optimum,
 the encodings against brute force again, the fast statevector against Qiskit, the
 sizing rule at all 56 swept points. Fourteen predictions were registered before the
-runs they describe, four write-ups report one of them falsified, nine of fifteen
+runs they describe, four write-ups report one of them falsified, eight of fifteen
 carry a correction or a retraction, and one hardware experiment was designed,
 costed, and then not run. The stage order is not asserted:
 `scripts/make_process_figure.py` refuses to draw unless each stage's modules first

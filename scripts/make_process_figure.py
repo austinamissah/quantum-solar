@@ -27,6 +27,10 @@ counted from `docs/plans/`, corrections from the write-ups themselves, hardware
 totals parsed from the generated provenance table. The script refuses to draw if any
 of them stops holding.
 
+A correction counts only where a write-up corrects one of its own claims. Crediting
+a correction made in another document is not the same act, and counting it inflated
+this number by one for as long as the rule was a bare keyword search.
+
 Run:  python scripts/make_process_figure.py
 """
 
@@ -52,6 +56,30 @@ OUT = ROOT / "docs" / "figures" / "web" / "process.png"
 
 GENERATED = {"hardware-jobs.md"}          # provenance table, makes no claims
 CORRECTION = re.compile(r"retract|corrected|walked back|superseded", re.I)
+# A write-up counts only where it corrects or retracts one of ITS OWN claims. The
+# keyword alone also fires on a sentence crediting a correction made somewhere
+# else: optimizer-budget-study.md matched solely on "an overstatement is
+# corrected there", which is about eval-censoring.md rather than about anything
+# this document claimed. A sentence that names another file, or defers to
+# "there", points away from the write-up it sits in, so it does not count.
+ELSEWHERE = re.compile(r"\.md\b|\bthere\b", re.I)
+
+# Which write-ups those two rules select, pinned by name. The count itself is
+# still derived rather than hardcoded (docs/LESSONS.md section 7 is about the
+# version that hardcoded it); what is pinned is the membership, so a rule that
+# quietly starts matching more or fewer documents refuses to draw instead of
+# restating whatever it happened to find. A new write-up that genuinely corrects
+# its own claim belongs here: read the sentence that matched, then add it.
+SELF_CORRECTING = [
+    "basin-structure",
+    "capacity-rate-sensitivity",
+    "eval-censoring",
+    "hardware-run-depth",
+    "hardware-run-encoding",
+    "hardware-run-encoding-replication",
+    "hardware-run-spread",
+    "slack-free-encoding",
+]
 
 INK = "#2F4B7C"
 ACCENT = "#E45756"
@@ -115,6 +143,30 @@ def added_on(rel: str) -> date:
     return date.fromisoformat(out[-1])
 
 
+# A sentence ends at ".", "!" or "?", possibly behind the markdown emphasis that
+# closes a bolded lead-in ("**...corrected.**"). Blocks are split first so a
+# heading, which carries no terminator, cannot run into the sentence beneath it.
+SENTENCE_END = re.compile(r"""(?<=[.!?])[*_`"')\]]*\s+""")
+QUOTE_MARK = re.compile(r"^\s*>+\s?")
+
+
+def sentences(text: str) -> list[str]:
+    """Sentences, with markdown wrapping and blockquote markers flattened away."""
+    out = []
+    for block in re.split(r"\n\s*\n", text):
+        flat = " ".join(QUOTE_MARK.sub("", line) for line in block.splitlines())
+        flat = " ".join(flat.split())
+        if flat:
+            out.extend(SENTENCE_END.split(flat))
+    return out
+
+
+def corrects_itself(path: Path) -> bool:
+    """True where a correction sentence is about this write-up's own claims."""
+    return any(CORRECTION.search(s) and not ELSEWHERE.search(s)
+               for s in sentences(path.read_text()))
+
+
 def check_order() -> list[date]:
     """Stages must run in non-decreasing order of when their modules first landed."""
     starts = [min(added_on(f) for f in files) for *_, files in STAGES]
@@ -144,11 +196,14 @@ def gather():
         raise SystemExit(
             "REFUSING TO DRAW: the summary says predictions were falsified and "
             "published as such, but no write-up contains FALSIFIED.")
-    corrected = [p for p in writeups if CORRECTION.search(p.read_text())]
-    if not corrected:
+    corrected = [p for p in writeups if corrects_itself(p)]
+    if sorted(p.stem for p in corrected) != sorted(SELF_CORRECTING):
         raise SystemExit(
-            "REFUSING TO DRAW: the summary says write-ups carry corrections, but "
-            "none does.")
+            "REFUSING TO DRAW: the write-ups correcting a claim of their own are "
+            f"{sorted(p.stem for p in corrected)}, not the pinned "
+            f"{sorted(SELF_CORRECTING)}. Read the sentence that moved the verdict "
+            "before editing the list: a write-up counts where it corrects itself, "
+            "not where it reports a correction made in another document.")
 
     totals = re.search(
         r"\*\*(\d+) jobs, (\d+) circuits, ([\d,]+) shots, (\d+) seconds of QPU time",
