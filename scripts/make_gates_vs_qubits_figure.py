@@ -184,7 +184,7 @@ def main() -> None:
         ax.grid(alpha=0.25, lw=0.7)
         ax.set_axisbelow(True)
 
-    fig.suptitle("We spent a phase optimizing the resource that wasn't the constraint",
+    fig.suptitle("I spent a phase optimizing the resource that wasn't the constraint",
                  fontsize=15, y=0.985)
     fig.tight_layout(rect=(0, 0.215, 1, 0.945))
 
