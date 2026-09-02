@@ -196,10 +196,10 @@ def main() -> None:
     # a true claim look false. Like for like it is 348 vs 290, or 269 vs 237.
     fig.text(
         0.5, 0.125,
-        "What it changed: the 6-slot problem we were building toward needs ~348 gates "
-        "even with the encoding we designed to save qubits,\ncompiled the same way as "
+        "What it changed: the 6-slot problem I was building toward needs ~348 gates "
+        "even with the encoding I designed to save qubits,\ncompiled the same way as "
         "the circuits above. That is more than the worst of them, which returned no "
-        "usable signal.\nNo encoding makes it submittable. We had spent a phase on the "
+        "usable signal.\nNo encoding makes it submittable. I had spent a phase on the "
         "wrong axis.",
         ha="center", va="center", fontsize=10.5, color=INK,
         bbox=dict(boxstyle="round,pad=0.6", facecolor="#EEF2F8", edgecolor="#C6D3E4"),

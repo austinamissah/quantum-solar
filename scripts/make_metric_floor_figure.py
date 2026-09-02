@@ -55,7 +55,7 @@ def main() -> None:
         ax0.fill_between(Ts, lo[rp], hi[rp], alpha=0.15, color=line.get_color())
     ax0.set_ylim(-0.02, 1.02)
     ax0.set_ylabel(f"prob. mass on optimal bitstrings ({shots} shots)")
-    ax0.set_title("What we plotted\nsampled: reads exactly 0 in "
+    ax0.set_title("What I plotted\nsampled: reads exactly 0 in "
                   f"{n_zero} of {len(rows)} cells", fontsize=11)
     ax0.annotate("the 'trend' is the metric\nhitting its floor",
                  xy=(Ts[-1], 0.0), xytext=(Ts[1] + 0.35, 0.34),
