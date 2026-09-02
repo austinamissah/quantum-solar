@@ -8,7 +8,7 @@ with QAOA on IBM hardware. You do not need to have read the rest of this repo.
 the detours. The detours are where the transferable knowledge is, so they are the
 structure here. Every lesson comes with the number it cost, because a lesson
 without a number does not transfer — "be careful with penalty weights" is
-forgettable; "our penalty weight was 48× too large and made the objective
+forgettable; "my penalty weight was 48× too large and made the objective
 invisible" is not.
 
 Assumed background: a little linear algebra, a little probability. Terms are
@@ -25,14 +25,14 @@ fold each constraint into the objective as a *penalty*: add a large term that is
 zero when the constraint holds and positive when it is violated. Pick the penalty
 weight large enough and the optimizer avoids violations on its own.
 
-**What we did.** We sized penalties at ~10× the objective's scale, a common rule
+**What I did.** I sized penalties at ~10× the objective's scale, a common rule
 of thumb. It works for a *classical* solver: any infeasible solution loses
 outright, so the optimum is correct.
 
 **Why it broke QAOA.** QAOA does not find the minimum. It prepares a quantum
 state and minimizes the *expectation value* `⟨H⟩` — an average over everything the
 state contains. With penalties 48× the objective's span, `⟨H⟩` is almost entirely
-penalty. The cost we actually cared about was a rounding error inside it.
+penalty. The cost I actually cared about was a rounding error inside it.
 
 The optimizer minimized `⟨H⟩` as instructed, and the probability of the best
 schedule fell:
@@ -44,14 +44,14 @@ schedule fell:
 | probability on *any feasible* schedule | 0.29 | **0.94** |
 
 The deeper circuit was **14× better** at the job it was given and **200× worse** at
-the job we wanted. It found the feasible region and stopped caring about price.
+the job I wanted. It found the feasible region and stopped caring about price.
 
 **The fix, which generalizes.** The right weight is derivable before running
 anything:
 
 > **α\* = (objective span across feasible solutions) / (penalty scale)**
 
-For us, 0.3095 / 14.81 = **0.0209**. Below it the surrogate's optimum stops being
+For me, 0.3095 / 14.81 = **0.0209**. Below it the surrogate's optimum stops being
 the true optimum; at or above it, exact on 200 test instances (61% at α = 0.010,
 6% at 0.005, 1.5% at 0.003 — a cliff, not a slope). Rescaling moved reps=2's
 optimal-state probability by **440×** with the encoding and the optimizer
@@ -64,7 +64,7 @@ above 1, the algorithm is not optimizing what you think.
 
 ### The same mistake, one level down
 
-We twice declared an *encoding* useless when the *weight* was the problem. One
+I twice declared an *encoding* useless when the *weight* was the problem. One
 candidate lost 100% of the battery's value at the default weight — apparently
 catastrophic. Swept across weights, it lost **28.79%**. Still not competitive, but
 not catastrophic, and the earlier verdict was an artifact.
@@ -75,14 +75,14 @@ setting, not about the thing.
 
 ---
 
-## 2. We spent the first phase optimizing the wrong resource
+## 2. I spent the first phase optimizing the wrong resource
 
-Everyone counts qubits. Qubits are how quantum computers are advertised, and our
+Everyone counts qubits. Qubits are how quantum computers are advertised, and my
 encoding was spending most of them on bookkeeping — extra "slack" variables used
-to express an inequality. We designed a cleverer encoding and cut a 6-slot problem
+to express an inequality. I designed a cleverer encoding and cut a 6-slot problem
 from **22 qubits to 12**.
 
-Then we looked at the data from a run that had already happened:
+Then I looked at the data from a run that had already happened:
 
 | circuit | qubits | 2-qubit gates | measured degradation |
 |---|---:|---:|---:|
@@ -99,9 +99,9 @@ Gates matter because each two-qubit gate is a physical operation with an error
 rate (~0.3–1% on current hardware), and errors compound multiplicatively. A qubit
 that sits idle costs you comparatively little; a gate costs you every time.
 
-**What this changed.** The 6-slot problem we had been targeting needs **348 gates**
+**What this changed.** The 6-slot problem I had been targeting needs **348 gates**
 even with the improved encoding — worse than circuit D above, which had produced
-almost no usable signal. **No encoding makes it submittable.** We had spent a
+almost no usable signal. **No encoding makes it submittable.** I had spent a
 phase optimizing a resource that was not the binding constraint.
 
 *Compile the comparison the same way.* This paragraph used to quote **269** gates
@@ -118,7 +118,7 @@ minutes with the existing data would have reordered the whole project.
 
 ---
 
-## 3. The metric was not measurable at the size we spent on
+## 3. The metric was not measurable at the size I spent on
 
 Of four circuits in an earlier hardware run, **three had a target signal below the
 level of random guessing** — not because the hardware was bad, but because the
@@ -138,18 +138,18 @@ The recorded value was "0" in both a case where the truth was 10⁻⁶ and cases
 it was 10⁻³. The metric was not noisy; it was **three orders of magnitude below its
 own resolution**, and reported a number anyway.
 
-This ruined a figure. Our scaling chart showed optimal-state probability declining
+This ruined a figure. My scaling chart showed optimal-state probability declining
 with problem size — the headline trend. At the two largest sizes it was **exactly
 zero in all eighteen cells**. The "trend" at those sizes was the metric bottoming
 out. That is a *separate* defect from the weight bug: it was present at both
 weights and would not have been fixed by fixing the weight.
 
 **The fix costs nothing.** In simulation the exact probability is available from
-the statevector directly — no sampling, no floor, one extra computation. We had
+the statevector directly — no sampling, no floor, one extra computation. I had
 been sampling a simulator, which is like rolling dice to estimate a number
 printed on the box.
 
-**Then the fix itself failed, silently, in the same shape.** We implemented that
+**Then the fix itself failed, silently, in the same shape.** I implemented that
 exact-probability column with the library's obvious call — build the circuit, ask
 for its statevector. The library realizes the circuit's cost layer by
 **exponentiating a 2ⁿ × 2ⁿ matrix**, which is fine at 6 qubits and dies of
@@ -161,7 +161,7 @@ the operator the library built on the way there. Written directly (the cost
 Hamiltonian is diagonal, so it is one elementwise multiply and one rotation per
 qubit) it agrees to **3×10⁻¹⁶** and does 22 qubits in five seconds.
 
-**Two lessons, and the second is the one we keep relearning.** A metric can be
+**Two lessons, and the second is the one I keep relearning.** A metric can be
 unmeasurable because it is below your resolution *or* because the code computing
 it cannot reach your problem size — check both. And a fix prescribed in a
 retrospective is not a fix until something runs it at full scale: this one was
@@ -177,22 +177,22 @@ The floor case above reports a value that is below its own resolution. The ceili
 case reports a value that is **the limit you imposed**, and it is harder to see
 because the number looks perfectly reasonable.
 
-We capped our classical optimizer at 5 restarts × 200 iterations and recorded, per
+I capped my classical optimizer at 5 restarts × 200 iterations and recorded, per
 run, how many evaluations it used. Many runs reported **1000** — which is exactly
 5 × 200. That is not a measurement of how much work the optimizer wanted; it is
-the budget, read back to us.
+the budget, read back to me.
 
 Two things followed, and the second is the nastier one:
 
 > **The cap bound the result, not just the count.** Given 5× the budget, runs that
-> had been at the cap moved the quantity we actually cared about by a median of
+> had been at the cap moved the quantity I actually cared about by a median of
 > **100%** — one doubled — while runs that had genuinely converged moved by
 > **0.0%**. Every headline number from the capped configuration was a lower bound.
 > The 0.0% control is what makes this causal rather than noise: the pipeline is
 > deterministic, so the movement is real.
 
-> **Both arms of our comparison were capped, so the comparison read as a clean
-> null.** We were comparing effort between two configurations. Numerator at 1000,
+> **Both arms of my comparison were capped, so the comparison read as a clean
+> null.** I was comparing effort between two configurations. Numerator at 1000,
 > denominator at 1000, ratio 1.000 — "no difference", tidy and false. A ratio of
 > two censored quantities is dragged toward 1.0 *by construction*. Restricted to
 > the pairs where neither side was capped, one configuration used **41% fewer**
@@ -203,10 +203,10 @@ A floor makes a real effect look like zero. **A ceiling makes a real difference
 look like agreement**, which is worse, because "no difference" is a conclusion
 people are happy to accept and stop.
 
-### The correction to that, which we also got wrong
+### The correction to that, which I also got wrong
 
-Having found the ceiling, we wrote that a conclusion resting on it "is not
-supported". That was the natural next step and it was an overreach, so we went and
+Having found the ceiling, I wrote that a conclusion resting on it "is not
+supported". That was the natural next step and it was an overreach, so I went and
 checked: 120 runs varying the capped axis directly.
 
 > The budget **was** binding — the baseline hit its cap on 10 of 10 runs. Lifting
@@ -221,7 +221,7 @@ checked: 120 runs varying the capped axis directly.
 **A censored measurement invalidates a claim's precision, not automatically its
 direction.** "This number is a bound, not a measurement" and "the conclusion drawn
 from it is wrong" are different statements, and the second does not follow from the
-first. Both of our steps were necessary: finding the ceiling was right, and
+first. Both of my steps were necessary: finding the ceiling was right, and
 assuming it overturned the result was not. The only way to know which was to lift
 the cap and look.
 
@@ -231,14 +231,14 @@ numbers looked like.
 
 **Record the cap next to the count and flag equality.** It is one column and one
 warning line. And note that the obvious test is one-sided: a total *below*
-5 × 200 can still contain individual restarts that hit 200. Ours undercounted
+5 × 200 can still contain individual restarts that hit 200. Mine undercounted
 badly — the aggregate test flagged 5 of 12 cells; 8 of 12 actually consumed more
 when offered more. **The check that discriminates is whether the run takes more
 budget when you offer it**, which costs one re-run.
 
 ### A related trap: fitting a model to the wrong observable
 
-We fit a noise model to one observable (optimal-state probability), then used it to
+I fit a noise model to one observable (optimal-state probability), then used it to
 predict a different one (a full-distribution distance). It overpredicted by
 **+33%, +76%, +36%, +6%**. Refit directly on the quantity being predicted, it
 worked. A model is calibrated *for a purpose*; it is not a general-purpose truth.
@@ -291,17 +291,17 @@ they are deeply unintuitive.
 
 ### A spread from two samples tells you almost nothing
 
-We estimated run-to-run variability from **two** measurements. For two draws,
+I estimated run-to-run variability from **two** measurements. For two draws,
 
 ```
 sd|X₁ − X₂| / E|X₁ − X₂| = √(2 − 4/π) / (2/√π) = 0.756
 ```
 
-**~76% relative uncertainty.** Our observed spread of 0.0389 was consistent with
-anything from 10% to 73% of the effect we were trying to protect — spanning
+**~76% relative uncertainty.** My observed spread of 0.0389 was consistent with
+anything from 10% to 73% of the effect I was trying to protect — spanning
 "negligible" to "as large as the signal". The test could not decide.
 
-We had blamed the failure on vague wording (the threshold said "comparable to"
+I had blamed the failure on vague wording (the threshold said "comparable to"
 without a number). That was true but not the real problem:
 
 > **A pre-fixed numeric threshold would not have saved it.** A 76%-uncertain
@@ -328,16 +328,16 @@ INDETERMINATE. Working through the arithmetic *before* running it:
 > the statistical upper bound landed at 0.048 against a threshold of 0.034. The
 > test could only ever return "bad" or "don't know". It could not return "fine".
 
-We raised it to 10 replicates for ~15 extra seconds of quantum time. **A test that
+I raised it to 10 replicates for ~15 extra seconds of quantum time. **A test that
 cannot return one of its own verdicts is not a test** — and this is invisible
 unless you simulate your own decision rule before collecting data.
 
 ### At n = 3 you cannot compare two variances
 
-We measured run-to-run variability as 0.02437 and within-run as 0.01743 and wrote
+I measured run-to-run variability as 0.02437 and within-run as 0.01743 and wrote
 that the former "exceeds" the latter. On 2 degrees of freedom the first has a 95%
 interval of **[0.0127, 0.1532]** — a 12× span that contains the second. They were
-**statistically indistinguishable**. We had compared two point estimates without
+**statistically indistinguishable**. I had compared two point estimates without
 their intervals, which is the same error this document criticizes elsewhere.
 
 ---
@@ -346,19 +346,19 @@ their intervals, which is the same error this document criticizes elsewhere.
 
 Two instances, both subtle, both changing conclusions.
 
-**Bootstrapping something that was never sampled.** To get error bars we resampled
-our data — standard. But we resampled *both* the measurement and the reference,
+**Bootstrapping something that was never sampled.** To get error bars I resampled
+my data — standard. But I resampled *both* the measurement and the reference,
 when the reference was computed exactly and carried no sampling error at all. That
-injected noise the real quantity does not have. The symptom was visible and we
+injected noise the real quantity does not have. The symptom was visible and I
 nearly missed it: the confidence intervals **did not contain their own point
 estimates**. Fixing it moved the interval's lower bound from 0.0038 to **0.0291** —
-an 8× improvement in margin, from "barely significant" to "comfortable". We had
-been reporting our own result as far weaker than it was.
+an 8× improvement in margin, from "barely significant" to "comfortable". I had
+been reporting my own result as far weaker than it was.
 
 **Subtracting shot noise, or not.** A measured spread contains both device
-fluctuation *and* ordinary counting noise. Our confidence interval already
+fluctuation *and* ordinary counting noise. My confidence interval already
 accounted for counting noise. Comparing the *total* spread against the effect
-charged us twice for the same term. Removing it:
+charged me twice for the same term. Removing it:
 
 ```
 σ_device = √(σ_total² − σ_shot²)
@@ -375,15 +375,15 @@ a denominator, whether a threshold applied to an estimate or its interval, wheth
 noise was subtracted. Stating a threshold in advance is not enough. **Every
 quantity that feeds it has to be pinned too.**
 
-**Then we did it a fourth time, in an experiment written specifically to avoid
+**Then I did it a fourth time, in an experiment written specifically to avoid
 it.** The pre-registration for the budget-ceiling test above fixed the threshold
 (10%), the subset of runs, the interpretation table, and the direction of the risk.
 It left the **classifier** loose — what counts as a "capped" run. Under the
 registered definition the effect is 100% and the verdict fires; under the more
-inclusive definition it is 8.0% and the verdict flips. The one thing we forgot to
+inclusive definition it is 8.0% and the verdict flips. The one thing I forgot to
 pin is the one that decided it.
 
-The pattern is worth naming: we keep pinning the *threshold* and forgetting the
+The pattern is worth naming: I keep pinning the *threshold* and forgetting the
 **population it applies to**. A threshold is a number and feels like the decision;
 the subgroup definition is a sentence and feels like description. It is not.
 
@@ -394,10 +394,10 @@ the subgroup definition is a sentence and feels like description. It is not.
 Cheap habits, each of which caught something that would have wasted real
 resources.
 
-**Dry-run everything that spends.** Our submit script had a dry-run mode. Running
+**Dry-run everything that spends.** My submit script had a dry-run mode. Running
 it showed the script rebuilding *the previous experiment's* circuits — it had never
 been taught about the new one. Submitting would have burned ~20 seconds of quantum
-time re-answering a question we had already answered. The dry run cost nothing.
+time re-answering a question I had already answered. The dry run cost nothing.
 
 **Look at the artifact, not the exit code.** Two examples. A figure generator
 returned success while producing a chart whose title ran off both edges, and a
@@ -405,13 +405,13 @@ flat price line auto-scaled onto a $0.014 axis so that a *constant* price looked
 like structure. Both were only visible by opening the image. Exit code 0 means the
 program did not crash; it does not mean the output is right.
 
-**Verify a fast implementation against a slow one.** We replaced a library
+**Verify a fast implementation against a slow one.** I replaced a library
 simulator with hand-written NumPy for a 300× speed-up, then checked it against the
 original on random inputs: agreement to **3×10⁻¹⁵**. The check took a minute and
 made every number downstream trustworthy. The script refuses to report if the
 check fails.
 
-**Make comparisons differ in exactly one thing.** We nearly compared error
+**Make comparisons differ in exactly one thing.** I nearly compared error
 mitigation on/off using circuits that had been *independently* compiled — 113 vs 98
 gates for what was supposed to be the same circuit. The comparison would have
 measured compilation randomness alongside the effect. Compiling once and reusing
@@ -423,8 +423,8 @@ were *silent*:
 
 1. `pkill -f optimizer_study.py` matched the very shell command that invoked it,
    and killed the parent instead of the target.
-2. We killed a long job by PID — but the PID belonged to the shell *wrapper*, not
-   the program. It ran for **another hour at 784% CPU**, invisibly, while we
+2. I killed a long job by PID — but the PID belonged to the shell *wrapper*, not
+   the program. It ran for **another hour at 784% CPU**, invisibly, while I
    reported it stopped and drew conclusions from timings taken during the
    contention it was causing.
 3. A queued experiment waited on `while pgrep -f "[s]tdbuf ..."` — but the
@@ -447,8 +447,8 @@ state instead of program output. **If you are going to report that something ran
 check evidence it produced, not that its supervisor is alive.**
 
 **Prefer measurements that are immune to your own mistakes.** In the middle of that
-mess we compared two configurations by *iteration count* rather than wall-clock
-time. Iteration counts are unaffected by CPU contention; timings are not. We chose
+mess I compared two configurations by *iteration count* rather than wall-clock
+time. Iteration counts are unaffected by CPU contention; timings are not. I chose
 it for an unrelated reason and it was the only reason the comparison survived.
 
 ---
@@ -472,9 +472,9 @@ they go stale silently.** Regenerate them from the code that is current.
 "half-full battery" default silently became 40% full. Every result computed with
 it was internally consistent and wrong. **Know your language's rounding rule.**
 
-**Extrapolating from a toy case.** We estimated a cost on one synthetic day and
+**Extrapolating from a toy case.** I estimated a cost on one synthetic day and
 scaled it to a year. Computed properly over 365 real days, it was **more than 2×
-larger**. Our reasoning about *why* was also wrong: we predicted the many zero-value
+larger**. My reasoning about *why* was also wrong: I predicted the many zero-value
 days would dilute the average, but a zero-value day contributes to neither the
 numerator nor the denominator — it drops out entirely. The real mechanism was that
 value concentrates into a few high-spread days, which are exactly the days the
@@ -513,7 +513,7 @@ distribution* can be built at the largest declared target size — and normalize
 
 ## 8. Retracting in place
 
-We withdrew several claims. One example, because the reasoning error is common:
+I withdrew several claims. One example, because the reasoning error is common:
 
 > **Claim:** "Device drift cannot explain this, because drift would have shifted
 > both circuits and one of them didn't move."
@@ -521,21 +521,21 @@ We withdrew several claims. One example, because the reasoning error is common:
 > **Why it was wrong:** that circuit had no earlier measurement. "It didn't move"
 > was never observable. The argument sounded like evidence and referred to nothing.
 >
-> **What we later measured:** drift was real and accounted for 43% of the shift.
+> **What I later measured:** drift was real and accounted for 43% of the shift.
 
 A second, because the error is the opposite shape — over-correcting rather than
 over-claiming:
 
 > **Claim:** having discovered that an optimizer's evaluation counts were pinned
-> at the budget we set, we wrote that a conclusion resting on them "is not
+> at the budget I set, I wrote that a conclusion resting on them "is not
 > supported".
 >
 > **Why it was wrong:** a censored measurement invalidates a claim's *precision*,
-> not automatically its *direction*. We went from "this number is a bound, not a
+> not automatically its *direction*. I went from "this number is a bound, not a
 > measurement" to "the conclusion drawn from it is wrong", and the second does not
 > follow from the first.
 >
-> **What we later measured:** 120 runs varying the capped axis directly. The
+> **What I later measured:** 120 runs varying the capped axis directly. The
 > budget really was binding, and lifting it 25× really did help — by a
 > statistically clear margin. The conclusion survived anyway, because the gap it
 > had to close was three times larger than the effect the cap was hiding.
@@ -544,7 +544,7 @@ Others: a claim that an optimizer was "failing outright" (it was succeeding at a
 mis-specified objective); a claim that no procedure could clear a threshold (the
 top of the relevant range grazed just above it); the variance comparison in §4.
 
-We struck these through **in place**, next to the original, with the reasoning that
+I struck these through **in place**, next to the original, with the reasoning that
 failed — rather than quietly editing them away. Anyone rereading sees both the
 claim and its correction. Quiet editing destroys exactly the information a reader
 needs to calibrate how much to trust everything else.
@@ -557,7 +557,7 @@ The exception is the second one above. The instinct that produced it is the *goo
 one: finding a defect in how something was measured feels like finding the answer,
 and the supported step is smaller. A bad measurement tells you that you do not
 know, which is not the same as knowing the opposite. **Skepticism about a result is
-not evidence against it.** We had to run the experiment to find out, and it went
+not evidence against it.** I had to run the experiment to find out, and it went
 the other way.
 
 ---
@@ -575,11 +575,11 @@ But the negative results were worth more:
 - The **failed measurability gate** stopped a hardware run that would have produced
   uninterpretable data, and produced the rule about checking resolution first.
 - The **underpowered variance test** taught more by being underpowered than it
-  would have by working, because it forced us to compute what a design *can*
+  would have by working, because it forced me to compute what a design *can*
   conclude before running it.
 
-**We declined to spend quantum time on a run that could not have produced a
-result.** We planned a 10-hour run at the largest problem size, then noticed
+**I declined to spend quantum time on a run that could not have produced a
+result.** I planned a 10-hour run at the largest problem size, then noticed
 that the metric had already bottomed out two sizes earlier: it would have
 returned nine zeros. Not running it cost nothing, and no result would have been
 published either way.
@@ -599,7 +599,7 @@ committed fixture, so the prices cannot move underneath a result. That disciplin
 covers *measurements*. It says nothing about a fact that arrives from outside: a news
 item, a regulatory decision, something reported by someone who read it elsewhere.
 
-**What we did.** Preparing the v1.0.0 release, the README's tariff caveat was changed
+**What I did.** Preparing the v1.0.0 release, the README's tariff caveat was changed
 from "a ~9.9% Xcel increase filed for August 2026" to say the increase had been
 approved, with a dollar figure attached. The claim came from report. No source was
 consulted at the time. It went into `README.md`, into the module comment that pins the
@@ -641,7 +641,7 @@ plus a domain survey. Its limits were recorded in the same file, honestly and in
 public, and one of them read: **"No citation-graph traversal was done."** That is an
 accurate description of what was not done, published alongside the claim it weakens.
 
-**What we did.** Nothing further. The caveat sat in the file for two days while the
+**What I did.** Nothing further. The caveat sat in the file for two days while the
 claim it qualified went into the README, into a release note, and into a tagged
 release archived under a DOI.
 

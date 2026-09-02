@@ -29,8 +29,8 @@ baselines.
 > Start with **[docs/LESSONS.md](docs/LESSONS.md)** — a standalone field report on
 > what went wrong in this project and what each mistake cost, with the numbers. It
 > assumes no knowledge of this repo. Topics include why a penalty weight 48x too
-> large made QAOA optimize the wrong thing, why the first phase went to optimizing
-> qubit count when gate count was the binding constraint, and why a variance estimate
+> large made QAOA optimize the wrong thing, why I spent a phase optimizing qubit
+> count when gate count was the binding constraint, and why a variance estimate
 > from two samples cannot decide anything.
 
 ## Example schedule
