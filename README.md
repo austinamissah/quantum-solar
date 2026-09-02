@@ -617,7 +617,7 @@ Zenodo record. `CITATION.cff` at the repository root holds the metadata, and bot
 Zenodo record and GitHub's "Cite this repository" button are built from it.
 
 > Amissah, A. (2026). *quantum-solar: an exactly-solved battery-scheduling instance
-> for QAOA method work, with a slack-free encoding* (v1.0.1). Zenodo.
+> for QAOA method work, with a slack-free encoding* (v1.0.2). Zenodo.
 > https://doi.org/10.5281/zenodo.22105805
 
 [`docs/FINDINGS.md`](docs/FINDINGS.md) separates what appears to be new here from what

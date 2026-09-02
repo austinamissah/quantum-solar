@@ -5,8 +5,8 @@ authors:
   - family-names: Amissah
     given-names: Austin
     website: "https://amissah.net"
-version: "1.0.1"
-date-released: 2026-08-26
+version: "1.0.2"
+date-released: 2026-09-02
 doi: 10.5281/zenodo.22105805
 license: MIT
 identifiers:
