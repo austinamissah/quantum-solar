@@ -9,7 +9,7 @@ records (`docs/LESSONS.md` section 7).
 
 Two counts are pinned because they count different things and are easy to conflate.
 Four *write-ups* headline a falsification in a verdict line, which is what
-`docs/FINDINGS.md`, the README and `scripts/make_process_figure.py` all report.
+`docs/FINDINGS.md` and the README report.
 Eight *predictions* are scored falsified in the ledger: `hardware-run-encoding.md`
 carries two whose headings name the noise model rather than the prediction, and
 `hardware-run.md`'s H1 met its own stated refutation condition. Asserting either
@@ -49,7 +49,12 @@ FINDINGS_TEXT = FINDINGS.read_text()
 LINK = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 
 VERDICTS = {"held", "falsified", "rule verdict", "not run"}
-WORDS = {"four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+WORDS = {"four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+         "thirteen": 13, "fourteen": 14, "twenty-six": 26}
+README_TEXT = (ROOT / "README.md").read_text()
+README_SENTENCE = re.compile(
+    r"(\w[\w-]*) predictions were registered across (\w+) pre-registrations before the "
+    r"runs they describe; (\w+) were falsified and (\w+) resolved by a decision rule")
 
 
 def parse_rows(text: str) -> list[dict]:
@@ -77,9 +82,10 @@ ROWS = parse_rows(PRED_TEXT)
 def writeups_headlining_a_falsification(results: Path = RESULTS) -> list[Path]:
     """Write-ups whose own text carries the verdict word, as the prose counts them.
 
-    Same rule `scripts/make_process_figure.py` derives its figure caption from: the
-    literal uppercase token, which these documents use only in a verdict line. The
-    generated provenance table makes no claims and is excluded there and here.
+    The literal uppercase token, which these documents use only in a verdict line;
+    `scripts/make_process_figure.py` uses the same rule as a cross-check against the
+    ledger. The generated provenance table makes no claims and is excluded there and
+    here.
     """
     return [p for p in sorted(results.glob("*.md"))
             if p.name != "hardware-jobs.md" and "FALSIFIED" in p.read_text()]
@@ -207,6 +213,35 @@ def test_the_prose_guard_catches_a_perturbed_prediction_count():
     with pytest.raises(AssertionError, match="prose falsified count"):
         check_prose_agrees(PRED_TEXT, FINDINGS_TEXT.replace(
             original, "registered predictions, **6** of"))
+
+
+def check_readme_agrees(pred_text: str, readme_text: str) -> None:
+    """The README sentence under the process figure, against the ledger rows.
+
+    This sentence used to read "Fourteen predictions were registered", which counted
+    plan files; it sits directly under a figure that now counts predictions, so it is
+    the restatement most likely to drift back.
+    """
+    m = README_SENTENCE.search(flatten(readme_text))
+    assert m, "README no longer states the prediction counts in the pinned form"
+    rows = parse_rows(pred_text)
+    counts = tally(rows)
+    plans = {Path(r["plan"]).name for r in rows}
+    assert WORDS[m.group(1).lower()] == len(rows), "README total is not the row count"
+    assert WORDS[m.group(2).lower()] == len(plans), "README plan count is not the ledger's"
+    assert WORDS[m.group(3).lower()] == counts["falsified"], "README falsified is not the row count"
+    assert WORDS[m.group(4).lower()] == counts["rule verdict"], "README rule count is not the row count"
+
+
+def test_the_readme_sentence_agrees_with_the_ledger():
+    check_readme_agrees(PRED_TEXT, README_TEXT)
+
+
+def test_the_readme_guard_catches_a_perturbed_count():
+    original = "eight were falsified"
+    assert original in README_TEXT, "the README sentence moved; this mutation tests nothing"
+    with pytest.raises(AssertionError, match="README falsified"):
+        check_readme_agrees(PRED_TEXT, README_TEXT.replace(original, "four were falsified"))
 
 
 def test_the_prose_guard_catches_a_perturbed_writeup_count(tmp_path):

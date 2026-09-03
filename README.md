@@ -267,10 +267,11 @@ The build order, and what was put in place to catch each stage being wrong. Each
 stage rests on the one before it and none was trusted on its own: the classical
 solver is checked against brute-force enumeration, QAOA against the exact optimum,
 the encodings against brute force again, the fast statevector against Qiskit, the
-sizing rule at all 56 swept points. Fourteen predictions were registered before the
-runs they describe, four write-ups report one of them falsified, eight of fifteen
-carry a correction or a retraction, and one hardware experiment was designed,
-costed, and then not run. The stage order is not asserted:
+sizing rule at all 56 swept points. Twenty-six predictions were registered across
+fourteen pre-registrations before the runs they describe; eight were falsified and
+five resolved by a decision rule rather than a directional claim. Eight of fifteen
+write-ups carry a correction or a retraction, and one hardware experiment was
+designed, costed, and then not run. The stage order is not asserted:
 `scripts/make_process_figure.py` refuses to draw unless each stage's modules first
 appear in the repository no earlier than the previous stage's, so a tidier story
 than the one that happened fails instead of printing.

@@ -22,10 +22,17 @@ them caught something real: the dry run caught a submit script rebuilding the
 previous experiment's circuits, and the brute-force equivalence is what keeps an
 approximate encoding from quietly returning an infeasible schedule.
 
-Every process number in the summary is recomputed at draw time: pre-registrations
+Every process number in the summary is recomputed at draw time: predictions and
+their verdicts tallied from the rows of `docs/PREDICTIONS.md`, pre-registrations
 counted from `docs/plans/`, corrections from the write-ups themselves, hardware
 totals parsed from the generated provenance table. The script refuses to draw if any
-of them stops holding.
+of them stops holding, or if the ledger's own header disagrees with its rows.
+
+The prediction counts name their quantity. An earlier caption read "14 predictions
+were registered, 4 write-ups report one of them falsified", which counted plan files
+and write-ups carrying a verdict token; the ledger counts predictions, of which eight
+plans register more than one, so the two framings give different numbers for what
+sounds like the same thing.
 
 A correction counts only where a write-up corrects one of its own claims. Crediting
 a correction made in another document is not the same act, and counting it inflated
@@ -52,6 +59,8 @@ PLANS = ROOT / "docs" / "plans"
 RESULTS = ROOT / "docs" / "results"
 LESSONS = ROOT / "docs" / "LESSONS.md"
 JOBS = RESULTS / "hardware-jobs.md"
+LEDGER = ROOT / "docs" / "PREDICTIONS.md"
+DECISIONS = ROOT / "docs" / "DECISIONS.md"
 OUT = ROOT / "docs" / "figures" / "web" / "process.png"
 
 GENERATED = {"hardware-jobs.md"}          # provenance table, makes no claims
@@ -182,20 +191,69 @@ def check_order() -> list[date]:
     return starts
 
 
+LEDGER_HEADER = re.compile(
+    r"\*\*Counts: (\d+) predictions .*? (\d+) held, (\d+) falsified, "
+    r"(\d+) rule verdicts, (\d+) not run\.\*\*")
+LINK = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+
+
+def ledger() -> dict:
+    """Verdict tallies from the rows of PREDICTIONS.md, checked against its header.
+
+    The rows are the record; the header is a restatement of them. Both are read so
+    that a row edited without its header, or the reverse, refuses here instead of
+    drawing whichever one happened to be parsed.
+    """
+    text = LEDGER.read_text()
+    rows = []
+    for line in text.splitlines():
+        if line.startswith("| [") and "plans/" in line:
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            rows.append((LINK.search(cells[0]).group(2), cells[3].strip("*_ ")))
+    counts = {"held": 0, "falsified": 0, "rule verdict": 0, "not run": 0}
+    for _plan, verdict in rows:
+        if verdict not in counts:
+            raise SystemExit(f"REFUSING TO DRAW: unknown verdict {verdict!r} in the ledger.")
+        counts[verdict] += 1
+    header = LEDGER_HEADER.search(" ".join(text.split()))
+    if not header:
+        raise SystemExit("REFUSING TO DRAW: PREDICTIONS.md no longer states its counts.")
+    stated = dict(zip(("total", "held", "falsified", "rule verdict", "not run"),
+                      map(int, header.groups())))
+    if stated != {"total": len(rows), **counts}:
+        raise SystemExit(
+            f"REFUSING TO DRAW: PREDICTIONS.md's header says {stated} but its rows "
+            f"tally to {{'total': {len(rows)}, **{counts}}}. Fix the ledger first.")
+    return {"total": len(rows), "plans": {Path(p).name for p, _ in rows}, **counts}
+
+
 def gather():
     plans = sorted(PLANS.glob("*.md"))
     writeups = [p for p in sorted(RESULTS.glob("*.md")) if p.name not in GENERATED]
 
-    # Both counts are DERIVED and drawn, never asserted. An earlier version fixed
+    # Every count is DERIVED and drawn, never asserted. An earlier version fixed
     # the falsified count at one and required every write-up to carry a correction,
     # so each new result made the figure unregenerable and the caption beside it
     # drifted instead (docs/LESSONS.md section 7, on the figure about the process).
-    # The guards below check the claim is non-vacuous, not that it is a fixed size.
-    falsified = [p for p in writeups if "FALSIFIED" in p.read_text()]
-    if not falsified:
+    # The guards below check the claims are non-vacuous and agree with each other,
+    # not that they are a fixed size.
+    led = ledger()
+    if led["plans"] != {p.name for p in plans}:
+        raise SystemExit(
+            "REFUSING TO DRAW: the plans scored in PREDICTIONS.md are not the files "
+            f"in docs/plans/: {sorted(led['plans'] ^ {p.name for p in plans})}.")
+    if not led["falsified"]:
         raise SystemExit(
             "REFUSING TO DRAW: the summary says predictions were falsified and "
-            "published as such, but no write-up contains FALSIFIED.")
+            "published as such, but the ledger scores none.")
+    # The verdict token is a looser count than the ledger's (a write-up can carry
+    # two falsified predictions, or one under a heading that names the noise model
+    # instead), so it is not drawn; but every write-up carrying it must be scored.
+    headlining = [p for p in writeups if "FALSIFIED" in p.read_text()]
+    if len(headlining) > led["falsified"]:
+        raise SystemExit(
+            f"REFUSING TO DRAW: {len(headlining)} write-ups carry FALSIFIED but the "
+            f"ledger scores only {led['falsified']} predictions falsified.")
     corrected = [p for p in writeups if corrects_itself(p)]
     if sorted(p.stem for p in corrected) != sorted(SELF_CORRECTING):
         raise SystemExit(
@@ -215,6 +273,10 @@ def gather():
     if "would have returned nine zeros" not in " ".join(LESSONS.read_text().split()):
         raise SystemExit(
             "REFUSING TO DRAW: LESSONS.md no longer records the declined run.")
+    if "Declined the hardware encoding × weight 2×2" not in DECISIONS.read_text():
+        raise SystemExit(
+            "REFUSING TO DRAW: DECISIONS.md no longer records the experiment that "
+            "was designed, costed and not run, which the figure points a reader to.")
 
     basin = " ".join((RESULTS / "basin-structure.md").read_text().split())
     if "U-shape with a strict minimum" not in basin:
@@ -224,7 +286,9 @@ def gather():
             "figure paraphrases.")
 
     return {"plans": len(plans), "writeups": len(writeups),
-            "falsified": len(falsified), "corrected": len(corrected),
+            "predictions": led["total"], "held": led["held"],
+            "falsified": led["falsified"], "rules": led["rule verdict"],
+            "corrected": len(corrected),
             "jobs": int(totals.group(1)), "circuits": int(totals.group(2)),
             "qpu": int(totals.group(4))}
 
@@ -260,7 +324,8 @@ def main() -> None:
     # temperament, and only the actual prediction makes it checkable.
     ax.text(3, -1.14, f"{d['jobs']} jobs, {d['circuits']} circuits, {d['qpu']} "
             f"seconds\nof quantum processor time in all.\nAn experiment was "
-            f"designed,\ncosted, and then not run.",
+            f"designed,\ncosted, and then not run: it has no\nplan file, so it is "
+            f"in DECISIONS.md.",
             ha="center", va="top", fontsize=10.5, color=HARDWARE)
     ax.text(7, -1.14, "Predicted: the tuner would converge\nless reliably at penalty "
             "weights on\nBOTH sides of the derived one.\nBelow it, reliability never "
@@ -274,10 +339,11 @@ def main() -> None:
     fig.text(
         0.5, 0.125,
         f"Each stage rests on the one before it, and none was trusted on its own. "
-        f"{d['plans']} predictions were registered before the runs they describe, "
-        f"{d['falsified']} write-ups report one of them falsified, and "
+        f"{d['predictions']} registered predictions across {d['plans']} "
+        f"pre-registrations: {d['held']} held, {d['falsified']} falsified, "
+        f"{d['rules']} resolved by a decision rule rather than a directional claim.\n"
         f"{d['corrected']} of {d['writeups']} write-ups carry a correction or a "
-        f"retraction:\nbeing wrong was the normal case, not the exception.",
+        f"retraction. Being wrong was the normal case, not the exception.",
         ha="center", va="center", fontsize=10.5, color=INK,
         bbox=dict(boxstyle="round,pad=0.5", facecolor=BOX, edgecolor="#C6D3E4"))
     fig.text(0.5, 0.032,
@@ -291,9 +357,10 @@ def main() -> None:
     print(f"wrote {OUT}")
     for i, ((title, *_), start) in enumerate(zip(STAGES, starts), 1):
         print(f"  {i}. {title.replace(chr(10), ' '):<40} earliest module {start}")
-    print(f"  order check passed; {d['plans']} pre-registrations, "
-          f"{d['falsified']} falsified, {d['corrected']}/{d['writeups']} write-ups "
-          f"corrected, {d['qpu']} QPU-seconds")
+    print(f"  order check passed; {d['predictions']} predictions in "
+          f"{d['plans']} pre-registrations: {d['held']} held, {d['falsified']} "
+          f"falsified, {d['rules']} rule verdicts; {d['corrected']}/{d['writeups']} "
+          f"write-ups corrected; {d['qpu']} QPU-seconds")
 
 
 if __name__ == "__main__":
