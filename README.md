@@ -254,6 +254,10 @@ agree), then plots the optimal schedule for a full day. Its real-data cells need
   here before changing anything.
 - [`docs/LESSONS.md`](docs/LESSONS.md) — a standalone field report on what went
   wrong in this project and what each mistake cost. Readable on its own.
+- [`docs/PREDICTIONS.md`](docs/PREDICTIONS.md) — every registered prediction in one
+  table, with what the run returned and whether it held.
+- [`docs/DECISIONS.md`](docs/DECISIONS.md) — the forks where a cheaper or more
+  flattering option was available, and what taking the other one cost.
 - `docs/plans/` — pre-registrations, written before the runs they describe.
   `docs/results/` — the corresponding write-ups, including the retractions.
 
