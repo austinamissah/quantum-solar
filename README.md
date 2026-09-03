@@ -462,9 +462,10 @@ the total-variation distance from the ideal simulation rose from 0.12 to 0.46 as
 the transpiled two-qubit gate count grew from 37 to 290. Only the smallest circuit
 kept a signal clearly above random guessing; the other three fell to the
 measurement floor, where noise dominates. The pre-registered prediction that
-shallower circuits would survive noise better did not cleanly hold: it flipped with
-size, because near the floor the ordering reflected how well each circuit was tuned
-rather than its depth. The full analysis is in
+shallower circuits would survive noise better was falsified: the deeper circuit won
+at 3 slots, which is the refutation the plan named, though near the floor that
+ordering reflected how well each circuit was tuned rather than its depth. The full
+analysis is in
 `notebooks/experiment_hardware.ipynb`, and the run was pre-registered in
 `docs/plans/hardware-run.md`.
 

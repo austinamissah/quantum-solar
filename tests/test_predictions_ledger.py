@@ -168,9 +168,10 @@ def test_every_verdict_is_one_of_the_four_values():
 def test_the_softened_falsification_is_still_scored_as_one():
     """H1 is the row most likely to drift back to the wording its write-up uses.
 
-    Its plan states the refutation condition, the run met it, and the notebook
-    records it as "partially supported at best". The ledger scores it falsified and
-    quotes the softer phrasing in the outcome column rather than in the verdict.
+    Its plan states the refutation condition, the run met it, and the notebook first
+    recorded it as "partially supported at best", since corrected in place. The
+    ledger scores it falsified and quotes the softer phrasing in the outcome column
+    rather than in the verdict.
     """
     h1 = [r for r in ROWS if r["plan"].endswith("hardware-run.md")
           and "H1" in r["predicted"]]
