@@ -186,6 +186,8 @@ that generalizes past this project. Regenerate with
 
 ## Installation
 
+Requires Python 3.12 or newer.
+
 ```bash
 git clone https://github.com/austinamissah/quantum-solar.git
 cd quantum-solar
