@@ -54,8 +54,11 @@ anything:
 For me, 0.3095 / 14.81 = **0.0209**. Below it the surrogate's optimum stops being
 the true optimum; at or above it, exact on 200 test instances (61% at α = 0.010,
 6% at 0.005, 1.5% at 0.003 — a cliff, not a slope). Rescaling moved reps=2's
-optimal-state probability by **440×** with the encoding and the optimizer
-untouched.
+optimal-state probability **several-hundred-fold** with the encoding and the
+optimizer untouched — several-hundred-fold, not a crisp **440×**: that factor is a
+budget-limited lower bound and swings with α in the third decimal, so three
+significant figures claim more than was measured (the qualification is in
+[`slack-free-encoding.md`](results/slack-free-encoding.md)).
 
 **If you take one thing from this document, take this:** for any constrained
 problem you hand to a variational quantum algorithm, compute the ratio between
