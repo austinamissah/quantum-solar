@@ -33,6 +33,14 @@ Both are stated on the figure. The script gates on the second -- it refuses to d
 unless it reproduces each arm's committed `ideal_opt_mass` from the committed tuned
 angles -- so the drawn quantity cannot drift away from the recorded one.
 
+A NOTE ON 0.0011. That default-weight value is a property of THESE committed tuned
+angles, not of the default weight as such. The default landscape has two near-tied
+COBYLA basins at maxiter=200, and a fresh optimization can instead land in the one
+that puts ~0.03-0.04 on the minimum-energy state (its cost differs by ~0.1%). This
+figure is a fixed reference run -- the arm where the default weight did worst -- not
+a property a live run reproduces; the path-robust check lives in
+tests/test_cli.py::test_quantum_section_agrees_with_the_exact_solvers.
+
 WHY THIS CELL (T=2, seed 0, reps=2). Chosen for legibility, not for effect size:
 2 slots is 16 distinct schedules, which is the largest number of bars that stays
 readable. **Neither** arm hit the optimizer's evaluation budget, so neither value is
