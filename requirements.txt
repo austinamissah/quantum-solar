@@ -12,7 +12,7 @@
 numpy~=2.5         # everything, including the classical-only path
 
 qiskit~=2.5        # QAOA path only (quantum_solar.ising, quantum_solar.qaoa)
-qiskit-aer~=0.17   # QAOA path only (simulator backend)
+qiskit-aer>=0.17,<0.18   # QAOA path only (simulator backend); minor cap: ~= would admit all 0.x
 scipy~=1.18        # QAOA path only (COBYLA in the variational loop)
 
 matplotlib~=3.11   # figures and notebooks
