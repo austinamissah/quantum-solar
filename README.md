@@ -150,10 +150,15 @@ exclusion of the cost.
 
 Same problem, same encoding, same circuit, same optimizer, same seed — only the
 penalty scale differs. At the rule-of-thumb weight the single most likely output is
-a plan that **charges and discharges in the same hour**, which no battery can do.
-Rescaled to `α*`, the best schedule becomes the most likely output instead: **80×
-more probability** on it (**131×** on the exact minimum-energy state, the metric
-reported elsewhere here).
+a plan that **charges and discharges in the same hour**, which no battery can do;
+rescaled to `α*`, the best schedule becomes the most likely output instead. The size
+of that swing is optimizer-path-sensitive, so it is stated as what holds across runs
+rather than as one factor: `α*` lifts the optimum to **~0.14 (~9× uniform)** in every
+run, while the default weight leaves it anywhere from **~0.001 to ~0.04**, depending
+on which of two near-tied COBYLA basins wins at `maxiter=200` — a separation of
+**≥4×**. The committed figure above is the reference run where the default weight
+landed in its worst basin (0.0011 → **131×** on the exact minimum-energy state, the
+metric reported elsewhere here).
 
 The threshold is derivable before running anything:
 
